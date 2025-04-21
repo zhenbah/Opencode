@@ -332,7 +332,7 @@ func (g *geminiClient) stream(ctx context.Context, messages []message.Message, t
 						switch p := part.(type) {
 						case genai.Text:
 							newText := string(p)
-							delta := newText[len(currentContent):]
+							delta := newText
 							if delta != "" {
 								eventChan <- ProviderEvent{
 									Type:    EventContentDelta,
