@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -18,6 +19,28 @@ import (
 	zone "github.com/lrstanley/bubblezone"
 	"github.com/spf13/cobra"
 )
+
+type escFilter struct {
+	f *os.File
+}
+
+func (e escFilter) Read(p []byte) (int, error) {
+	return e.f.Read(p)
+}
+
+func (e escFilter) Write(p []byte) (int, error) {
+	filtered := bytes.ReplaceAll(p, []byte{0x1B, 0x1B}, []byte{0x1B})
+	return e.f.Write(filtered)
+}
+
+func (e escFilter) Close() error {
+	return e.f.Close()
+}
+
+// Fd is required by termenv/Bubble Tea to detect a real TTY
+func (e escFilter) Fd() uintptr {
+	return e.f.Fd()
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "OpenCode",
@@ -75,6 +98,7 @@ to assist developers in writing, debugging, and understanding code directly from
 			tui.New(app),
 			tea.WithAltScreen(),
 			tea.WithMouseCellMotion(),
+			tea.WithOutput(escFilter{f: os.Stdout}),
 		)
 
 		// Initialize MCP tools in the background
