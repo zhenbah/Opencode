@@ -22,6 +22,7 @@ var GeminiModels = map[ModelID]Model{
 		CostPer1MOut:       0.60,
 		ContextWindow:      1000000,
 		DefaultMaxTokens:   50000,
+		CanReason:          true,
 	},
 	Gemini25: {
 		ID:                 Gemini25,
@@ -34,6 +35,7 @@ var GeminiModels = map[ModelID]Model{
 		CostPer1MOut:       10,
 		ContextWindow:      1000000,
 		DefaultMaxTokens:   50000,
+		CanReason:          true,
 	},
 
 	Gemini20Flash: {
