@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/kujtimiihoxha/opencode/internal/config"
-	"github.com/kujtimiihoxha/opencode/internal/llm/tools"
-	"github.com/kujtimiihoxha/opencode/internal/logging"
-	"github.com/kujtimiihoxha/opencode/internal/permission"
-	"github.com/kujtimiihoxha/opencode/internal/version"
+	"github.com/opencode-ai/opencode/internal/config"
+	"github.com/opencode-ai/opencode/internal/llm/tools"
+	"github.com/opencode-ai/opencode/internal/logging"
+	"github.com/opencode-ai/opencode/internal/permission"
+	"github.com/opencode-ai/opencode/internal/version"
 
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -58,7 +58,7 @@ func runTool(ctx context.Context, c MCPClient, toolName string, input string) (t
 	toolRequest := mcp.CallToolRequest{}
 	toolRequest.Params.Name = toolName
 	var args map[string]any
-	if err = json.Unmarshal([]byte(input), &input); err != nil {
+	if err = json.Unmarshal([]byte(input), &args); err != nil {
 		return tools.NewTextErrorResponse(fmt.Sprintf("error parsing parameters: %s", err)), nil
 	}
 	toolRequest.Params.Arguments = args

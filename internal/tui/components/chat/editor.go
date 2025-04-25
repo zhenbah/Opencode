@@ -1,20 +1,19 @@
 package chat
 
 import (
-	"os"
-	"os/exec"
-	"slices"
-
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/kujtimiihoxha/opencode/internal/app"
-	"github.com/kujtimiihoxha/opencode/internal/logging"
-	"github.com/kujtimiihoxha/opencode/internal/session"
-	"github.com/kujtimiihoxha/opencode/internal/tui/layout"
-	"github.com/kujtimiihoxha/opencode/internal/tui/styles"
-	"github.com/kujtimiihoxha/opencode/internal/tui/util"
+	"github.com/opencode-ai/opencode/internal/app"
+	"github.com/opencode-ai/opencode/internal/logging"
+	"github.com/opencode-ai/opencode/internal/session"
+	"github.com/opencode-ai/opencode/internal/tui/layout"
+	"github.com/opencode-ai/opencode/internal/tui/styles"
+	"github.com/opencode-ai/opencode/internal/tui/util"
+	"os"
+	"os/exec"
+	"slices"
 )
 
 type editorCmp struct {
@@ -25,18 +24,26 @@ type editorCmp struct {
 	deleteMode  bool
 }
 
-type FocusEditorMsg bool
-
-type focusedEditorKeyMaps struct {
+type EditorKeyMaps struct {
 	Send       key.Binding
 	OpenEditor key.Binding
-	Blur       key.Binding
 }
 
 type bluredEditorKeyMaps struct {
 	Send       key.Binding
 	Focus      key.Binding
 	OpenEditor key.Binding
+}
+
+var editorMaps = EditorKeyMaps{
+	Send: key.NewBinding(
+		key.WithKeys("enter", "ctrl+s"),
+		key.WithHelp("enter", "send message"),
+	),
+	OpenEditor: key.NewBinding(
+		key.WithKeys("ctrl+e"),
+		key.WithHelp("ctrl+e", "open editor"),
+	),
 }
 
 var deleteAttachmentsKey = key.NewBinding(
@@ -72,36 +79,6 @@ var deleteAll = key.NewBinding(
 	key.WithHelp("d", "delete all attachmet"),
 )
 
-var focusedKeyMaps = focusedEditorKeyMaps{
-	Send: key.NewBinding(
-		key.WithKeys("ctrl+s"),
-		key.WithHelp("ctrl+s", "send message"),
-	),
-	Blur: key.NewBinding(
-		key.WithKeys("esc"),
-		key.WithHelp("esc", "focus messages"),
-	),
-	OpenEditor: key.NewBinding(
-		key.WithKeys("ctrl+e"),
-		key.WithHelp("ctrl+e", "open editor"),
-	),
-}
-
-var bluredKeyMaps = bluredEditorKeyMaps{
-	Send: key.NewBinding(
-		key.WithKeys("ctrl+s", "enter"),
-		key.WithHelp("ctrl+s/enter", "send message"),
-	),
-	Focus: key.NewBinding(
-		key.WithKeys("i"),
-		key.WithHelp("i", "focus editor"),
-	),
-	OpenEditor: key.NewBinding(
-		key.WithKeys("ctrl+e"),
-		key.WithHelp("ctrl+e", "open editor"),
-	),
-}
-
 func openEditor() tea.Cmd {
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
@@ -125,6 +102,9 @@ func openEditor() tea.Cmd {
 		if err != nil {
 			return util.ReportError(err)
 		}
+		if len(content) == 0 {
+			return util.ReportWarn("Message is empty")
+		}
 		os.Remove(tmpfile.Name())
 		return SendMsg{
 			Text: string(content),
@@ -143,7 +123,6 @@ func (m *editorCmp) send() tea.Cmd {
 
 	value := m.textarea.Value()
 	m.textarea.Reset()
-	m.textarea.Blur()
 	if value == "" {
 		return nil
 	}
@@ -163,11 +142,6 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.session = msg
 		}
 		return m, nil
-	case FocusEditorMsg:
-		if msg {
-			m.textarea.Focus()
-			return m, tea.Batch(textarea.Blink, util.CmdHandler(EditorFocusMsg(true)))
-		}
 	case AttachmentAddedMsg:
 		if len(m.attachments) >= 5 {
 			logging.Error("cannot add more than 5 images")
@@ -227,27 +201,27 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
-
-		if key.Matches(msg, focusedKeyMaps.OpenEditor) {
+		if key.Matches(msg, messageKeys.PageUp) || key.Matches(msg, messageKeys.PageDown) ||
+			key.Matches(msg, messageKeys.HalfPageUp) || key.Matches(msg, messageKeys.HalfPageDown) {
+			return m, nil
+		}
+		if key.Matches(msg, editorMaps.OpenEditor) {
 			if m.app.CoderAgent.IsSessionBusy(m.session.ID) {
 				return m, util.ReportWarn("Agent is working, please wait...")
 			}
 			return m, openEditor()
 		}
-		// if the key does not match any binding, return
-		if m.textarea.Focused() && key.Matches(msg, focusedKeyMaps.Send) {
-			return m, m.send()
-		}
-		if !m.textarea.Focused() && key.Matches(msg, bluredKeyMaps.Send) {
-			return m, m.send()
-		}
-		if m.textarea.Focused() && key.Matches(msg, focusedKeyMaps.Blur) {
-			m.textarea.Blur()
-			return m, util.CmdHandler(EditorFocusMsg(false))
-		}
-		if !m.textarea.Focused() && key.Matches(msg, bluredKeyMaps.Focus) {
-			m.textarea.Focus()
-			return m, tea.Batch(textarea.Blink, util.CmdHandler(EditorFocusMsg(true)))
+		// Handle Enter key
+		if m.textarea.Focused() && key.Matches(msg, editorMaps.Send) {
+			value := m.textarea.Value()
+			if len(value) > 0 && value[len(value)-1] == '\\' {
+				// If the last character is a backslash, remove it and add a newline
+				m.textarea.SetValue(value[:len(value)-1] + "\n")
+				return m, nil
+			} else {
+				// Otherwise, send the message
+				return m, m.send()
+			}
 		}
 	}
 	m.textarea, cmd = m.textarea.Update(msg)
@@ -275,13 +249,7 @@ func (m *editorCmp) GetSize() (int, int) {
 
 func (m *editorCmp) BindingKeys() []key.Binding {
 	bindings := []key.Binding{}
-	if m.textarea.Focused() {
-		bindings = append(bindings, layout.KeyMapToSlice(focusedKeyMaps)...)
-	} else {
-		bindings = append(bindings, layout.KeyMapToSlice(bluredKeyMaps)...)
-	}
-
-	bindings = append(bindings, layout.KeyMapToSlice(m.textarea.KeyMap)...)
+	bindings = append(bindings, layout.KeyMapToSlice(editorMaps)...)
 	return bindings
 }
 

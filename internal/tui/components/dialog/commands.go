@@ -4,9 +4,9 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/kujtimiihoxha/opencode/internal/tui/layout"
-	"github.com/kujtimiihoxha/opencode/internal/tui/styles"
-	"github.com/kujtimiihoxha/opencode/internal/tui/util"
+	"github.com/opencode-ai/opencode/internal/tui/layout"
+	"github.com/opencode-ai/opencode/internal/tui/styles"
+	"github.com/opencode-ai/opencode/internal/tui/util"
 )
 
 // Command represents a command that can be executed
@@ -190,7 +190,6 @@ func (c *commandDialogCmp) View() string {
 		styles.BaseStyle.Width(maxWidth).Render(""),
 		styles.BaseStyle.Width(maxWidth).Render(lipgloss.JoinVertical(lipgloss.Left, commandItems...)),
 		styles.BaseStyle.Width(maxWidth).Render(""),
-		styles.BaseStyle.Width(maxWidth).Padding(0, 1).Foreground(styles.ForgroundDim).Render("↑/k: up  ↓/j: down  enter: select  esc: cancel"),
 	)
 
 	return styles.BaseStyle.Padding(1, 2).

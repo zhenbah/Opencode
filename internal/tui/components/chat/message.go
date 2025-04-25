@@ -12,13 +12,13 @@ import (
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/kujtimiihoxha/opencode/internal/config"
-	"github.com/kujtimiihoxha/opencode/internal/diff"
-	"github.com/kujtimiihoxha/opencode/internal/llm/agent"
-	"github.com/kujtimiihoxha/opencode/internal/llm/models"
-	"github.com/kujtimiihoxha/opencode/internal/llm/tools"
-	"github.com/kujtimiihoxha/opencode/internal/message"
-	"github.com/kujtimiihoxha/opencode/internal/tui/styles"
+	"github.com/opencode-ai/opencode/internal/config"
+	"github.com/opencode-ai/opencode/internal/diff"
+	"github.com/opencode-ai/opencode/internal/llm/agent"
+	"github.com/opencode-ai/opencode/internal/llm/models"
+	"github.com/opencode-ai/opencode/internal/llm/tools"
+	"github.com/opencode-ai/opencode/internal/message"
+	"github.com/opencode-ai/opencode/internal/tui/styles"
 )
 
 type uiMessageType int
@@ -28,7 +28,7 @@ const (
 	assistantMessageType
 	toolMessageType
 
-	maxResultHeight = 15
+	maxResultHeight = 10
 )
 
 var diffStyle = diff.NewStyleConfig(diff.WithShowHeader(false), diff.WithShowHunkHeader(false))
@@ -148,7 +148,7 @@ func renderAssistantMessage(
 			content = "*Finished without output*"
 		}
 
-		content = renderMessage(content, false, msg.ID == focusedUIMessageId, width, info...)
+		content = renderMessage(content, false, true, width, info...)
 		messages = append(messages, uiMessage{
 			ID:          msg.ID,
 			messageType: assistantMessageType,

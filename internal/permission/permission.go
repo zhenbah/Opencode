@@ -5,11 +5,10 @@ import (
 	"path/filepath"
 	"slices"
 	"sync"
-	"time"
 
 	"github.com/google/uuid"
-	"github.com/kujtimiihoxha/opencode/internal/config"
-	"github.com/kujtimiihoxha/opencode/internal/pubsub"
+	"github.com/opencode-ai/opencode/internal/config"
+	"github.com/opencode-ai/opencode/internal/pubsub"
 )
 
 var ErrorPermissionDenied = errors.New("permission denied")
@@ -104,12 +103,8 @@ func (s *permissionService) Request(opts CreatePermissionRequest) bool {
 	s.Publish(pubsub.CreatedEvent, permission)
 
 	// Wait for the response with a timeout
-	select {
-	case resp := <-respCh:
-		return resp
-	case <-time.After(10 * time.Minute):
-		return false
-	}
+	resp := <-respCh
+	return resp
 }
 
 func (s *permissionService) AutoApproveSession(sessionID string) {

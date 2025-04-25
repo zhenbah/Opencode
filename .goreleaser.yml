@@ -4,14 +4,19 @@ before:
   hooks:
 builds:
   - env:
+      - CGO_ENABLED=0
     goos:
       - linux
       - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X github.com/opencode-ai/opencode/internal/version.Version={{.Version}}
     main: ./main.go
 
 archives:
   - format: tar.gz
-    # this name template makes the OS and Arch compatible with the results of uname.
     name_template: >-
       opencode-
       {{- if eq .Os "darwin" }}mac-
@@ -21,7 +26,6 @@ archives:
       {{- else if eq .Arch "#86" }}i386
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
-    # use zip for windows archives
     format_overrides:
       - goos: windows
         format: zip
@@ -32,9 +36,9 @@ snapshot:
 aurs:
   - name: opencode
     homepage: "https://github.com/opencode-ai/opencode"
-    description: "Deploy anything"
+    description: "terminal based agent that can build anything"
     maintainers:
-      - "opencode <noreply@opencode.ai>"
+      - "kujtimiihoxha <kujtimii.h@gmail.com>"
     license: "MIT"
     private_key: "{{ .Env.AUR_KEY }}"
     git_url: "ssh://aur@aur.archlinux.org/opencode-bin.git"
@@ -49,7 +53,7 @@ brews:
       owner: opencode-ai
       name: homebrew-tap
 nfpms:
-  - maintainer: opencode
+  - maintainer: kujtimiihoxha
     description: terminal based agent that can build anything
     formats:
       - deb

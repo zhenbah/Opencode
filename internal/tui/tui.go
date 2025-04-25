@@ -6,17 +6,17 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/kujtimiihoxha/opencode/internal/app"
-	"github.com/kujtimiihoxha/opencode/internal/config"
-	"github.com/kujtimiihoxha/opencode/internal/logging"
-	"github.com/kujtimiihoxha/opencode/internal/permission"
-	"github.com/kujtimiihoxha/opencode/internal/pubsub"
-	"github.com/kujtimiihoxha/opencode/internal/tui/components/chat"
-	"github.com/kujtimiihoxha/opencode/internal/tui/components/core"
-	"github.com/kujtimiihoxha/opencode/internal/tui/components/dialog"
-	"github.com/kujtimiihoxha/opencode/internal/tui/layout"
-	"github.com/kujtimiihoxha/opencode/internal/tui/page"
-	"github.com/kujtimiihoxha/opencode/internal/tui/util"
+	"github.com/opencode-ai/opencode/internal/app"
+	"github.com/opencode-ai/opencode/internal/config"
+	"github.com/opencode-ai/opencode/internal/logging"
+	"github.com/opencode-ai/opencode/internal/permission"
+	"github.com/opencode-ai/opencode/internal/pubsub"
+	"github.com/opencode-ai/opencode/internal/tui/components/chat"
+	"github.com/opencode-ai/opencode/internal/tui/components/core"
+	"github.com/opencode-ai/opencode/internal/tui/components/dialog"
+	"github.com/opencode-ai/opencode/internal/tui/layout"
+	"github.com/opencode-ai/opencode/internal/tui/page"
+	"github.com/opencode-ai/opencode/internal/tui/util"
 )
 
 type keyMap struct {
@@ -31,7 +31,7 @@ type keyMap struct {
 var keys = keyMap{
 	Logs: key.NewBinding(
 		key.WithKeys("ctrl+l"),
-		key.WithHelp("ctrl+L", "logs"),
+		key.WithHelp("ctrl+l", "logs"),
 	),
 
 	Quit: key.NewBinding(
@@ -50,7 +50,7 @@ var keys = keyMap{
 
 	Commands: key.NewBinding(
 		key.WithKeys("ctrl+k"),
-		key.WithHelp("ctrl+K", "commands"),
+		key.WithHelp("ctrl+k", "commands"),
 	),
 	Filepicker: key.NewBinding(
 		key.WithKeys("ctrl+f"),
@@ -178,8 +178,6 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.initDialog.SetSize(msg.Width, msg.Height)
 
 		return a, tea.Batch(cmds...)
-	case chat.EditorFocusMsg:
-		a.editingMode = bool(msg)
 	// Status
 	case util.InfoMsg:
 		s, cmd := a.status.Update(msg)
@@ -242,7 +240,6 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.app.Permissions.GrantPersistant(msg.Permission)
 		case dialog.PermissionDeny:
 			a.app.Permissions.Deny(msg.Permission)
-			cmd = util.CmdHandler(chat.FocusEditorMsg(true))
 		}
 		a.showPermissions = false
 		return a, cmd
@@ -381,7 +378,7 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.showHelp = !a.showHelp
 			return a, nil
 		case key.Matches(msg, helpEsc):
-			if !a.editingMode {
+			if a.app.CoderAgent.IsBusy() {
 				if a.showQuit {
 					return a, nil
 				}
@@ -531,7 +528,7 @@ func (a appModel) View() string {
 
 	}
 
-	if a.editingMode {
+	if !a.app.CoderAgent.IsBusy() {
 		a.status.SetHelpMsg("ctrl+? help")
 	} else {
 		a.status.SetHelpMsg("? help")
@@ -548,7 +545,7 @@ func (a appModel) View() string {
 		if a.currentPage == page.LogsPage {
 			bindings = append(bindings, logsKeyReturnKey)
 		}
-		if !a.editingMode {
+		if !a.app.CoderAgent.IsBusy() {
 			bindings = append(bindings, helpEsc)
 		}
 		a.help.SetBindings(bindings)
@@ -639,7 +636,6 @@ func New(app *app.App) tea.Model {
 		permissions:   dialog.NewPermissionDialogCmp(),
 		initDialog:    dialog.NewInitDialogCmp(),
 		app:           app,
-		editingMode:   true,
 		commands:      []dialog.Command{},
 		pages: map[page.PageID]tea.Model{
 			page.ChatPage: page.NewChatPage(app),
