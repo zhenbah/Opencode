@@ -25,6 +25,7 @@ type keyMap struct {
 	Help          key.Binding
 	SwitchSession key.Binding
 	Commands      key.Binding
+	Filepicker    key.Binding
 }
 
 var keys = keyMap{
@@ -50,6 +51,10 @@ var keys = keyMap{
 	Commands: key.NewBinding(
 		key.WithKeys("ctrl+k"),
 		key.WithHelp("ctrl+K", "commands"),
+	),
+	Filepicker: key.NewBinding(
+		key.WithKeys("ctrl+f"),
+		key.WithHelp("ctrl+f", "select files to upload"),
 	),
 }
 
@@ -97,6 +102,9 @@ type appModel struct {
 	initDialog     dialog.InitDialogCmp
 
 	editingMode bool
+
+	showFilepicker bool
+	filepicker     chat.FilepickerCmp
 }
 
 func (a appModel) Init() tea.Cmd {
@@ -115,6 +123,8 @@ func (a appModel) Init() tea.Cmd {
 	cmd = a.commandDialog.Init()
 	cmds = append(cmds, cmd)
 	cmd = a.initDialog.Init()
+	cmds = append(cmds, cmd)
+	cmd = a.filepicker.Init()
 	cmds = append(cmds, cmd)
 
 	// Check if we should show the init dialog
@@ -160,6 +170,10 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		command, commandCmd := a.commandDialog.Update(msg)
 		a.commandDialog = command.(dialog.CommandDialog)
 		cmds = append(cmds, commandCmd)
+
+		filepicker, filepickerCmd := a.filepicker.Update(msg)
+		a.filepicker = filepicker.(chat.FilepickerCmp)
+		cmds = append(cmds, filepickerCmd)
 
 		a.initDialog.SetSize(msg.Width, msg.Height)
 
@@ -303,6 +317,9 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if a.showCommandDialog {
 				a.showCommandDialog = false
 			}
+			if a.showFilepicker {
+				a.showFilepicker = false
+			}
 			return a, nil
 		case key.Matches(msg, keys.SwitchSession):
 			if a.currentPage == page.ChatPage && !a.showQuit && !a.showPermissions && !a.showCommandDialog {
@@ -351,6 +368,10 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return a, nil
 			}
+			if a.showFilepicker {
+				a.showFilepicker = false
+				return a, nil
+			}
 		case key.Matches(msg, keys.Logs):
 			return a, a.moveToPage(page.LogsPage)
 		case key.Matches(msg, keys.Help):
@@ -367,8 +388,25 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				a.showHelp = !a.showHelp
 				return a, nil
 			}
+		case key.Matches(msg, keys.Filepicker):
+			a.showFilepicker = !a.showFilepicker
+			return a, nil
 		}
+	default:
+		f, filepickerCmd := a.filepicker.Update(msg)
+		a.filepicker = f.(chat.FilepickerCmp)
+		cmds = append(cmds, filepickerCmd)
 
+	}
+
+	if a.showFilepicker {
+		f, filepickerCmd := a.filepicker.Update(msg)
+		a.filepicker = f.(chat.FilepickerCmp)
+		cmds = append(cmds, filepickerCmd)
+		// Only block key messages send all other messages down
+		if _, ok := msg.(tea.KeyMsg); ok {
+			return a, tea.Batch(cmds...)
+		}
 	}
 
 	if a.showQuit {
@@ -475,6 +513,22 @@ func (a appModel) View() string {
 			appView,
 			true,
 		)
+	}
+
+	if a.showFilepicker {
+		overlay := a.filepicker.View()
+		row := lipgloss.Height(appView) / 2
+		row -= lipgloss.Height(overlay) / 2
+		col := lipgloss.Width(appView) / 2
+		col -= lipgloss.Width(overlay) / 2
+		appView = layout.PlaceOverlay(
+			col,
+			row,
+			overlay,
+			appView,
+			true,
+		)
+
 	}
 
 	if a.editingMode {
@@ -591,6 +645,7 @@ func New(app *app.App) tea.Model {
 			page.ChatPage: page.NewChatPage(app),
 			page.LogsPage: page.NewLogsPage(),
 		},
+		filepicker: chat.NewFilepickerCmp(),
 	}
 
 	model.RegisterCommand(dialog.Command{

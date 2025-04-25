@@ -70,9 +70,12 @@ type BinaryContent struct {
 	Data     []byte
 }
 
-func (bc BinaryContent) String() string {
+func (bc BinaryContent) String(provider models.ModelProvider) string {
 	base64Encoded := base64.StdEncoding.EncodeToString(bc.Data)
-	return "data:" + bc.MIMEType + ";base64," + base64Encoded
+	if provider == models.ProviderOpenAI {
+		return "data:" + bc.MIMEType + ";base64," + base64Encoded
+	}
+	return base64Encoded
 }
 
 func (BinaryContent) isPart() {}
