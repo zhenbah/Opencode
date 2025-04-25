@@ -332,7 +332,7 @@ func (g *geminiClient) stream(ctx context.Context, messages []message.Message, t
 						switch p := part.(type) {
 						case genai.Text:
 							newText := string(p)
-							delta := newText[len(currentContent):]
+							delta := newText
 							if delta != "" {
 								eventChan <- ProviderEvent{
 									Type:    EventContentDelta,
@@ -369,14 +369,26 @@ func (g *geminiClient) stream(ctx context.Context, messages []message.Message, t
 			eventChan <- ProviderEvent{Type: EventContentStop}
 
 			if finalResp != nil {
-				eventChan <- ProviderEvent{
-					Type: EventComplete,
-					Response: &ProviderResponse{
-						Content:      currentContent,
-						ToolCalls:    toolCalls,
-						Usage:        g.usage(finalResp),
-						FinishReason: g.finishReason(finalResp.Candidates[0].FinishReason),
-					},
+				if len(finalResp.Candidates) > 0 && finalResp.Candidates[0] != nil {
+					eventChan <- ProviderEvent{
+						Type: EventComplete,
+						Response: &ProviderResponse{
+							Content:      currentContent,
+							ToolCalls:    toolCalls,
+							Usage:        g.usage(finalResp),
+							FinishReason: g.finishReason(finalResp.Candidates[0].FinishReason),
+						},
+					}
+				} else {
+					eventChan <- ProviderEvent{
+						Type: EventComplete,
+						Response: &ProviderResponse{
+							Content:      currentContent,
+							ToolCalls:    toolCalls,
+							Usage:        g.usage(finalResp),
+							FinishReason: g.finishReason(genai.FinishReasonOther),
+						},
+					}
 				}
 				return
 			}
