@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -262,11 +263,12 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case dialog.ModelSelectedMsg:
 		a.showModelDialog = false
 
-		if err := a.app.UpdateAgent(config.AgentCoder, msg.Model.ID); err != nil {
+		model, err := a.app.CoderAgent.Update(config.AgentCoder, msg.Model.ID)
+		if err != nil {
 			return a, util.ReportError(err)
 		}
 
-		return a, nil
+		return a, util.ReportInfo(fmt.Sprintf("Model changed to %s", model.Name))
 
 	case dialog.ShowInitDialogMsg:
 		a.showInitDialog = msg.Show
