@@ -83,6 +83,8 @@ const (
 	defaultDataDirectory = ".opencode"
 	defaultLogLevel      = "info"
 	appName              = "opencode"
+
+	MaxTokensFallbackDefault = 4096
 )
 
 var defaultContextPaths = []string{
@@ -416,7 +418,7 @@ func Validate() error {
 			if model.DefaultMaxTokens > 0 {
 				updatedAgent.MaxTokens = model.DefaultMaxTokens
 			} else {
-				updatedAgent.MaxTokens = 4096 // Fallback default
+				updatedAgent.MaxTokens = MaxTokensFallbackDefault
 			}
 			cfg.Agents[name] = updatedAgent
 		} else if model.ContextWindow > 0 && agent.MaxTokens > model.ContextWindow/2 {

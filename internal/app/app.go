@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"maps"
 	"sync"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/opencode-ai/opencode/internal/db"
 	"github.com/opencode-ai/opencode/internal/history"
 	"github.com/opencode-ai/opencode/internal/llm/agent"
+	"github.com/opencode-ai/opencode/internal/llm/models"
 	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/lsp"
 	"github.com/opencode-ai/opencode/internal/message"
@@ -71,6 +73,54 @@ func New(ctx context.Context, conn *sql.DB) (*App, error) {
 	}
 
 	return app, nil
+}
+
+func (app *App) UpdateAgent(agentName config.AgentName, modelId models.ModelID) error {
+	if app.CoderAgent.IsBusy() {
+		return fmt.Errorf("cannot change model while processing requests")
+	}
+
+	modelInfo, ok := models.SupportedModels[modelId]
+	if !ok {
+		return fmt.Errorf("model %s not supported", modelId)
+	}
+
+	cfg := config.Get()
+	maxTokens := modelInfo.DefaultMaxTokens
+	if maxTokens == 0 {
+		maxTokens = config.MaxTokensFallbackDefault
+	}
+
+	cfgAgent := config.Agent{
+		Model:     modelId,
+		MaxTokens: modelInfo.DefaultMaxTokens,
+	}
+
+	if modelInfo.CanReason {
+		cfgAgent.ReasoningEffort = "medium"
+	}
+
+	cfg.Agents[agentName] = cfgAgent
+
+	newAgent, err := agent.NewAgent(
+		agentName,
+		app.Sessions,
+		app.Messages,
+		agent.CoderAgentTools(
+			app.Permissions,
+			app.Sessions,
+			app.Messages,
+			app.History,
+			app.LSPClients,
+		),
+	)
+	if err != nil {
+		logging.Error("Failed to create agent with new model", err)
+		return err
+	}
+
+	app.CoderAgent = newAgent
+	return nil
 }
 
 // Shutdown performs a clean shutdown of the application
