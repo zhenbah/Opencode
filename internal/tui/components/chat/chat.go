@@ -13,7 +13,8 @@ import (
 )
 
 type SendMsg struct {
-	Text string
+	Text        string
+	Attachments []Attachment
 }
 
 type SessionSelectedMsg = session.Session

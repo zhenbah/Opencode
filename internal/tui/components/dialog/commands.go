@@ -244,4 +244,3 @@ func NewCommandDialogCmp() CommandDialog {
 		selectedCommandID: "",
 	}
 }
-

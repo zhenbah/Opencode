@@ -3,12 +3,14 @@ package chat
 import (
 	"os"
 	"os/exec"
+	"slices"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/kujtimiihoxha/opencode/internal/app"
+	"github.com/kujtimiihoxha/opencode/internal/logging"
 	"github.com/kujtimiihoxha/opencode/internal/session"
 	"github.com/kujtimiihoxha/opencode/internal/tui/layout"
 	"github.com/kujtimiihoxha/opencode/internal/tui/styles"
@@ -16,9 +18,11 @@ import (
 )
 
 type editorCmp struct {
-	app      *app.App
-	session  session.Session
-	textarea textarea.Model
+	app         *app.App
+	session     session.Session
+	textarea    textarea.Model
+	attachments []Attachment
+	deleteMode  bool
 }
 
 type FocusEditorMsg bool
@@ -34,6 +38,39 @@ type bluredEditorKeyMaps struct {
 	Focus      key.Binding
 	OpenEditor key.Binding
 }
+
+var deleteAttachmentsKey = key.NewBinding(
+	key.WithKeys("ctrl+d"),
+	key.WithHelp("ctrl+d", "delete attachmets"),
+)
+
+var deleteFirst = key.NewBinding(
+	key.WithKeys("1"),
+	key.WithHelp("1", "delete 1st attachmet"),
+)
+
+var deleteSecond = key.NewBinding(
+	key.WithKeys("2"),
+	key.WithHelp("2", "delete 2nd attachmet"),
+)
+var deleteThird = key.NewBinding(
+	key.WithKeys("3"),
+	key.WithHelp("3", "delete 3rd attachmet"),
+)
+
+var deleteFourth = key.NewBinding(
+	key.WithKeys("4"),
+	key.WithHelp("4", "delete 4th attachmet"),
+)
+
+var deleteFifth = key.NewBinding(
+	key.WithKeys("5"),
+	key.WithHelp("5", "delete 5th attachmet"),
+)
+var deleteAll = key.NewBinding(
+	key.WithKeys("d"),
+	key.WithHelp("d", "delete all attachmet"),
+)
 
 var focusedKeyMaps = focusedEditorKeyMaps{
 	Send: key.NewBinding(
@@ -112,7 +149,8 @@ func (m *editorCmp) send() tea.Cmd {
 	}
 	return tea.Batch(
 		util.CmdHandler(SendMsg{
-			Text: value,
+			Text:        value,
+			Attachments: m.attachments,
 		}),
 	)
 }
@@ -130,7 +168,66 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.textarea.Focus()
 			return m, tea.Batch(textarea.Blink, util.CmdHandler(EditorFocusMsg(true)))
 		}
+	case AttachmentAddedMsg:
+		if len(m.attachments) >= 5 {
+			logging.Error("cannot add more than 5 images")
+			return m, nil
+		}
+		m.attachments = append(m.attachments, msg.Attachment)
 	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, deleteAttachmentsKey):
+			m.deleteMode = true
+		case key.Matches(msg, deleteFirst):
+			if m.deleteMode {
+				if len(m.attachments) >= 1 {
+					m.deleteMode = false
+					m.attachments = slices.Delete(m.attachments, 0, 1)
+					return m, nil
+				}
+			}
+		case key.Matches(msg, deleteSecond):
+			if m.deleteMode {
+				if len(m.attachments) >= 2 {
+					m.attachments = slices.Delete(m.attachments, 1, 2)
+					m.deleteMode = false
+					return m, nil
+				}
+			}
+		case key.Matches(msg, deleteThird):
+			if m.deleteMode {
+				if len(m.attachments) >= 3 {
+					m.attachments = slices.Delete(m.attachments, 2, 3)
+					m.deleteMode = false
+					return m, nil
+				}
+			}
+		case key.Matches(msg, deleteFourth):
+			if m.deleteMode {
+				if len(m.attachments) >= 4 {
+					m.attachments = slices.Delete(m.attachments, 3, 4)
+					m.deleteMode = false
+					return m, nil
+				}
+			}
+		case key.Matches(msg, deleteFifth):
+			if m.deleteMode {
+				if len(m.attachments) >= 5 {
+					m.attachments = m.attachments[:4]
+					m.deleteMode = false
+					return m, nil
+				}
+			}
+		case key.Matches(msg, deleteAll):
+			if m.deleteMode {
+				if len(m.attachments) >= 1 {
+					m.deleteMode = false
+					m.attachments = nil
+					return m, nil
+				}
+			}
+		}
+
 		if key.Matches(msg, focusedKeyMaps.OpenEditor) {
 			if m.app.CoderAgent.IsSessionBusy(m.session.ID) {
 				return m, util.ReportWarn("Agent is working, please wait...")
@@ -159,8 +256,11 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *editorCmp) View() string {
 	style := lipgloss.NewStyle().Padding(0, 0, 0, 1).Bold(true)
-
-	return lipgloss.JoinHorizontal(lipgloss.Top, style.Render(">"), m.textarea.View())
+	var attachments string
+	for _, attachment := range m.attachments {
+		attachments += "  " + attachment.FileName
+	}
+	return lipgloss.JoinVertical(lipgloss.Top, attachments, lipgloss.JoinHorizontal(lipgloss.Top, style.Render(">"), m.textarea.View()))
 }
 
 func (m *editorCmp) SetSize(width, height int) tea.Cmd {

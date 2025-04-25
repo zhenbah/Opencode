@@ -2,7 +2,6 @@ package page
 
 import (
 	"context"
-
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/kujtimiihoxha/opencode/internal/app"
@@ -53,7 +52,7 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd := p.layout.SetSize(msg.Width, msg.Height)
 		cmds = append(cmds, cmd)
 	case chat.SendMsg:
-		cmd := p.sendMessage(msg.Text)
+		cmd := p.sendMessage(msg.Text, msg.Attachments)
 		if cmd != nil {
 			return p, cmd
 		}
@@ -102,7 +101,7 @@ func (p *chatPage) clearSidebar() tea.Cmd {
 	return p.layout.ClearRightPanel()
 }
 
-func (p *chatPage) sendMessage(text string) tea.Cmd {
+func (p *chatPage) sendMessage(text string, attachments []chat.Attachment) tea.Cmd {
 	var cmds []tea.Cmd
 	if p.session.ID == "" {
 		session, err := p.app.Sessions.Create(context.Background(), "New Session")
@@ -117,8 +116,12 @@ func (p *chatPage) sendMessage(text string) tea.Cmd {
 		}
 		cmds = append(cmds, util.CmdHandler(chat.SessionSelectedMsg(session)))
 	}
+	var attachmentContents [][]byte
+	for _, attachment := range attachments {
+		attachmentContents = append(attachmentContents, attachment.Content)
+	}
 
-	p.app.CoderAgent.Run(context.Background(), p.session.ID, text)
+	p.app.CoderAgent.Run(context.Background(), p.session.ID, text, attachmentContents)
 	return tea.Batch(cmds...)
 }
 

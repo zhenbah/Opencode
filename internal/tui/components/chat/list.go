@@ -388,7 +388,9 @@ func (m *messagesCmp) SetSession(session session.Session) tea.Cmd {
 		return util.ReportError(err)
 	}
 	m.messages = messages
-	m.currentMsgID = m.messages[len(m.messages)-1].ID
+	if len(m.messages) > 0 {
+		m.currentMsgID = m.messages[len(m.messages)-1].ID
+	}
 	delete(m.cachedContent, m.currentMsgID)
 	m.rendering = true
 	return func() tea.Msg {
