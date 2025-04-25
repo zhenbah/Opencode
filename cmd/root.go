@@ -8,13 +8,14 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/kujtimiihoxha/opencode/internal/app"
-	"github.com/kujtimiihoxha/opencode/internal/config"
-	"github.com/kujtimiihoxha/opencode/internal/db"
-	"github.com/kujtimiihoxha/opencode/internal/llm/agent"
-	"github.com/kujtimiihoxha/opencode/internal/logging"
-	"github.com/kujtimiihoxha/opencode/internal/pubsub"
-	"github.com/kujtimiihoxha/opencode/internal/tui"
+	"github.com/opencode-ai/opencode/internal/app"
+	"github.com/opencode-ai/opencode/internal/config"
+	"github.com/opencode-ai/opencode/internal/db"
+	"github.com/opencode-ai/opencode/internal/llm/agent"
+	"github.com/opencode-ai/opencode/internal/logging"
+	"github.com/opencode-ai/opencode/internal/pubsub"
+	"github.com/opencode-ai/opencode/internal/tui"
+	"github.com/opencode-ai/opencode/internal/version"
 	zone "github.com/lrstanley/bubblezone"
 	"github.com/spf13/cobra"
 )
@@ -29,6 +30,10 @@ to assist developers in writing, debugging, and understanding code directly from
 		// If the help flag is set, show the help message
 		if cmd.Flag("help").Changed {
 			cmd.Help()
+			return nil
+		}
+		if cmd.Flag("version").Changed {
+			fmt.Println(version.Version)
 			return nil
 		}
 
@@ -247,6 +252,7 @@ func Execute() {
 
 func init() {
 	rootCmd.Flags().BoolP("help", "h", false, "Help")
+	rootCmd.Flags().BoolP("version", "v", false, "Version")
 	rootCmd.Flags().BoolP("debug", "d", false, "Debug")
 	rootCmd.Flags().StringP("cwd", "c", "", "Current working directory")
 }

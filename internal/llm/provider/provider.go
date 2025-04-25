@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/kujtimiihoxha/opencode/internal/llm/models"
-	"github.com/kujtimiihoxha/opencode/internal/llm/tools"
-	"github.com/kujtimiihoxha/opencode/internal/message"
+	"github.com/opencode-ai/opencode/internal/llm/models"
+	"github.com/opencode-ai/opencode/internal/llm/tools"
+	"github.com/opencode-ai/opencode/internal/message"
 )
 
 type EventType string
@@ -106,6 +106,14 @@ func NewProvider(providerName models.ModelProvider, opts ...ProviderClientOption
 		return &baseProvider[BedrockClient]{
 			options: clientOptions,
 			client:  newBedrockClient(clientOptions),
+		}, nil
+	case models.ProviderGROQ:
+		clientOptions.openaiOptions = append(clientOptions.openaiOptions,
+			WithOpenAIBaseURL("https://api.groq.com/openai/v1"),
+		)
+		return &baseProvider[OpenAIClient]{
+			options: clientOptions,
+			client:  newOpenAIClient(clientOptions),
 		}, nil
 	case models.ProviderMock:
 		// TODO: implement mock client for test

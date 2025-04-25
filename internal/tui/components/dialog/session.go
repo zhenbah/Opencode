@@ -4,10 +4,10 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/kujtimiihoxha/opencode/internal/session"
-	"github.com/kujtimiihoxha/opencode/internal/tui/layout"
-	"github.com/kujtimiihoxha/opencode/internal/tui/styles"
-	"github.com/kujtimiihoxha/opencode/internal/tui/util"
+	"github.com/opencode-ai/opencode/internal/session"
+	"github.com/opencode-ai/opencode/internal/tui/layout"
+	"github.com/opencode-ai/opencode/internal/tui/styles"
+	"github.com/opencode-ai/opencode/internal/tui/util"
 )
 
 // SessionSelectedMsg is sent when a session is selected
@@ -122,6 +122,8 @@ func (s *sessionDialogCmp) View() string {
 		}
 	}
 
+	maxWidth = max(30, min(maxWidth, s.width-15)) // Limit width to avoid overflow
+
 	// Limit height to avoid taking up too much screen space
 	maxVisibleSessions := min(10, len(s.sessions))
 
@@ -169,7 +171,6 @@ func (s *sessionDialogCmp) View() string {
 		styles.BaseStyle.Width(maxWidth).Render(""),
 		styles.BaseStyle.Width(maxWidth).Render(lipgloss.JoinVertical(lipgloss.Left, sessionItems...)),
 		styles.BaseStyle.Width(maxWidth).Render(""),
-		styles.BaseStyle.Width(maxWidth).Padding(0, 1).Foreground(styles.ForgroundDim).Render("↑/k: up  ↓/j: down  enter: select  esc: cancel"),
 	)
 
 	return styles.BaseStyle.Padding(1, 2).
@@ -223,4 +224,3 @@ func NewSessionDialogCmp() SessionDialog {
 		selectedSessionID: "",
 	}
 }
-

@@ -10,13 +10,12 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/kujtimiihoxha/opencode/internal/app"
-	"github.com/kujtimiihoxha/opencode/internal/message"
-	"github.com/kujtimiihoxha/opencode/internal/pubsub"
-	"github.com/kujtimiihoxha/opencode/internal/session"
-	"github.com/kujtimiihoxha/opencode/internal/tui/layout"
-	"github.com/kujtimiihoxha/opencode/internal/tui/styles"
-	"github.com/kujtimiihoxha/opencode/internal/tui/util"
+	"github.com/opencode-ai/opencode/internal/app"
+	"github.com/opencode-ai/opencode/internal/message"
+	"github.com/opencode-ai/opencode/internal/pubsub"
+	"github.com/opencode-ai/opencode/internal/session"
+	"github.com/opencode-ai/opencode/internal/tui/styles"
+	"github.com/opencode-ai/opencode/internal/tui/util"
 )
 
 type cacheItem struct {
@@ -26,7 +25,6 @@ type cacheItem struct {
 type messagesCmp struct {
 	app           *app.App
 	width, height int
-	writingMode   bool
 	viewport      viewport.Model
 	session       session.Session
 	messages      []message.Message
@@ -38,6 +36,32 @@ type messagesCmp struct {
 }
 type renderFinishedMsg struct{}
 
+type MessageKeys struct {
+	PageDown     key.Binding
+	PageUp       key.Binding
+	HalfPageUp   key.Binding
+	HalfPageDown key.Binding
+}
+
+var messageKeys = MessageKeys{
+	PageDown: key.NewBinding(
+		key.WithKeys("pgdown"),
+		key.WithHelp("f/pgdn", "page down"),
+	),
+	PageUp: key.NewBinding(
+		key.WithKeys("pgup"),
+		key.WithHelp("b/pgup", "page up"),
+	),
+	HalfPageUp: key.NewBinding(
+		key.WithKeys("ctrl+u"),
+		key.WithHelp("ctrl+u", "½ page up"),
+	),
+	HalfPageDown: key.NewBinding(
+		key.WithKeys("ctrl+d", "ctrl+d"),
+		key.WithHelp("ctrl+d", "½ page down"),
+	),
+}
+
 func (m *messagesCmp) Init() tea.Cmd {
 	return tea.Batch(m.viewport.Init(), m.spinner.Tick)
 }
@@ -45,8 +69,7 @@ func (m *messagesCmp) Init() tea.Cmd {
 func (m *messagesCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
-	case EditorFocusMsg:
-		m.writingMode = bool(msg)
+
 	case SessionSelectedMsg:
 		if msg.ID != m.session.ID {
 			cmd := m.SetSession(msg)
@@ -60,13 +83,17 @@ func (m *messagesCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.rendering = false
 		return m, nil
 
+	case tea.KeyMsg:
+		if key.Matches(msg, messageKeys.PageUp) || key.Matches(msg, messageKeys.PageDown) ||
+			key.Matches(msg, messageKeys.HalfPageUp) || key.Matches(msg, messageKeys.HalfPageDown) {
+			u, cmd := m.viewport.Update(msg)
+			m.viewport = u
+			cmds = append(cmds, cmd)
+		}
+
 	case renderFinishedMsg:
 		m.rendering = false
 		m.viewport.GotoBottom()
-	case tea.KeyMsg:
-		if m.writingMode {
-			return m, nil
-		}
 	case pubsub.Event[message.Message]:
 		needsRerender := false
 		if msg.Type == pubsub.CreatedEvent {
@@ -121,10 +148,6 @@ func (m *messagesCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	}
-
-	u, cmd := m.viewport.Update(msg)
-	m.viewport = u
-	cmds = append(cmds, cmd)
 
 	spinner, cmd := m.spinner.Update(msg)
 	m.spinner = spinner
@@ -326,22 +349,24 @@ func (m *messagesCmp) working() string {
 func (m *messagesCmp) help() string {
 	text := ""
 
-	if m.writingMode {
+	if m.app.CoderAgent.IsBusy() {
 		text += lipgloss.JoinHorizontal(
 			lipgloss.Left,
 			styles.BaseStyle.Foreground(styles.ForgroundDim).Bold(true).Render("press "),
 			styles.BaseStyle.Foreground(styles.Forground).Bold(true).Render("esc"),
-			styles.BaseStyle.Foreground(styles.ForgroundDim).Bold(true).Render(" to exit writing mode"),
+			styles.BaseStyle.Foreground(styles.ForgroundDim).Bold(true).Render(" to exit cancel"),
 		)
 	} else {
 		text += lipgloss.JoinHorizontal(
 			lipgloss.Left,
 			styles.BaseStyle.Foreground(styles.ForgroundDim).Bold(true).Render("press "),
-			styles.BaseStyle.Foreground(styles.Forground).Bold(true).Render("i"),
-			styles.BaseStyle.Foreground(styles.ForgroundDim).Bold(true).Render(" to start writing"),
+			styles.BaseStyle.Foreground(styles.Forground).Bold(true).Render("enter"),
+			styles.BaseStyle.Foreground(styles.ForgroundDim).Bold(true).Render(" to send the message,"),
+			styles.BaseStyle.Foreground(styles.ForgroundDim).Bold(true).Render(" write"),
+			styles.BaseStyle.Foreground(styles.Forground).Bold(true).Render(" \\"),
+			styles.BaseStyle.Foreground(styles.ForgroundDim).Bold(true).Render(" and enter to add a new line"),
 		)
 	}
-
 	return styles.BaseStyle.
 		Width(m.width).
 		Render(text)
@@ -400,18 +425,26 @@ func (m *messagesCmp) SetSession(session session.Session) tea.Cmd {
 }
 
 func (m *messagesCmp) BindingKeys() []key.Binding {
-	bindings := layout.KeyMapToSlice(m.viewport.KeyMap)
-	return bindings
+	return []key.Binding{
+		m.viewport.KeyMap.PageDown,
+		m.viewport.KeyMap.PageUp,
+		m.viewport.KeyMap.HalfPageUp,
+		m.viewport.KeyMap.HalfPageDown,
+	}
 }
 
 func NewMessagesCmp(app *app.App) tea.Model {
 	s := spinner.New()
 	s.Spinner = spinner.Pulse
+	vp := viewport.New(0, 0)
+	vp.KeyMap.PageUp = messageKeys.PageUp
+	vp.KeyMap.PageDown = messageKeys.PageDown
+	vp.KeyMap.HalfPageUp = messageKeys.HalfPageUp
+	vp.KeyMap.HalfPageDown = messageKeys.HalfPageDown
 	return &messagesCmp{
 		app:           app,
-		writingMode:   true,
 		cachedContent: make(map[string]cacheItem),
-		viewport:      viewport.New(0, 0),
+		viewport:      vp,
 		spinner:       s,
 	}
 }

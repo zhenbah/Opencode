@@ -2,19 +2,18 @@ package dialog
 
 import (
 	"fmt"
-	"strings"
-
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/kujtimiihoxha/opencode/internal/diff"
-	"github.com/kujtimiihoxha/opencode/internal/llm/tools"
-	"github.com/kujtimiihoxha/opencode/internal/permission"
-	"github.com/kujtimiihoxha/opencode/internal/tui/layout"
-	"github.com/kujtimiihoxha/opencode/internal/tui/styles"
-	"github.com/kujtimiihoxha/opencode/internal/tui/util"
+	"github.com/opencode-ai/opencode/internal/diff"
+	"github.com/opencode-ai/opencode/internal/llm/tools"
+	"github.com/opencode-ai/opencode/internal/permission"
+	"github.com/opencode-ai/opencode/internal/tui/layout"
+	"github.com/opencode-ai/opencode/internal/tui/styles"
+	"github.com/opencode-ai/opencode/internal/tui/util"
+	"strings"
 )
 
 type PermissionAction string
@@ -67,8 +66,8 @@ var permissionsKeys = permissionsMapping{
 		key.WithHelp("a", "allow"),
 	),
 	AllowSession: key.NewBinding(
-		key.WithKeys("A"),
-		key.WithHelp("A", "allow for session"),
+		key.WithKeys("s"),
+		key.WithHelp("s", "allow for session"),
 	),
 	Deny: key.NewBinding(
 		key.WithKeys("d"),
@@ -171,7 +170,7 @@ func (p *permissionDialogCmp) renderButtons() string {
 	}
 
 	allowButton := allowStyle.Padding(0, 1).Render("Allow (a)")
-	allowSessionButton := allowSessionStyle.Padding(0, 1).Render("Allow for session (A)")
+	allowSessionButton := allowSessionStyle.Padding(0, 1).Render("Allow for session (s)")
 	denyButton := denyStyle.Padding(0, 1).Render("Deny (d)")
 
 	content := lipgloss.JoinHorizontal(
@@ -375,9 +374,6 @@ func (p *permissionDialogCmp) render() string {
 		contentFinal = p.renderDefaultContent()
 	}
 
-	// Add help text
-	helpText := styles.BaseStyle.Width(p.width - 4).Padding(0, 1).Foreground(styles.ForgroundDim).Render("←/→/tab: switch options  a: allow  A: allow for session  d: deny  enter/space: confirm")
-	
 	content := lipgloss.JoinVertical(
 		lipgloss.Top,
 		title,
@@ -385,8 +381,7 @@ func (p *permissionDialogCmp) render() string {
 		headerContent,
 		contentFinal,
 		buttons,
-		styles.BaseStyle.Render(strings.Repeat(" ", p.width - 4)),
-		helpText,
+		styles.BaseStyle.Render(strings.Repeat(" ", p.width-4)),
 	)
 
 	return styles.BaseStyle.

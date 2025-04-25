@@ -1,4 +1,4 @@
-# OpenCode
+# ⌬ OpenCode
 
 > **⚠️ Early Development Notice:** This project is in early development and is not yet ready for production use. Features may change, break, or be incomplete. Use at your own risk.
 
@@ -22,9 +22,36 @@ OpenCode is a Go-based CLI application that brings AI assistance to your termina
 
 ## Installation
 
+### Using the Install Script
+
 ```bash
-# Coming soon
-go install github.com/kujtimiihoxha/opencode@latest
+# Install the latest version
+curl -fsSL https://opencode.ai/install | bash
+
+# Install a specific version
+curl -fsSL https://opencode.ai/install | VERSION=0.1.0 bash
+```
+
+### Using Homebrew (macOS and Linux)
+
+```bash
+brew install opencode-ai/tap/opencode
+```
+
+### Using AUR (Arch Linux)
+
+```bash
+# Using yay
+yay -S opencode-bin
+
+# Using paru
+paru -S opencode-bin
+```
+
+### Using Go
+
+```bash
+go install github.com/opencode-ai/opencode@latest
 ```
 
 ## Configuration
@@ -64,6 +91,10 @@ You can configure OpenCode using environment variables:
     "anthropic": {
       "apiKey": "your-api-key",
       "disabled": false
+    },
+    "groq": {
+        "apiKey": "your-api-key",
+        "disabled": false
     }
   },
   "agents": {
@@ -130,6 +161,14 @@ OpenCode supports a variety of AI models from different providers:
 ### AWS Bedrock
 
 - Claude 3.7 Sonnet
+
+### Groq
+
+- Llama 4 Maverick (17b-128e-instruct) 
+- Llama 4 Scout (17b-16e-instruct)
+- QWEN QWQ-32b
+- Deepseek R1 distill Llama 70b
+- Llama 3.3 70b Versatile
 
 ## Usage
 
@@ -341,7 +380,7 @@ While the LSP client implementation supports the full LSP protocol (including co
 
 ```bash
 # Clone the repository
-git clone https://github.com/kujtimiihoxha/opencode.git
+git clone https://github.com/opencode-ai/opencode.git
 cd opencode
 
 # Build
