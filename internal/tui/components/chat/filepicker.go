@@ -43,7 +43,7 @@ func (f *filepickerCmp) Init() tea.Cmd {
 func (f *filepickerCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg.(type) {
 	case tea.WindowSizeMsg:
-		f.width = 60
+		f.width = 80
 		f.height = 10
 	}
 	var cmd tea.Cmd
