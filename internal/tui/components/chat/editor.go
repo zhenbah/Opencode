@@ -1,8 +1,14 @@
 package chat
 
 import (
+	"os"
+	"os/exec"
+	"slices"
+	"unicode"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/opencode-ai/opencode/internal/app"
@@ -11,15 +17,13 @@ import (
 	"github.com/opencode-ai/opencode/internal/tui/layout"
 	"github.com/opencode-ai/opencode/internal/tui/styles"
 	"github.com/opencode-ai/opencode/internal/tui/util"
-	"os"
-	"os/exec"
-	"slices"
 )
 
 type editorCmp struct {
 	app         *app.App
 	session     session.Session
 	textarea    textarea.Model
+	viewport    viewport.Model
 	attachments []Attachment
 	deleteMode  bool
 }
@@ -34,6 +38,10 @@ type bluredEditorKeyMaps struct {
 	Focus      key.Binding
 	OpenEditor key.Binding
 }
+type DeleteAttachmentKeyMaps struct {
+	AttachmentDeleteMode key.Binding
+	DeleteAllAttachments key.Binding
+}
 
 var editorMaps = EditorKeyMaps{
 	Send: key.NewBinding(
@@ -46,38 +54,16 @@ var editorMaps = EditorKeyMaps{
 	),
 }
 
-var deleteAttachmentsKey = key.NewBinding(
-	key.WithKeys("ctrl+d"),
-	key.WithHelp("ctrl+d", "delete attachmets"),
-)
-
-var deleteFirst = key.NewBinding(
-	key.WithKeys("1"),
-	key.WithHelp("1", "delete 1st attachmet"),
-)
-
-var deleteSecond = key.NewBinding(
-	key.WithKeys("2"),
-	key.WithHelp("2", "delete 2nd attachmet"),
-)
-var deleteThird = key.NewBinding(
-	key.WithKeys("3"),
-	key.WithHelp("3", "delete 3rd attachmet"),
-)
-
-var deleteFourth = key.NewBinding(
-	key.WithKeys("4"),
-	key.WithHelp("4", "delete 4th attachmet"),
-)
-
-var deleteFifth = key.NewBinding(
-	key.WithKeys("5"),
-	key.WithHelp("5", "delete 5th attachmet"),
-)
-var deleteAll = key.NewBinding(
-	key.WithKeys("d"),
-	key.WithHelp("d", "delete all attachmet"),
-)
+var DeleteKeyMaps = DeleteAttachmentKeyMaps{
+	AttachmentDeleteMode: key.NewBinding(
+		key.WithKeys("ctrl+r"),
+		key.WithHelp("ctrl+r+{i}", "delete attachment at index i"),
+	),
+	DeleteAllAttachments: key.NewBinding(
+		key.WithKeys("r"),
+		key.WithHelp("ctrl+r+r", "delete all attchments"),
+	),
+}
 
 func openEditor() tea.Cmd {
 	editor := os.Getenv("EDITOR")
@@ -123,13 +109,15 @@ func (m *editorCmp) send() tea.Cmd {
 
 	value := m.textarea.Value()
 	m.textarea.Reset()
+	attachments := m.attachments
+	m.attachments = nil
 	if value == "" {
 		return nil
 	}
 	return tea.Batch(
 		util.CmdHandler(SendMsg{
 			Text:        value,
-			Attachments: m.attachments,
+			Attachments: attachments,
 		}),
 	)
 }
@@ -143,62 +131,41 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case AttachmentAddedMsg:
-		if len(m.attachments) >= 5 {
-			logging.Error("cannot add more than 5 images")
-			return m, nil
+		if len(m.attachments) >= 10 {
+			logging.Error("cannot add more than 10 images")
+			return m, cmd
 		}
 		m.attachments = append(m.attachments, msg.Attachment)
+		m.viewport.Height = 2
+		var attachments string
+		for i, attachment := range m.attachments {
+			if i == 0 {
+				attachments += attachment.FileName
+			} else {
+				attachments += "  " + attachment.FileName
+			}
+		}
+		m.viewport.SetContent(attachments)
 	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, deleteAttachmentsKey):
+		if key.Matches(msg, DeleteKeyMaps.AttachmentDeleteMode) {
 			m.deleteMode = true
-		case key.Matches(msg, deleteFirst):
-			if m.deleteMode {
-				if len(m.attachments) >= 1 {
-					m.deleteMode = false
-					m.attachments = slices.Delete(m.attachments, 0, 1)
-					return m, nil
+			return m, nil
+		}
+		if key.Matches(msg, DeleteKeyMaps.DeleteAllAttachments) && m.deleteMode {
+			m.deleteMode = false
+			m.attachments = nil
+			return m, nil
+		}
+		if m.deleteMode && len(msg.Runes) > 0 && unicode.IsDigit(msg.Runes[0]) {
+			num := int(msg.Runes[0] - '0')
+			m.deleteMode = false
+			if num < 10 && len(m.attachments) > num {
+				if num == 0 {
+					m.attachments = m.attachments[num+1:]
+				} else {
+					m.attachments = slices.Delete(m.attachments, num, num+1)
 				}
-			}
-		case key.Matches(msg, deleteSecond):
-			if m.deleteMode {
-				if len(m.attachments) >= 2 {
-					m.attachments = slices.Delete(m.attachments, 1, 2)
-					m.deleteMode = false
-					return m, nil
-				}
-			}
-		case key.Matches(msg, deleteThird):
-			if m.deleteMode {
-				if len(m.attachments) >= 3 {
-					m.attachments = slices.Delete(m.attachments, 2, 3)
-					m.deleteMode = false
-					return m, nil
-				}
-			}
-		case key.Matches(msg, deleteFourth):
-			if m.deleteMode {
-				if len(m.attachments) >= 4 {
-					m.attachments = slices.Delete(m.attachments, 3, 4)
-					m.deleteMode = false
-					return m, nil
-				}
-			}
-		case key.Matches(msg, deleteFifth):
-			if m.deleteMode {
-				if len(m.attachments) >= 5 {
-					m.attachments = m.attachments[:4]
-					m.deleteMode = false
-					return m, nil
-				}
-			}
-		case key.Matches(msg, deleteAll):
-			if m.deleteMode {
-				if len(m.attachments) >= 1 {
-					m.deleteMode = false
-					m.attachments = nil
-					return m, nil
-				}
+				return m, nil
 			}
 		}
 		if key.Matches(msg, messageKeys.PageUp) || key.Matches(msg, messageKeys.PageDown) ||
@@ -223,6 +190,7 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.send()
 			}
 		}
+
 	}
 	m.textarea, cmd = m.textarea.Update(msg)
 	return m, cmd
@@ -230,16 +198,20 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *editorCmp) View() string {
 	style := lipgloss.NewStyle().Padding(0, 0, 0, 1).Bold(true)
-	var attachments string
-	for _, attachment := range m.attachments {
-		attachments += "  " + attachment.FileName
+	if len(m.attachments) == 0 {
+		return lipgloss.JoinHorizontal(lipgloss.Top, style.Render(">"), m.textarea.View())
 	}
-	return lipgloss.JoinVertical(lipgloss.Top, attachments, lipgloss.JoinHorizontal(lipgloss.Top, style.Render(">"), m.textarea.View()))
+	return lipgloss.JoinVertical(lipgloss.Top,
+		m.viewport.View(),
+		lipgloss.JoinHorizontal(lipgloss.Top, style.Render(">"),
+			m.textarea.View()),
+	)
 }
 
 func (m *editorCmp) SetSize(width, height int) tea.Cmd {
 	m.textarea.SetWidth(width - 3) // account for the prompt and padding right
 	m.textarea.SetHeight(height)
+	m.textarea.SetWidth(width)
 	return nil
 }
 
@@ -268,8 +240,11 @@ func NewEditorCmp(app *app.App) tea.Model {
 	ti.FocusedStyle.Text = ti.BlurredStyle.Text.Background(styles.Background)
 	ti.CharLimit = -1
 	ti.Focus()
+	vi := viewport.New(0, 0)
+	vi.Style.Background(styles.Background).Foreground(styles.Forground)
 	return &editorCmp{
 		app:      app,
 		textarea: ti,
+		viewport: vi,
 	}
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"path/filepath"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -224,13 +226,37 @@ func (m *messagesCmp) renderView() {
 
 	messages := make([]string, 0)
 	for _, v := range m.uiMessages {
-		messages = append(messages, v.content,
-			styles.BaseStyle.
-				Width(m.width).
-				Render(
-					"",
-				),
-		)
+		if v.attachmentPaths != "" {
+			var attachments strings.Builder
+			attachmentPaths := strings.Split(v.attachmentPaths, "\n")
+			attachments.WriteString("Attachments: ")
+			for i, attachmentPath := range attachmentPaths {
+				filename := filepath.Base(attachmentPath)
+				if i == 0 {
+					attachments.WriteString(filename)
+				} else {
+					attachments.WriteString("  " + filename)
+				}
+				if i == len(attachmentPaths)-1 {
+					attachments.WriteString("\n")
+				}
+			}
+			messages = append(messages, attachments.String()+v.content,
+				styles.BaseStyle.
+					Width(m.width).
+					Render(
+						"",
+					),
+			)
+		} else {
+			messages = append(messages, v.content,
+				styles.BaseStyle.
+					Width(m.width).
+					Render(
+						"",
+					),
+			)
+		}
 	}
 	m.viewport.SetContent(
 		styles.BaseStyle.
