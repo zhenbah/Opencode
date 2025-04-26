@@ -39,7 +39,7 @@ func (e *AgentEvent) Response() message.Message {
 }
 
 type Service interface {
-	Run(ctx context.Context, sessionID string, content string, attachments [][]byte, attachmentPaths string) (<-chan AgentEvent, error)
+	Run(ctx context.Context, sessionID string, content string, attachmentPaths string, attachments ...[]byte) (<-chan AgentEvent, error)
 	Cancel(sessionID string)
 	IsSessionBusy(sessionID string) bool
 	IsBusy() bool
@@ -156,7 +156,7 @@ func (a *agent) err(err error) AgentEvent {
 	}
 }
 
-func (a *agent) Run(ctx context.Context, sessionID string, content string, attachments [][]byte, attachmentPaths string) (<-chan AgentEvent, error) {
+func (a *agent) Run(ctx context.Context, sessionID string, content string, attachmentPaths string, attachments ...[]byte) (<-chan AgentEvent, error) {
 	events := make(chan AgentEvent)
 	if a.IsSessionBusy(sessionID) {
 		return nil, ErrSessionBusy
