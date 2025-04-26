@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -66,6 +67,17 @@ func TestLsTool_Run(t *testing.T) {
 		err := os.WriteFile(filePath, []byte("test content"), 0644)
 		require.NoError(t, err)
 	}
+	
+	// Mock the WorkingDirectory function to return the temp directory
+	// This is needed because the config package is not initialized in tests
+	config.MockWorkingDirectoryForTests = func() string {
+		return tempDir
+	}
+	
+	// Restore the original function after the test
+	defer func() {
+		config.MockWorkingDirectoryForTests = nil
+	}()
 
 	t.Run("lists directory successfully", func(t *testing.T) {
 		tool := NewLsTool()
@@ -195,6 +207,11 @@ func TestLsTool_Run(t *testing.T) {
 		err = os.Chdir(parentDir)
 		require.NoError(t, err)
 		
+		// Update the mock to return the parent directory
+		config.MockWorkingDirectoryForTests = func() string {
+			return parentDir
+		}
+		
 		tool := NewLsTool()
 		params := LSParams{
 			Path: filepath.Base(tempDir),
@@ -214,6 +231,11 @@ func TestLsTool_Run(t *testing.T) {
 		// Should list the temp directory contents
 		assert.Contains(t, response.Content, "dir1")
 		assert.Contains(t, response.Content, "file1.txt")
+		
+		// Reset the mock to return the temp directory for other tests
+		config.MockWorkingDirectoryForTests = func() string {
+			return tempDir
+		}
 	})
 }
 

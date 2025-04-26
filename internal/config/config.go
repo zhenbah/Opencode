@@ -585,8 +585,16 @@ func Get() *Config {
 	return cfg
 }
 
+// MockWorkingDirectoryForTests is used to override the WorkingDirectory function in tests
+var MockWorkingDirectoryForTests func() string
+
 // WorkingDirectory returns the current working directory from the configuration.
 func WorkingDirectory() string {
+	// If the mock function is set, use it (used for testing)
+	if MockWorkingDirectoryForTests != nil {
+		return MockWorkingDirectoryForTests()
+	}
+	
 	if cfg == nil {
 		panic("config not loaded")
 	}
