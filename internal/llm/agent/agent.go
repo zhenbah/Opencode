@@ -39,7 +39,7 @@ func (e *AgentEvent) Response() message.Message {
 }
 
 type Service interface {
-	Run(ctx context.Context, sessionID string, content string, attachments [][]byte) (<-chan AgentEvent, error)
+	Run(ctx context.Context, sessionID string, content string, attachments [][]byte, attachmentPaths string) (<-chan AgentEvent, error)
 	Cancel(sessionID string)
 	IsSessionBusy(sessionID string) bool
 	IsBusy() bool
@@ -156,7 +156,7 @@ func (a *agent) err(err error) AgentEvent {
 	}
 }
 
-func (a *agent) Run(ctx context.Context, sessionID string, content string, attachments [][]byte) (<-chan AgentEvent, error) {
+func (a *agent) Run(ctx context.Context, sessionID string, content string, attachments [][]byte, attachmentPaths string) (<-chan AgentEvent, error) {
 	events := make(chan AgentEvent)
 	if a.IsSessionBusy(sessionID) {
 		return nil, ErrSessionBusy
@@ -176,8 +176,9 @@ func (a *agent) Run(ctx context.Context, sessionID string, content string, attac
 			mimeType := http.DetectContentType(attachment[:mimeBufferSize])
 			attachmentParts = append(attachmentParts, message.BinaryContent{MIMEType: mimeType, Data: attachment})
 		}
-		result := a.processGeneration(genCtx, sessionID, content, attachmentParts)
+		result := a.processGeneration(genCtx, sessionID, content, attachmentParts, attachmentPaths)
 		if result.Err() != nil && !errors.Is(result.Err(), ErrRequestCancelled) && !errors.Is(result.Err(), context.Canceled) {
+			logging.Info(result.Err().Error())
 			logging.ErrorPersist(fmt.Sprintf("Generation error for session %s: %v", sessionID, result))
 		}
 		logging.Debug("Request completed", "sessionID", sessionID)
@@ -189,7 +190,7 @@ func (a *agent) Run(ctx context.Context, sessionID string, content string, attac
 	return events, nil
 }
 
-func (a *agent) processGeneration(ctx context.Context, sessionID, content string, attachmentParts []message.ContentPart) AgentEvent {
+func (a *agent) processGeneration(ctx context.Context, sessionID, content string, attachmentParts []message.ContentPart, attachmentPaths string) AgentEvent {
 	// List existing messages; if none, start title generation asynchronously.
 	msgs, err := a.messages.List(ctx, sessionID)
 	if err != nil {
@@ -207,7 +208,7 @@ func (a *agent) processGeneration(ctx context.Context, sessionID, content string
 		}()
 	}
 
-	userMsg, err := a.createUserMessage(ctx, sessionID, content, attachmentParts)
+	userMsg, err := a.createUserMessage(ctx, sessionID, content, attachmentParts, attachmentPaths)
 	if err != nil {
 		return a.err(fmt.Errorf("failed to create user message: %w", err))
 	}
@@ -243,12 +244,13 @@ func (a *agent) processGeneration(ctx context.Context, sessionID, content string
 	}
 }
 
-func (a *agent) createUserMessage(ctx context.Context, sessionID, content string, attachmentParts []message.ContentPart) (message.Message, error) {
+func (a *agent) createUserMessage(ctx context.Context, sessionID, content string, attachmentParts []message.ContentPart, attachmentPaths string) (message.Message, error) {
 	parts := []message.ContentPart{message.TextContent{Text: content}}
 	parts = append(parts, attachmentParts...)
 	return a.messages.Create(ctx, sessionID, message.CreateMessageParams{
-		Role:  message.User,
-		Parts: parts,
+		Role:            message.User,
+		Parts:           parts,
+		AttachmentPaths: attachmentPaths,
 	})
 }
 

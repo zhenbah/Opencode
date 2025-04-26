@@ -2,6 +2,8 @@ package page
 
 import (
 	"context"
+	"strings"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/opencode-ai/opencode/internal/app"
@@ -114,11 +116,18 @@ func (p *chatPage) sendMessage(text string, attachments []chat.Attachment) tea.C
 		cmds = append(cmds, util.CmdHandler(chat.SessionSelectedMsg(session)))
 	}
 	var attachmentContents [][]byte
-	for _, attachment := range attachments {
+	var attachmentPaths strings.Builder
+	for i, attachment := range attachments {
 		attachmentContents = append(attachmentContents, attachment.Content)
+		if i == 0 {
+			attachmentPaths.WriteString(attachment.FilePath)
+		} else {
+			attachmentPaths.WriteString("\n")
+			attachmentPaths.WriteString(attachment.FilePath)
+		}
 	}
 
-	p.app.CoderAgent.Run(context.Background(), p.session.ID, text, attachmentContents)
+	p.app.CoderAgent.Run(context.Background(), p.session.ID, text, attachmentContents, attachmentPaths.String())
 	return tea.Batch(cmds...)
 }
 

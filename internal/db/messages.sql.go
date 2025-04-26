@@ -17,20 +17,22 @@ INSERT INTO messages (
     role,
     parts,
     model,
+    attachment_paths,
     created_at,
     updated_at
 ) VALUES (
-    ?, ?, ?, ?, ?, strftime('%s', 'now'), strftime('%s', 'now')
+    ?, ?, ?, ?, ?, ?, strftime('%s', 'now'), strftime('%s', 'now')
 )
-RETURNING id, session_id, role, parts, model, created_at, updated_at, finished_at
+RETURNING id, session_id, role, parts, model, attachment_paths, created_at, updated_at, finished_at
 `
 
 type CreateMessageParams struct {
-	ID        string         `json:"id"`
-	SessionID string         `json:"session_id"`
-	Role      string         `json:"role"`
-	Parts     string         `json:"parts"`
-	Model     sql.NullString `json:"model"`
+	ID              string         `json:"id"`
+	SessionID       string         `json:"session_id"`
+	Role            string         `json:"role"`
+	Parts           string         `json:"parts"`
+	Model           sql.NullString `json:"model"`
+	AttachmentPaths sql.NullString `json:"attachment_paths"`
 }
 
 func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (Message, error) {
@@ -40,6 +42,7 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 		arg.Role,
 		arg.Parts,
 		arg.Model,
+		arg.AttachmentPaths,
 	)
 	var i Message
 	err := row.Scan(
@@ -48,6 +51,7 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 		&i.Role,
 		&i.Parts,
 		&i.Model,
+		&i.AttachmentPaths,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.FinishedAt,
@@ -76,7 +80,7 @@ func (q *Queries) DeleteSessionMessages(ctx context.Context, sessionID string) e
 }
 
 const getMessage = `-- name: GetMessage :one
-SELECT id, session_id, role, parts, model, created_at, updated_at, finished_at
+SELECT id, session_id, role, parts, model, attachment_paths, created_at, updated_at, finished_at
 FROM messages
 WHERE id = ? LIMIT 1
 `
@@ -90,6 +94,7 @@ func (q *Queries) GetMessage(ctx context.Context, id string) (Message, error) {
 		&i.Role,
 		&i.Parts,
 		&i.Model,
+		&i.AttachmentPaths,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.FinishedAt,
@@ -98,7 +103,7 @@ func (q *Queries) GetMessage(ctx context.Context, id string) (Message, error) {
 }
 
 const listMessagesBySession = `-- name: ListMessagesBySession :many
-SELECT id, session_id, role, parts, model, created_at, updated_at, finished_at
+SELECT id, session_id, role, parts, model, attachment_paths, created_at, updated_at, finished_at
 FROM messages
 WHERE session_id = ?
 ORDER BY created_at ASC
@@ -119,6 +124,7 @@ func (q *Queries) ListMessagesBySession(ctx context.Context, sessionID string) (
 			&i.Role,
 			&i.Parts,
 			&i.Model,
+			&i.AttachmentPaths,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.FinishedAt,

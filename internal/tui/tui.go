@@ -303,6 +303,7 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch {
+
 		case key.Matches(msg, keys.Quit):
 			a.showQuit = !a.showQuit
 			if a.showHelp {
@@ -454,7 +455,6 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, tea.Batch(cmds...)
 		}
 	}
-
 	s, _ := a.status.Update(msg)
 	a.status = s.(core.StatusCmp)
 	a.pages[a.currentPage], cmd = a.pages[a.currentPage].Update(msg)
@@ -472,6 +472,7 @@ func (a *appModel) moveToPage(pageID page.PageID) tea.Cmd {
 		// For now we don't move to any page if the agent is busy
 		return util.ReportWarn("Agent is busy, please wait...")
 	}
+
 	var cmds []tea.Cmd
 	if _, ok := a.loadedPages[pageID]; !ok {
 		cmd := a.pages[pageID].Init()

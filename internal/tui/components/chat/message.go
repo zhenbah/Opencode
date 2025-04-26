@@ -34,11 +34,12 @@ const (
 var diffStyle = diff.NewStyleConfig(diff.WithShowHeader(false), diff.WithShowHunkHeader(false))
 
 type uiMessage struct {
-	ID          string
-	messageType uiMessageType
-	position    int
-	height      int
-	content     string
+	ID              string
+	messageType     uiMessageType
+	position        int
+	height          int
+	content         string
+	attachmentPaths string
 }
 
 type renderCache struct {
@@ -94,11 +95,12 @@ func renderMessage(msg string, isUser bool, isFocused bool, width int, info ...s
 func renderUserMessage(msg message.Message, isFocused bool, width int, position int) uiMessage {
 	content := renderMessage(msg.Content().String(), true, isFocused, width)
 	userMsg := uiMessage{
-		ID:          msg.ID,
-		messageType: userMessageType,
-		position:    position,
-		height:      lipgloss.Height(content),
-		content:     content,
+		ID:              msg.ID,
+		messageType:     userMessageType,
+		position:        position,
+		height:          lipgloss.Height(content),
+		content:         content,
+		attachmentPaths: msg.AttachmentPath,
 	}
 	return userMsg
 }
