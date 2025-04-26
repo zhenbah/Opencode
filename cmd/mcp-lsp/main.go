@@ -131,9 +131,15 @@ Available tools:
 
 // convertToolInfo converts a tools.ToolInfo to mcp.Tool
 func convertToolInfo(info tools.ToolInfo) mcp.Tool {
+	// For the diagnostics tool, provide a more concise description
+	description := info.Description
+	if info.Name == tools.DiagnosticsToolName {
+		description = "Get LSP diagnostics for a specific file or the whole project. Use after you've made file changes and want to check for errors or warnings in your code. Helpful for debugging and ensuring code quality."
+	}
+	
 	return mcp.Tool{
 		Name:        info.Name,
-		Description: info.Description,
+		Description: description,
 		InputSchema: mcp.ToolInputSchema{
 			Type:       "object",
 			Properties: info.Parameters,
