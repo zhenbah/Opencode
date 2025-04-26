@@ -205,3 +205,4 @@ func handleDiagnosticsTool(diagnosticsTool tools.BaseTool) server.ToolHandlerFun
 		}, nil
 	}
 }
+
