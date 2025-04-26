@@ -254,19 +254,7 @@ func getDiagnostics(filePath, originalPath string, lsps map[string]*lsp.Client) 
 		diagnostics := client.GetDiagnostics()
 		if len(diagnostics) > 0 {
 			for location, diags := range diagnostics {
-				// Skip diagnostics for files that no longer exist
-				if !strings.HasPrefix(string(location), "file://") {
-					continue
-				}
-				
 				locationPath := location.Path()
-				
-				// Check if the file still exists
-				if _, err := os.Stat(locationPath); os.IsNotExist(err) {
-					// Skip diagnostics for files that no longer exist
-					continue
-				}
-				
 				isCurrentFile := locationPath == filePath
 
 				for _, diag := range diags {

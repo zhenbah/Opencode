@@ -741,6 +741,13 @@ func (c *Client) GetDiagnostics() map[protocol.DocumentUri][]protocol.Diagnostic
 	return c.diagnostics
 }
 
+// ClearDiagnosticsForURI removes diagnostics for a specific URI from the cache
+func (c *Client) ClearDiagnosticsForURI(uri protocol.DocumentUri) {
+	c.diagnosticsMu.Lock()
+	defer c.diagnosticsMu.Unlock()
+	delete(c.diagnostics, uri)
+}
+
 // OpenFileOnDemand opens a file only if it's not already open
 // This is used for lazy-loading files when they're actually needed
 func (c *Client) OpenFileOnDemand(ctx context.Context, filepath string) error {
