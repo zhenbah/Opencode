@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -166,12 +168,34 @@ func getDiagnostics(filePath, originalPath string, lsps map[string]*lsp.Client) 
 	// Create a path resolver function to map absolute paths to original format
 	// if originalPath is provided and filePath is the absolute version of it
 	pathResolver := func(path string) string {
-		// If no original path was provided or the path isn't the target file, use as is
-		if originalPath == "" || path != filePath {
+		// If no original path was provided, use as is
+		if originalPath == "" {
 			return path
 		}
-		// Otherwise return the original path format that the user provided
-		return originalPath
+
+		// For the current file, use exactly the format the user provided
+		if path == filePath {
+			return originalPath
+		}
+
+		// For other files, try to maintain the same relative/absolute style
+		// Check if the original path is relative (doesn't start with /)
+		if !filepath.IsAbs(originalPath) {
+			// Get the working directory
+			wd, err := os.Getwd()
+			if err == nil {
+				// If the path is within the current working directory
+				if strings.HasPrefix(path, wd) {
+					// Convert absolute path to relative by removing the working directory prefix
+					relPath, err := filepath.Rel(wd, path)
+					if err == nil {
+						return relPath
+					}
+				}
+			}
+		}
+		
+		return path
 	}
 
 	formatDiagnostic := func(pth string, diagnostic protocol.Diagnostic, source string) string {
