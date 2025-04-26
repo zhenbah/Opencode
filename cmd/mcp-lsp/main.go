@@ -145,15 +145,24 @@ func convertToolInfo(info tools.ToolInfo) mcp.Tool {
 // handleDiagnosticsTool creates a handler function for the diagnostics tool
 func handleDiagnosticsTool(diagnosticsTool tools.BaseTool) server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		// Make a copy of the arguments to preserve originals
+		args := make(map[string]interface{})
+		for k, v := range request.Params.Arguments {
+			args[k] = v
+		}
+
 		// Custom parsing for ensuring file path is absolute
-		if request.Params.Arguments != nil {
-			if filePath, ok := request.Params.Arguments["file_path"].(string); ok && filePath != "" {
+		if args != nil {
+			if filePath, ok := args["file_path"].(string); ok && filePath != "" {
+				// Store the original path format
+				args["original_path"] = filePath
+
 				// Ensure file path is absolute
 				if !filepath.IsAbs(filePath) {
 					wd, err := os.Getwd()
 					if err == nil {
 						absPath := filepath.Join(wd, filePath)
-						request.Params.Arguments["file_path"] = absPath
+						args["file_path"] = absPath
 					} else {
 						return nil, fmt.Errorf("failed to resolve absolute path: %w", err)
 					}
@@ -162,7 +171,7 @@ func handleDiagnosticsTool(diagnosticsTool tools.BaseTool) server.ToolHandlerFun
 		}
 
 		// Convert the arguments to JSON
-		paramsBytes, err := json.Marshal(request.Params.Arguments)
+		paramsBytes, err := json.Marshal(args)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal arguments: %w", err)
 		}

@@ -216,7 +216,7 @@ func (w *writeTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error
 
 	result := fmt.Sprintf("File successfully written: %s", filePath)
 	result = fmt.Sprintf("<result>\n%s\n</result>", result)
-	result += getDiagnostics(filePath, w.lspClients)
+	result += getDiagnosticsCompat(filePath, w.lspClients)
 	return WithResponseMetadata(NewTextResponse(result),
 		WriteResponseMetadata{
 			Diff:      diff,

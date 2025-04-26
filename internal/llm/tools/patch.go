@@ -355,7 +355,7 @@ func (p *patchTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error
 
 	diagnosticsText := ""
 	for _, filePath := range changedFiles {
-		diagnosticsText += getDiagnostics(filePath, p.lspClients)
+		diagnosticsText += getDiagnosticsCompat(filePath, p.lspClients)
 	}
 
 	if diagnosticsText != "" {

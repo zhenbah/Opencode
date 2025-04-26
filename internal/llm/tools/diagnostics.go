@@ -14,7 +14,8 @@ import (
 )
 
 type DiagnosticsParams struct {
-	FilePath string `json:"file_path"`
+	FilePath    string `json:"file_path"`
+	OriginalPath string `json:"original_path,omitempty"` // The original path format provided by the user
 }
 type diagnosticsTool struct {
 	lspClients map[string]*lsp.Client
@@ -82,7 +83,8 @@ func (b *diagnosticsTool) Run(ctx context.Context, call ToolCall) (ToolResponse,
 		waitForLspDiagnostics(ctx, params.FilePath, lsps)
 	}
 
-	output := getDiagnostics(params.FilePath, lsps)
+	// Use both the absolute path and original path format
+	output := getDiagnostics(params.FilePath, params.OriginalPath, lsps)
 
 	return NewTextResponse(output), nil
 }
@@ -154,9 +156,23 @@ func hasDiagnosticsChanged(current, original map[protocol.DocumentUri][]protocol
 	return false
 }
 
-func getDiagnostics(filePath string, lsps map[string]*lsp.Client) string {
+// getDiagnostics returns diagnostics for a file/project with path formatting support
+// The originalPath parameter is used to format paths in the output to match the user's input format
+// To maintain backward compatibility, we also provide an overloaded version without originalPath
+func getDiagnostics(filePath, originalPath string, lsps map[string]*lsp.Client) string {
 	fileDiagnostics := []string{}
 	projectDiagnostics := []string{}
+
+	// Create a path resolver function to map absolute paths to original format
+	// if originalPath is provided and filePath is the absolute version of it
+	pathResolver := func(path string) string {
+		// If no original path was provided or the path isn't the target file, use as is
+		if originalPath == "" || path != filePath {
+			return path
+		}
+		// Otherwise return the original path format that the user provided
+		return originalPath
+	}
 
 	formatDiagnostic := func(pth string, diagnostic protocol.Diagnostic, source string) string {
 		severity := "Info"
@@ -169,7 +185,9 @@ func getDiagnostics(filePath string, lsps map[string]*lsp.Client) string {
 			severity = "Hint"
 		}
 
-		location := fmt.Sprintf("%s:%d:%d", pth, diagnostic.Range.Start.Line+1, diagnostic.Range.Start.Character+1)
+		// Use the path resolver to get the appropriate path format
+		displayPath := pathResolver(pth)
+		location := fmt.Sprintf("%s:%d:%d", displayPath, diagnostic.Range.Start.Line+1, diagnostic.Range.Start.Character+1)
 
 		sourceInfo := ""
 		if diagnostic.Source != "" {
@@ -292,4 +310,9 @@ func countSeverity(diagnostics []string, severity string) int {
 		}
 	}
 	return count
+}
+
+// Compatibility function for older code that doesn't pass originalPath
+func getDiagnosticsCompat(filePath string, lsps map[string]*lsp.Client) string {
+	return getDiagnostics(filePath, "", lsps)
 }

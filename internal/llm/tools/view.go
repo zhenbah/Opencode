@@ -183,7 +183,7 @@ func (v *viewTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error)
 			params.Offset+len(strings.Split(content, "\n")))
 	}
 	output += "\n</file>\n"
-	output += getDiagnostics(filePath, v.lspClients)
+	output += getDiagnosticsCompat(filePath, v.lspClients)
 	recordFileRead(filePath)
 	return WithResponseMetadata(
 		NewTextResponse(output),
