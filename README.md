@@ -327,6 +327,63 @@ MCP servers are defined in the configuration file under the `mcpServers` section
 }
 ```
 
+### Included MCP Servers
+
+OpenCode includes a built-in MCP server for LSP diagnostics:
+
+#### MCP-LSP Server
+
+The `mcp-lsp` server provides LSP diagnostics capabilities through MCP. It allows the AI assistant to retrieve and analyze diagnostics (errors, warnings, hints) from language servers.
+
+**Installation**:
+```bash
+# Using go install
+go install github.com/opencode-ai/opencode/cmd/mcp-lsp@latest
+```
+
+**Configuration**:
+```json
+{
+  "mcpServers": {
+    "lsp-diagnostics": {
+      "type": "stdio",
+      "command": "mcp-lsp",
+      "args": []
+    }
+  }
+}
+```
+
+**Features**:
+- Uses the same LSP configuration as OpenCode (reads from ~/.opencode.json)
+- Can be used with any MCP client, not just OpenCode
+- Provides real-time diagnostics for files
+- Formats error messages to match the path format provided by the user
+- Includes both file-specific and project-wide diagnostics
+- Groups diagnostics by severity (errors, warnings, hints)
+
+**Usage**:
+The AI assistant can use the `diagnostics` tool to get real-time feedback about code quality and errors.
+
+Example:
+```
+Get diagnostics for test.go to check for syntax errors
+```
+
+**Testing with MCP Inspector**:
+You can test the MCP-LSP server using the MCP Inspector tool:
+```bash
+# Install the MCP Inspector
+npm install -g @modelcontextprotocol/inspector
+
+# Run the inspector with the MCP-LSP server
+npx @modelcontextprotocol/inspector mcp-lsp
+```
+This provides a graphical interface to explore and test the diagnostics tool.
+
+**Future Development**:
+As we enhance OpenCode's LSP capabilities, we'll continue to update the MCP-LSP server to maintain parity between the internal tools and their standalone MCP versions. This modular approach allows these tools to be used both within OpenCode and by external MCP clients.
+
 ### MCP Tool Usage
 
 Once configured, MCP tools are automatically available to the AI assistant alongside built-in tools. They follow the same permission model as other tools, requiring user approval before execution.
