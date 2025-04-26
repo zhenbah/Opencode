@@ -1,6 +1,7 @@
 package dialog
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -10,6 +11,10 @@ import (
 	"github.com/opencode-ai/opencode/internal/tui/layout"
 	"github.com/opencode-ai/opencode/internal/tui/styles"
 	"github.com/opencode-ai/opencode/internal/tui/util"
+)
+
+const (
+	numVisibleModels = 5
 )
 
 // ModelSelectedMsg is sent when a model is selected
@@ -28,10 +33,11 @@ type ModelDialog interface {
 }
 
 type modelDialogCmp struct {
-	models      []models.Model
-	selectedIdx int
-	width       int
-	height      int
+	models       []models.Model
+	selectedIdx  int
+	width        int
+	height       int
+	scrollOffset int
 }
 
 type modelKeyMap struct {
@@ -79,21 +85,32 @@ func (m *modelDialogCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, modelKeys.Up) || key.Matches(msg, modelKeys.K):
+			// Move selection up or wrap to bottom
 			if m.selectedIdx > 0 {
 				m.selectedIdx--
+			} else {
+				m.selectedIdx = len(m.models) - 1
+				m.scrollOffset = max(0, len(m.models)-numVisibleModels)
 			}
-			return m, nil
+			// Keep selection visible
+			if m.selectedIdx < m.scrollOffset {
+				m.scrollOffset = m.selectedIdx
+			}
 		case key.Matches(msg, modelKeys.Down) || key.Matches(msg, modelKeys.J):
+			// Move selection down or wrap to top
 			if m.selectedIdx < len(m.models)-1 {
 				m.selectedIdx++
+			} else {
+				m.selectedIdx = 0
+				m.scrollOffset = 0
 			}
-			return m, nil
+			// Keep selection visible
+			if m.selectedIdx >= m.scrollOffset+numVisibleModels {
+				m.scrollOffset = m.selectedIdx - (numVisibleModels - 1)
+			}
 		case key.Matches(msg, modelKeys.Enter):
-			if len(m.models) > 0 {
-				return m, util.CmdHandler(ModelSelectedMsg{
-					Model: m.models[m.selectedIdx],
-				})
-			}
+			util.ReportInfo(fmt.Sprintf("selected model: %s", m.models[m.selectedIdx].Name))
+			return m, util.CmdHandler(ModelSelectedMsg{Model: m.models[m.selectedIdx]})
 		case key.Matches(msg, modelKeys.Escape):
 			return m, util.CmdHandler(CloseModelDialogMsg{})
 		}
@@ -105,48 +122,62 @@ func (m *modelDialogCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *modelDialogCmp) View() string {
+	maxWidth := 40
+
 	if len(m.models) == 0 {
 		return styles.BaseStyle.Padding(1, 2).
 			Border(lipgloss.RoundedBorder()).
 			BorderBackground(styles.Background).
 			BorderForeground(styles.ForgroundDim).
-			Width(40).
-			Render("No models available for this provider")
+			Width(maxWidth).
+			Render("No models available")
 	}
 
-	maxWidth := 40
+	// Calculate visible range
+	endIdx := min(m.scrollOffset+numVisibleModels, len(m.models))
+	modelItems := make([]string, 0, endIdx-m.scrollOffset)
 
-	numModels := len(m.models)
-	modelItems := make([]string, 0, numModels)
-	startIdx := 0
-
-	for i := startIdx; i < numModels; i++ {
-		model := m.models[i]
+	// Render visible models
+	for i := m.scrollOffset; i < endIdx; i++ {
 		itemStyle := styles.BaseStyle.Width(maxWidth)
-
 		if i == m.selectedIdx {
-			itemStyle = itemStyle.
-				Background(styles.PrimaryColor).
-				Foreground(styles.Background).
-				Bold(true)
+			itemStyle = itemStyle.Background(styles.PrimaryColor).
+				Foreground(styles.Background).Bold(true)
 		}
+		modelItems = append(modelItems, itemStyle.Render(m.models[i].Name))
+	}
 
-		modelItems = append(modelItems, itemStyle.Render(model.Name))
+	// Add scroll indicators if needed
+	var scrollIndicator string
+	if len(m.models) > numVisibleModels {
+		if m.scrollOffset > 0 {
+			scrollIndicator += "↑ "
+		}
+		if endIdx < len(m.models) {
+			scrollIndicator += "↓"
+		}
+		if scrollIndicator != "" {
+			scrollIndicator = styles.BaseStyle.
+				Foreground(styles.PrimaryColor).
+				Width(maxWidth).
+				Align(lipgloss.Right).
+				Bold(true).
+				Render(scrollIndicator)
+		}
 	}
 
 	title := styles.BaseStyle.
 		Foreground(styles.PrimaryColor).
 		Bold(true).
 		Width(maxWidth).
-		Padding(0, 1).
+		Padding(0, 0, 1).
 		Render("Select Model")
 
 	content := lipgloss.JoinVertical(
 		lipgloss.Left,
 		title,
-		styles.BaseStyle.Width(maxWidth).Render(""),
 		styles.BaseStyle.Width(maxWidth).Render(lipgloss.JoinVertical(lipgloss.Left, modelItems...)),
-		styles.BaseStyle.Width(maxWidth).Render(""),
+		scrollIndicator,
 	)
 
 	return styles.BaseStyle.Padding(1, 2).
@@ -162,23 +193,31 @@ func (m *modelDialogCmp) BindingKeys() []key.Binding {
 }
 
 func (m *modelDialogCmp) SetModels(llmModels []models.Model, selectedModelId models.ModelID) {
-	if llmModels == nil {
+	if llmModels == nil || len(llmModels) == 0 {
 		m.models = []models.Model{}
+		m.scrollOffset = 0
 		return
 	}
 
+	// Sort models in reverse alphabetical order
 	sortedModels := make([]models.Model, len(llmModels))
 	copy(sortedModels, llmModels)
-
-	// Sort models in reverse alphabetical order
 	sort.Slice(sortedModels, func(i, j int) bool {
 		return sortedModels[i].Name > sortedModels[j].Name
 	})
 
+	m.selectedIdx = 0
 	for i, model := range sortedModels {
 		if model.ID == selectedModelId {
 			m.selectedIdx = i
+			break
 		}
+	}
+
+	// Set scroll position to keep selected model visible
+	m.scrollOffset = 0
+	if m.selectedIdx >= numVisibleModels {
+		m.scrollOffset = m.selectedIdx - (numVisibleModels - 1)
 	}
 
 	m.models = sortedModels
@@ -186,7 +225,8 @@ func (m *modelDialogCmp) SetModels(llmModels []models.Model, selectedModelId mod
 
 func NewModelDialogCmp() ModelDialog {
 	return &modelDialogCmp{
-		models:      []models.Model{},
-		selectedIdx: 0,
+		models:       []models.Model{},
+		selectedIdx:  0,
+		scrollOffset: 0,
 	}
 }

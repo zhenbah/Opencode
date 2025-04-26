@@ -366,7 +366,7 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				modelInfo, ok := models.SupportedModels[agentCfg.Model]
 				if !ok {
-					return a, util.ReportWarn("Current model not found in supported models")
+					return a, util.ReportWarn(fmt.Sprintf("Invalid Configuration: The model '%s' is not supported", agentCfg.Model))
 				}
 
 				// Filter models by the current provider
