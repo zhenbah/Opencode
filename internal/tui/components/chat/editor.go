@@ -222,6 +222,7 @@ func (m *editorCmp) GetSize() (int, int) {
 func (m *editorCmp) BindingKeys() []key.Binding {
 	bindings := []key.Binding{}
 	bindings = append(bindings, layout.KeyMapToSlice(editorMaps)...)
+	bindings = append(bindings, layout.KeyMapToSlice(DeleteKeyMaps)...)
 	return bindings
 }
 

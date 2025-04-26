@@ -127,7 +127,7 @@ func (p *chatPage) sendMessage(text string, attachments []chat.Attachment) tea.C
 		}
 	}
 
-	p.app.CoderAgent.Run(context.Background(), p.session.ID, text, attachmentContents, attachmentPaths.String())
+	p.app.CoderAgent.Run(context.Background(), p.session.ID, text, attachmentPaths.String(), attachmentContents...)
 	return tea.Batch(cmds...)
 }
 
@@ -146,6 +146,7 @@ func (p *chatPage) View() string {
 func (p *chatPage) BindingKeys() []key.Binding {
 	bindings := layout.KeyMapToSlice(keyMap)
 	bindings = append(bindings, p.messages.BindingKeys()...)
+	bindings = append(bindings, p.editor.BindingKeys()...)
 	return bindings
 }
 
