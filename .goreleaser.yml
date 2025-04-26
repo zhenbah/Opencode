@@ -3,7 +3,8 @@ project_name: opencode
 before:
   hooks:
 builds:
-  - env:
+  - id: opencode
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
@@ -14,11 +15,44 @@ builds:
     ldflags:
       - -s -w -X github.com/opencode-ai/opencode/internal/version.Version={{.Version}}
     main: ./main.go
+    binary: opencode
+  
+  - id: mcp-lsp
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X github.com/opencode-ai/opencode/internal/version.Version={{.Version}}
+    main: ./cmd/mcp-lsp/main.go
+    binary: mcp-lsp
 
 archives:
-  - format: tar.gz
+  - id: opencode
+    builds: [opencode]
+    format: tar.gz
     name_template: >-
       opencode-
+      {{- if eq .Os "darwin" }}mac-
+      {{- else if eq .Os "windows" }}windows-
+      {{- else if eq .Os "linux" }}linux-{{end}}
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "#86" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+  
+  - id: mcp-lsp
+    builds: [mcp-lsp]
+    format: tar.gz
+    name_template: >-
+      mcp-lsp-
       {{- if eq .Os "darwin" }}mac-
       {{- else if eq .Os "windows" }}windows-
       {{- else if eq .Os "linux" }}linux-{{end}}
@@ -35,6 +69,7 @@ snapshot:
   name_template: "0.0.0-{{ .Timestamp }}"
 aurs:
   - name: opencode
+    ids: [opencode]
     homepage: "https://github.com/opencode-ai/opencode"
     description: "terminal based agent that can build anything"
     maintainers:
@@ -48,18 +83,59 @@ aurs:
       - opencode
     package: |-
       install -Dm755 ./opencode "${pkgdir}/usr/bin/opencode"
+      
+  - name: mcp-lsp
+    ids: [mcp-lsp]
+    homepage: "https://github.com/opencode-ai/opencode"
+    description: "MCP server for LSP diagnostics"
+    maintainers:
+      - "kujtimiihoxha <kujtimii.h@gmail.com>"
+    license: "MIT"
+    private_key: "{{ .Env.AUR_KEY }}"
+    git_url: "ssh://aur@aur.archlinux.org/mcp-lsp-bin.git"
+    provides:
+      - mcp-lsp
+    conflicts:
+      - mcp-lsp
+    package: |-
+      install -Dm755 ./mcp-lsp "${pkgdir}/usr/bin/mcp-lsp"
 brews:
-  - repository:
+  - name: opencode
+    ids: [opencode]
+    repository:
       owner: opencode-ai
       name: homebrew-tap
+    description: "Terminal-based AI assistant for developers"
+
+  - name: mcp-lsp
+    ids: [mcp-lsp]
+    repository:
+      owner: opencode-ai
+      name: homebrew-tap
+    description: "MCP server for LSP diagnostics"
+    homepage: "https://github.com/opencode-ai/opencode"
 nfpms:
-  - maintainer: kujtimiihoxha
+  - id: opencode
+    builds: [opencode]
+    maintainer: kujtimiihoxha
     description: terminal based agent that can build anything
     formats:
       - deb
       - rpm
     file_name_template: >-
-      {{ .ProjectName }}-
+      opencode-
+      {{- if eq .Os "darwin" }}mac
+      {{- else }}{{ .Os }}{{ end }}-{{ .Arch }}
+      
+  - id: mcp-lsp
+    builds: [mcp-lsp]
+    maintainer: kujtimiihoxha
+    description: MCP server for LSP diagnostics
+    formats:
+      - deb
+      - rpm
+    file_name_template: >-
+      mcp-lsp-
       {{- if eq .Os "darwin" }}mac
       {{- else }}{{ .Os }}{{ end }}-{{ .Arch }}
 
