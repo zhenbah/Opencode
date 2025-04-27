@@ -28,7 +28,7 @@ func GetAgentPrompt(agentName config.AgentName, provider models.ModelProvider) s
 		// Add context from project-specific instruction files if they exist
 		contextContent := getContextFromPaths()
 		if contextContent != "" {
-			return fmt.Sprintf("%s\n\n# Project-Specific Context\n%s", basePrompt, contextContent)
+			return fmt.Sprintf("%s\n\n# Project-Specific Context\n Make sure to follow the instructions in the context below\n%s", basePrompt, contextContent)
 		}
 	}
 	return basePrompt
