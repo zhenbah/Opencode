@@ -191,12 +191,6 @@ func (m *modelDialogCmp) View() string {
 		Padding(0, 0, 1).
 		Render(fmt.Sprintf("Select %s Model", providerName))
 
-	hint := styles.BaseStyle.
-		Foreground(styles.ForgroundDim).
-		Italic(true).
-		Width(maxDialogWidth).
-		Render("← → navigate providers\n↑ ↓ navigate models")
-
 	// Render visible models
 	endIdx := min(m.scrollOffset+numVisibleModels, len(m.models))
 	modelItems := make([]string, 0, endIdx-m.scrollOffset)
@@ -217,7 +211,6 @@ func (m *modelDialogCmp) View() string {
 		title,
 		styles.BaseStyle.Width(maxDialogWidth).Render(lipgloss.JoinVertical(lipgloss.Left, modelItems...)),
 		scrollIndicator,
-		hint,
 	)
 
 	return styles.BaseStyle.Padding(1, 2).
