@@ -199,7 +199,7 @@ func configureViper() {
 // setDefaults configures default values for configuration options.
 func setDefaults(debug bool) {
 	viper.SetDefault("data.directory", defaultDataDirectory)
-	viper.SetDefault("context.files", defaultContextFiles)
+	viper.SetDefault("contextFiles", defaultContextFiles)
 
 	if debug {
 		viper.SetDefault("debug", true)
