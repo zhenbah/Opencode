@@ -88,6 +88,7 @@ const (
 var defaultContextFiles = []string{
 	".github/copilot-instructions.md",
 	".cursorrules",
+	".cursor/rules/",
 	"CLAUDE.md",
 	"CLAUDE.local.md",
 	"opencode.md",

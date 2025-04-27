@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/opencode-ai/opencode/internal/llm/models"
@@ -33,24 +34,78 @@ func GetAgentPrompt(agentName config.AgentName, provider models.ModelProvider) s
 	return basePrompt
 }
 
-// getContextFromFiles checks for the existence of context files and returns their content
+var (
+	onceContext    sync.Once
+	contextContent string
+)
+
 func getContextFromFiles() string {
+	onceContext.Do(func() {
+		var (
+			cfg          = config.Get()
+			workDir      = cfg.WorkingDir
+			contextFiles = cfg.ContextFiles
+		)
+
+		contextContent = processContextFiles(workDir, contextFiles)
+	})
+
+	return contextContent
+}
+
+func processContextFiles(workDir string, paths []string) string {
 	var (
-		cfg            = config.Get()
-		workDir        = cfg.WorkingDir
-		contextFiles   = cfg.ContextFiles
-		contextContent strings.Builder
+		wg       sync.WaitGroup
+		resultCh = make(chan string)
 	)
 
-	for _, file := range contextFiles {
-		filePath := filepath.Join(workDir, file)
-		content, err := os.ReadFile(filePath)
-		if err == nil {
-			contextContent.WriteRune('\n')
-			contextContent.WriteString(string(content))
-			contextContent.WriteRune('\n')
-		}
+	for _, path := range paths {
+		wg.Add(1)
+		go func(p string) {
+			defer wg.Done()
+
+			if strings.HasSuffix(p, "/") {
+				filepath.WalkDir(filepath.Join(workDir, p), func(path string, d os.DirEntry, err error) error {
+					if err != nil {
+						return err
+					}
+					if !d.IsDir() {
+						if result := processFile(path); result != "" {
+							resultCh <- result
+						}
+					}
+					return nil
+				})
+			} else {
+				result := processFile(filepath.Join(workDir, p))
+				if result != "" {
+					resultCh <- result
+				}
+			}
+		}(path)
 	}
 
-	return contextContent.String()
+	go func() {
+		wg.Wait()
+		close(resultCh)
+	}()
+
+	var (
+		results = make([]string, len(resultCh))
+		i       int
+	)
+	for result := range resultCh {
+		results[i] = result
+		i++
+	}
+
+	return strings.Join(results, "\n")
+}
+
+func processFile(filePath string) string {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return ""
+	}
+	return "# From:" + filePath + "\n" + string(content)
 }
