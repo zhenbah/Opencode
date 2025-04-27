@@ -204,11 +204,18 @@ func (o *openaiClient) send(ctx context.Context, messages []message.Message, too
 			content = openaiResponse.Choices[0].Message.Content
 		}
 
+		toolCalls := o.toolCalls(*openaiResponse)
+		finishReason := o.finishReason(string(openaiResponse.Choices[0].FinishReason))
+
+		if len(toolCalls) > 0 {
+			finishReason = message.FinishReasonToolUse
+		}
+
 		return &ProviderResponse{
 			Content:      content,
-			ToolCalls:    o.toolCalls(*openaiResponse),
+			ToolCalls:    toolCalls,
 			Usage:        o.usage(*openaiResponse),
-			FinishReason: o.finishReason(string(openaiResponse.Choices[0].FinishReason)),
+			FinishReason: finishReason,
 		}, nil
 	}
 }
@@ -268,12 +275,22 @@ func (o *openaiClient) stream(ctx context.Context, messages []message.Message, t
 			if err == nil || errors.Is(err, io.EOF) {
 				// Stream completed successfully
 				eventChan <- ProviderEvent{
+					Type: EventContentStop,
+				}
+
+				finishReason := o.finishReason(string(acc.ChatCompletion.Choices[0].FinishReason))
+
+				if len(toolCalls) > 0 {
+					finishReason = message.FinishReasonToolUse
+				}
+
+				eventChan <- ProviderEvent{
 					Type: EventComplete,
 					Response: &ProviderResponse{
 						Content:      currentContent,
 						ToolCalls:    toolCalls,
 						Usage:        o.usage(acc.ChatCompletion),
-						FinishReason: o.finishReason(string(acc.ChatCompletion.Choices[0].FinishReason)),
+						FinishReason: finishReason,
 					},
 				}
 				close(eventChan)

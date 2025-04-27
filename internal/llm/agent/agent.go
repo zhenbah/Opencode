@@ -229,8 +229,7 @@ func (a *agent) processGeneration(ctx context.Context, sessionID, content string
 			return a.err(fmt.Errorf("failed to process events: %w", err))
 		}
 		logging.Info("Result", "message", agentMessage.FinishReason(), "toolResults", toolResults)
-		finishReason := agentMessage.FinishReason()
-		if (finishReason == message.FinishReasonToolUse || finishReason == message.FinishReasonUnknown) && toolResults != nil {
+		if (agentMessage.FinishReason() == message.FinishReasonToolUse) && toolResults != nil {
 			// We are not done, we need to respond with the tool response
 			msgHistory = append(msgHistory, agentMessage, *toolResults)
 			continue
