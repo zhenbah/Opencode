@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 	"sync"
 
@@ -39,7 +38,7 @@ func (e *AgentEvent) Response() message.Message {
 }
 
 type Service interface {
-	Run(ctx context.Context, sessionID string, content string, attachmentPaths string, attachments ...[]byte) (<-chan AgentEvent, error)
+	Run(ctx context.Context, sessionID string, content string, attachments ...message.Attachment) (<-chan AgentEvent, error)
 	Cancel(sessionID string)
 	IsSessionBusy(sessionID string) bool
 	IsBusy() bool
@@ -156,7 +155,7 @@ func (a *agent) err(err error) AgentEvent {
 	}
 }
 
-func (a *agent) Run(ctx context.Context, sessionID string, content string, attachmentPaths string, attachments ...[]byte) (<-chan AgentEvent, error) {
+func (a *agent) Run(ctx context.Context, sessionID string, content string, attachments ...message.Attachment) (<-chan AgentEvent, error) {
 	events := make(chan AgentEvent)
 	if a.IsSessionBusy(sessionID) {
 		return nil, ErrSessionBusy
@@ -171,12 +170,19 @@ func (a *agent) Run(ctx context.Context, sessionID string, content string, attac
 			events <- a.err(fmt.Errorf("panic while running the agent"))
 		})
 		var attachmentParts []message.ContentPart
-		for _, attachment := range attachments {
-			mimeBufferSize := min(512, len(attachment))
-			mimeType := http.DetectContentType(attachment[:mimeBufferSize])
-			attachmentParts = append(attachmentParts, message.BinaryContent{MIMEType: mimeType, Data: attachment})
+		var attachmentPaths strings.Builder
+
+		for i, attachment := range attachments {
+			attachmentParts = append(attachmentParts, message.BinaryContent{MIMEType: attachment.MimeType, Data: attachment.Content})
+			if i == 0 {
+				attachmentPaths.WriteString(attachment.FilePath)
+			} else {
+				attachmentPaths.WriteString("\n")
+				attachmentPaths.WriteString(attachment.FilePath)
+			}
+
 		}
-		result := a.processGeneration(genCtx, sessionID, content, attachmentParts, attachmentPaths)
+		result := a.processGeneration(genCtx, sessionID, content, attachmentParts, attachmentPaths.String())
 		if result.Err() != nil && !errors.Is(result.Err(), ErrRequestCancelled) && !errors.Is(result.Err(), context.Canceled) {
 			logging.Info(result.Err().Error())
 			logging.ErrorPersist(fmt.Sprintf("Generation error for session %s: %v", sessionID, result))

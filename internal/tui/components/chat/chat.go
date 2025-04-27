@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/opencode-ai/opencode/internal/config"
+	"github.com/opencode-ai/opencode/internal/message"
 	"github.com/opencode-ai/opencode/internal/session"
 	"github.com/opencode-ai/opencode/internal/tui/styles"
 	"github.com/opencode-ai/opencode/internal/version"
@@ -14,7 +15,7 @@ import (
 
 type SendMsg struct {
 	Text        string
-	Attachments []Attachment
+	Attachments []message.Attachment
 }
 
 type SessionSelectedMsg = session.Session
