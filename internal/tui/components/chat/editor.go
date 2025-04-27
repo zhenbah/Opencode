@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/opencode-ai/opencode/internal/app"
 	"github.com/opencode-ai/opencode/internal/logging"
+	"github.com/opencode-ai/opencode/internal/message"
 	"github.com/opencode-ai/opencode/internal/session"
 	"github.com/opencode-ai/opencode/internal/tui/layout"
 	"github.com/opencode-ai/opencode/internal/tui/styles"
@@ -24,7 +25,7 @@ type editorCmp struct {
 	session     session.Session
 	textarea    textarea.Model
 	viewport    viewport.Model
-	attachments []Attachment
+	attachments []message.Attachment
 	deleteMode  bool
 }
 
@@ -110,6 +111,7 @@ func (m *editorCmp) send() tea.Cmd {
 	value := m.textarea.Value()
 	m.textarea.Reset()
 	attachments := m.attachments
+
 	m.attachments = nil
 	if value == "" {
 		return nil
