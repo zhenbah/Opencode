@@ -233,6 +233,16 @@ opencode -c /path/to/project
 | `Enter`    | Select session   |
 | `Esc`      | Close dialog     |
 
+### Model Dialog Shortcuts
+
+| Shortcut   | Action            |
+| ---------- | ----------------- |
+| `↑` or `k` | Move up           |
+| `↓` or `j` | Move down         |
+| `←` or `h` | Previous provider |
+| `→` or `l` | Next provider     |
+| `Esc`      | Close dialog      |
+
 ### Permission Dialog Shortcuts
 
 | Shortcut                | Action                       |
