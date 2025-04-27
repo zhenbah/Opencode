@@ -164,7 +164,7 @@ OpenCode supports a variety of AI models from different providers:
 
 ### Groq
 
-- Llama 4 Maverick (17b-128e-instruct) 
+- Llama 4 Maverick (17b-128e-instruct)
 - Llama 4 Scout (17b-16e-instruct)
 - QWEN QWQ-32b
 - Deepseek R1 distill Llama 70b
@@ -203,6 +203,7 @@ opencode -c /path/to/project
 | `Ctrl+L` | View logs                                               |
 | `Ctrl+A` | Switch session                                          |
 | `Ctrl+K` | Command dialog                                          |
+| `Ctrl+O` | Toggle model selection dialog                           |
 | `Esc`    | Close current overlay/dialog or return to previous mode |
 
 ### Chat Page Shortcuts

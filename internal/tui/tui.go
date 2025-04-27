@@ -9,7 +9,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/opencode-ai/opencode/internal/app"
 	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/llm/models"
 	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/permission"
 	"github.com/opencode-ai/opencode/internal/pubsub"
@@ -362,22 +361,6 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			if a.currentPage == page.ChatPage && !a.showQuit && !a.showPermissions && !a.showSessionDialog && !a.showCommandDialog {
-				agentCfg := config.Get().Agents[config.AgentCoder]
-
-				modelInfo, ok := models.SupportedModels[agentCfg.Model]
-				if !ok {
-					return a, util.ReportWarn(fmt.Sprintf("Invalid Configuration: The model '%s' is not supported", agentCfg.Model))
-				}
-
-				// Filter models by the current provider
-				var providerModels []models.Model
-				for _, model := range models.SupportedModels {
-					if model.Provider == modelInfo.Provider {
-						providerModels = append(providerModels, model)
-					}
-				}
-
-				a.modelDialog.SetModels(providerModels, agentCfg.Model)
 				a.showModelDialog = true
 				return a, nil
 			}
