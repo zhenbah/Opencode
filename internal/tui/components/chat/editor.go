@@ -3,6 +3,7 @@ package chat
 import (
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textarea"
@@ -104,6 +105,11 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case dialog.ThemeChangedMsg:
 		m.textarea = CreateTextArea(&m.textarea)
+	case dialog.CompletionSelectedMsg:
+		existingValue := m.textarea.Value()
+		modifiedValue := strings.Replace(existingValue, msg.SearchString, msg.CompletionValue, 1)
+
+		m.textarea.SetValue(modifiedValue)
 		return m, nil
 	case SessionSelectedMsg:
 		if msg.ID != m.session.ID {
