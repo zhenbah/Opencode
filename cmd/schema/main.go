@@ -77,6 +77,26 @@ func generateSchema() map[string]any {
 		"default":     false,
 	}
 
+	schema["properties"].(map[string]any)["contextFiles"] = map[string]any{
+		"type":        "array",
+		"description": "Context files for the application",
+		"items": map[string]any{
+			"type": "string",
+		},
+		"default": []string{
+			".github/copilot-instructions.md",
+			".cursorrules",
+			"CLAUDE.md",
+			"CLAUDE.local.md",
+			"opencode.md",
+			"opencode.local.md",
+			"OpenCode.md",
+			"OpenCode.local.md",
+			"OPENCODE.md",
+			"OPENCODE.local.md",
+		},
+	}
+
 	// Add MCP servers
 	schema["properties"].(map[string]any)["mcpServers"] = map[string]any{
 		"type":        "object",
@@ -259,4 +279,3 @@ func generateSchema() map[string]any {
 
 	return schema
 }
-

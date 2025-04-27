@@ -4,24 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/opencode-ai/opencode/internal/llm/models"
 )
-
-// contextFiles is a list of potential context files to check for
-var contextFiles = []string{
-	".github/copilot-instructions.md",
-	".cursorrules",
-	"CLAUDE.md",
-	"CLAUDE.local.md",
-	"opencode.md",
-	"opencode.local.md",
-	"OpenCode.md",
-	"OpenCode.local.md",
-	"OPENCODE.md",
-	"OPENCODE.local.md",
-}
 
 func GetAgentPrompt(agentName config.AgentName, provider models.ModelProvider) string {
 	basePrompt := ""
@@ -48,16 +35,22 @@ func GetAgentPrompt(agentName config.AgentName, provider models.ModelProvider) s
 
 // getContextFromFiles checks for the existence of context files and returns their content
 func getContextFromFiles() string {
-	workDir := config.WorkingDirectory()
-	var contextContent string
+	var (
+		cfg            = config.Get()
+		workDir        = cfg.WorkingDir
+		contextFiles   = cfg.ContextFiles
+		contextContent strings.Builder
+	)
 
 	for _, file := range contextFiles {
 		filePath := filepath.Join(workDir, file)
 		content, err := os.ReadFile(filePath)
 		if err == nil {
-			contextContent += fmt.Sprintf("\n%s\n", string(content))
+			contextContent.WriteRune('\n')
+			contextContent.WriteString(string(content))
+			contextContent.WriteRune('\n')
 		}
 	}
 
-	return contextContent
+	return contextContent.String()
 }
