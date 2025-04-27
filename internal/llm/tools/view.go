@@ -224,7 +224,7 @@ func readTextFile(filePath string, offset, limit int) (string, int, error) {
 	if err != nil {
 		return "", 0, err
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck
 
 	lineCount := 0
 

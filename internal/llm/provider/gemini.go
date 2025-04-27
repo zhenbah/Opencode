@@ -141,10 +141,10 @@ func (g *geminiClient) convertTools(tools []tools.BaseTool) []*genai.Tool {
 }
 
 func (g *geminiClient) finishReason(reason genai.FinishReason) message.FinishReason {
-	switch {
-	case reason == genai.FinishReasonStop:
+	switch reason {
+	case genai.FinishReasonStop:
 		return message.FinishReasonEndTurn
-	case reason == genai.FinishReasonMaxTokens:
+	case genai.FinishReasonMaxTokens:
 		return message.FinishReasonMaxTokens
 	default:
 		return message.FinishReasonUnknown
@@ -392,7 +392,7 @@ func (g *geminiClient) shouldRetry(attempts int, err error) (bool, int64, error)
 	}
 
 	errMsg := err.Error()
-	isRateLimit := false
+	var isRateLimit bool
 
 	// Check for common rate limit error messages
 	if contains(errMsg, "rate limit", "quota exceeded", "too many requests") {
@@ -411,6 +411,7 @@ func (g *geminiClient) shouldRetry(attempts int, err error) (bool, int64, error)
 	return true, int64(retryMs), nil
 }
 
+//lint:ignore U1000 will be used in the future
 func (g *geminiClient) toolCalls(resp *genai.GenerateContentResponse) []message.ToolCall {
 	var toolCalls []message.ToolCall
 

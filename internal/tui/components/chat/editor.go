@@ -26,6 +26,7 @@ type EditorKeyMaps struct {
 	OpenEditor key.Binding
 }
 
+//lint:ignore U1000 will be used in the future
 type bluredEditorKeyMaps struct {
 	Send       key.Binding
 	Focus      key.Binding
@@ -53,7 +54,7 @@ func openEditor() tea.Cmd {
 	if err != nil {
 		return util.ReportError(err)
 	}
-	tmpfile.Close()
+	tmpfile.Close()                           //nolint:errcheck
 	c := exec.Command(editor, tmpfile.Name()) //nolint:gosec
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
@@ -69,7 +70,7 @@ func openEditor() tea.Cmd {
 		if len(content) == 0 {
 			return util.ReportWarn("Message is empty")
 		}
-		os.Remove(tmpfile.Name())
+		os.Remove(tmpfile.Name()) //nolint:errcheck
 		return SendMsg{
 			Text: string(content),
 		}

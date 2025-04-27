@@ -127,7 +127,9 @@ func Load(workingDir string, debug bool) (*Config, error) {
 	}
 
 	// Load and merge local config
-	mergeLocalConfig(workingDir)
+	if err := mergeLocalConfig(workingDir); err != nil {
+		return cfg, err
+	}
 
 	// Apply configuration to the struct
 	if err := viper.Unmarshal(cfg); err != nil {
@@ -315,7 +317,7 @@ func readConfig(err error) error {
 }
 
 // mergeLocalConfig loads and merges configuration from the local directory.
-func mergeLocalConfig(workingDir string) {
+func mergeLocalConfig(workingDir string) error {
 	local := viper.New()
 	local.SetConfigName(fmt.Sprintf(".%s", appName))
 	local.SetConfigType("json")
@@ -323,8 +325,9 @@ func mergeLocalConfig(workingDir string) {
 
 	// Merge local config if it exists
 	if err := local.ReadInConfig(); err == nil {
-		viper.MergeConfigMap(local.AllSettings())
+		return viper.MergeConfigMap(local.AllSettings())
 	}
+	return nil
 }
 
 // applyDefaultValues sets default values for configuration fields that need processing.

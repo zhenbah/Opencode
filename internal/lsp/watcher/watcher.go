@@ -309,11 +309,15 @@ func (w *WorkspaceWatcher) WatchWorkspace(ctx context.Context, workspacePath str
 	w.workspacePath = workspacePath
 
 	// Store the watcher in the context for later use
+	//nolint:staticcheck
+	//lint:ignore SA1029 will be resolved in the future
 	ctx = context.WithValue(ctx, "workspaceWatcher", w)
 
 	// If the server name isn't already in the context, try to detect it
 	if _, ok := ctx.Value("serverName").(string); !ok {
 		serverName := getServerNameFromContext(ctx)
+		//nolint:staticcheck
+		//lint:ignore SA1029 will be resolved in the future
 		ctx = context.WithValue(ctx, "serverName", serverName)
 	}
 
@@ -329,7 +333,7 @@ func (w *WorkspaceWatcher) WatchWorkspace(ctx context.Context, workspacePath str
 	if err != nil {
 		logging.Error("Error creating watcher", "error", err)
 	}
-	defer watcher.Close()
+	defer watcher.Close() //nolint:errcheck
 
 	// Watch the workspace recursively
 	err = filepath.WalkDir(workspacePath, func(path string, d os.DirEntry, err error) error {

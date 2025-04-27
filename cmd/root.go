@@ -8,6 +8,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	zone "github.com/lrstanley/bubblezone"
 	"github.com/opencode-ai/opencode/internal/app"
 	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/opencode-ai/opencode/internal/db"
@@ -16,7 +17,6 @@ import (
 	"github.com/opencode-ai/opencode/internal/pubsub"
 	"github.com/opencode-ai/opencode/internal/tui"
 	"github.com/opencode-ai/opencode/internal/version"
-	zone "github.com/lrstanley/bubblezone"
 	"github.com/spf13/cobra"
 )
 
@@ -29,8 +29,7 @@ to assist developers in writing, debugging, and understanding code directly from
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// If the help flag is set, show the help message
 		if cmd.Flag("help").Changed {
-			cmd.Help()
-			return nil
+			return cmd.Help()
 		}
 		if cmd.Flag("version").Changed {
 			fmt.Println(version.Version)

@@ -32,7 +32,7 @@ func Connect() (*sql.DB, error) {
 
 	// Verify connection
 	if err = db.Ping(); err != nil {
-		db.Close()
+		db.Close() //nolint:errcheck
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 

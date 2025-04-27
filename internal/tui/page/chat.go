@@ -115,7 +115,7 @@ func (p *chatPage) sendMessage(text string) tea.Cmd {
 		cmds = append(cmds, util.CmdHandler(chat.SessionSelectedMsg(session)))
 	}
 
-	p.app.CoderAgent.Run(context.Background(), p.session.ID, text)
+	p.app.CoderAgent.Run(context.Background(), p.session.ID, text) //nolint:errcheck
 	return tea.Batch(cmds...)
 }
 

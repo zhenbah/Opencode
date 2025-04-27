@@ -222,7 +222,7 @@ func (a *agent) processGeneration(ctx context.Context, sessionID, content string
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
 				agentMessage.AddFinish(message.FinishReasonCanceled)
-				a.messages.Update(context.Background(), agentMessage)
+				a.messages.Update(context.Background(), agentMessage) //nolint:errcheck
 				return a.err(ErrRequestCancelled)
 			}
 			return a.err(fmt.Errorf("failed to process events: %w", err))

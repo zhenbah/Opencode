@@ -144,7 +144,7 @@ func (m *sidebarCmp) modifiedFiles() string {
 	modifiedFiles := styles.BaseStyle.Width(m.width).Foreground(styles.PrimaryColor).Bold(true).Render("Modified Files:")
 
 	// If no modified files, show a placeholder message
-	if m.modFiles == nil || len(m.modFiles) == 0 {
+	if len(m.modFiles) == 0 {
 		message := "No modified files"
 		remainingWidth := m.width - lipgloss.Width(message)
 		if remainingWidth > 0 {
