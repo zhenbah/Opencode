@@ -389,7 +389,7 @@ func (c *Client) openKeyConfigFiles(ctx context.Context) {
 			filepath.Join(workDir, "package.json"),
 			filepath.Join(workDir, "jsconfig.json"),
 		}
-		
+
 		// Also find and open a few TypeScript files to help the server initialize
 		c.openTypeScriptFiles(ctx, workDir)
 	case ServerTypeGo:
@@ -547,12 +547,12 @@ func (c *Client) openTypeScriptFiles(ctx context.Context, workDir string) {
 // shouldSkipDir returns true if the directory should be skipped during file search
 func shouldSkipDir(path string) bool {
 	dirName := filepath.Base(path)
-	
+
 	// Skip hidden directories
 	if strings.HasPrefix(dirName, ".") {
 		return true
 	}
-	
+
 	// Skip common directories that won't contain relevant source files
 	skipDirs := map[string]bool{
 		"node_modules": true,
@@ -562,7 +562,7 @@ func shouldSkipDir(path string) bool {
 		"vendor":       true,
 		"target":       true,
 	}
-	
+
 	return skipDirs[dirName]
 }
 
