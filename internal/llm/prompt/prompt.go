@@ -26,7 +26,7 @@ func GetAgentPrompt(agentName config.AgentName, provider models.ModelProvider) s
 
 	if agentName == config.AgentCoder || agentName == config.AgentTask {
 		// Add context from project-specific instruction files if they exist
-		contextContent := getContextFromFiles()
+		contextContent := getContextFromPaths()
 		if contextContent != "" {
 			return fmt.Sprintf("%s\n\n# Project-Specific Context\n%s", basePrompt, contextContent)
 		}
@@ -39,21 +39,21 @@ var (
 	contextContent string
 )
 
-func getContextFromFiles() string {
+func getContextFromPaths() string {
 	onceContext.Do(func() {
 		var (
 			cfg          = config.Get()
 			workDir      = cfg.WorkingDir
-			contextFiles = cfg.ContextFiles
+			contextPaths = cfg.ContextPaths
 		)
 
-		contextContent = processContextFiles(workDir, contextFiles)
+		contextContent = processContextPaths(workDir, contextPaths)
 	})
 
 	return contextContent
 }
 
-func processContextFiles(workDir string, paths []string) string {
+func processContextPaths(workDir string, paths []string) string {
 	var (
 		wg       sync.WaitGroup
 		resultCh = make(chan string)

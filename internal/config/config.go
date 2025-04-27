@@ -75,7 +75,7 @@ type Config struct {
 	Agents       map[AgentName]Agent               `json:"agents"`
 	Debug        bool                              `json:"debug,omitempty"`
 	DebugLSP     bool                              `json:"debugLSP,omitempty"`
-	ContextFiles []string                          `json:"contextFiles,omitempty"`
+	ContextPaths []string                          `json:"contextPaths,omitempty"`
 }
 
 // Application constants
@@ -85,7 +85,7 @@ const (
 	appName              = "opencode"
 )
 
-var defaultContextFiles = []string{
+var defaultContextPaths = []string{
 	".github/copilot-instructions.md",
 	".cursorrules",
 	".cursor/rules/",
@@ -200,7 +200,7 @@ func configureViper() {
 // setDefaults configures default values for configuration options.
 func setDefaults(debug bool) {
 	viper.SetDefault("data.directory", defaultDataDirectory)
-	viper.SetDefault("contextFiles", defaultContextFiles)
+	viper.SetDefault("contextPaths", defaultContextPaths)
 
 	if debug {
 		viper.SetDefault("debug", true)

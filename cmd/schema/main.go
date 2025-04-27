@@ -77,9 +77,9 @@ func generateSchema() map[string]any {
 		"default":     false,
 	}
 
-	schema["properties"].(map[string]any)["contextFiles"] = map[string]any{
+	schema["properties"].(map[string]any)["contextPaths"] = map[string]any{
 		"type":        "array",
-		"description": "Context files for the application",
+		"description": "Context paths for the application",
 		"items": map[string]any{
 			"type": "string",
 		},
