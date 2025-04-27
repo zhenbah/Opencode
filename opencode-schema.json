@@ -49,7 +49,23 @@
             "gpt-4.1-mini",
             "azure.gpt-4.1-mini",
             "gemini-2.5",
-            "meta-llama/llama-4-scout-17b-16e-instruct"
+            "meta-llama/llama-4-scout-17b-16e-instruct",
+            "openrouter.deepseek-chat-free",
+            "openrouter.deepseek-r1-free",
+            "openrouter.gpt-4.1",
+            "openrouter.gpt-4.1-mini",
+            "openrouter.gpt-4.1-nano",
+            "openrouter.gpt-4.5-preview",
+            "openrouter.gpt-4o",
+            "openrouter.gpt-4o-mini",
+            "openrouter.o1",
+            "openrouter.o1-pro",
+            "openrouter.o1-mini",
+            "openrouter.o3",
+            "openrouter.o3-mini",
+            "openrouter.o4-mini",
+            "openrouter.gemini-2.5-flash",
+            "openrouter.gemini-2.5"
           ],
           "type": "string"
         },
@@ -114,7 +130,23 @@
               "gpt-4.1-mini",
               "azure.gpt-4.1-mini",
               "gemini-2.5",
-              "meta-llama/llama-4-scout-17b-16e-instruct"
+              "meta-llama/llama-4-scout-17b-16e-instruct",
+              "openrouter.deepseek-chat-free",
+              "openrouter.deepseek-r1-free",
+              "openrouter.gpt-4.1",
+              "openrouter.gpt-4.1-mini",
+              "openrouter.gpt-4.1-nano",
+              "openrouter.gpt-4.5-preview",
+              "openrouter.gpt-4o",
+              "openrouter.gpt-4o-mini",
+              "openrouter.o1",
+              "openrouter.o1-pro",
+              "openrouter.o1-mini",
+              "openrouter.o3",
+              "openrouter.o3-mini",
+              "openrouter.o4-mini",
+              "openrouter.gemini-2.5-flash",
+              "openrouter.gemini-2.5"
             ],
             "type": "string"
           },
@@ -278,11 +310,11 @@
             "enum": [
               "anthropic",
               "openai",
-              "openrouter",
               "gemini",
               "groq",
               "bedrock",
-              "azure"
+              "azure",
+              "openrouter"
             ],
             "type": "string"
           }
