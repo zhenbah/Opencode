@@ -3,22 +3,20 @@ package models
 const (
 	ProviderOpenRouter ModelProvider = "openrouter"
 
-	OpenRouterDeepSeekChatFree ModelID = "openrouter.deepseek-chat-free"
-	OpenRouterDeepSeekR1Free   ModelID = "openrouter.deepseek-r1-free"
-	OpenRouterGPT41            ModelID = "openrouter.gpt-4.1"
-	OpenRouterGPT41Mini        ModelID = "openrouter.gpt-4.1-mini"
-	OpenRouterGPT41Nano        ModelID = "openrouter.gpt-4.1-nano"
-	OpenRouterGPT45Preview     ModelID = "openrouter.gpt-4.5-preview"
-	OpenRouterGPT4o            ModelID = "openrouter.gpt-4o"
-	OpenRouterGPT4oMini        ModelID = "openrouter.gpt-4o-mini"
-	OpenRouterO1               ModelID = "openrouter.o1"
-	OpenRouterO1Pro            ModelID = "openrouter.o1-pro"
-	OpenRouterO1Mini           ModelID = "openrouter.o1-mini"
-	OpenRouterO3               ModelID = "openrouter.o3"
-	OpenRouterO3Mini           ModelID = "openrouter.o3-mini"
-	OpenRouterO4Mini           ModelID = "openrouter.o4-mini"
-	OpenRouterGemini25Flash    ModelID = "openrouter.gemini-2.5-flash"
-	OpenRouterGemini25         ModelID = "openrouter.gemini-2.5"
+	OpenRouterGPT41         ModelID = "openrouter.gpt-4.1"
+	OpenRouterGPT41Mini     ModelID = "openrouter.gpt-4.1-mini"
+	OpenRouterGPT41Nano     ModelID = "openrouter.gpt-4.1-nano"
+	OpenRouterGPT45Preview  ModelID = "openrouter.gpt-4.5-preview"
+	OpenRouterGPT4o         ModelID = "openrouter.gpt-4o"
+	OpenRouterGPT4oMini     ModelID = "openrouter.gpt-4o-mini"
+	OpenRouterO1            ModelID = "openrouter.o1"
+	OpenRouterO1Pro         ModelID = "openrouter.o1-pro"
+	OpenRouterO1Mini        ModelID = "openrouter.o1-mini"
+	OpenRouterO3            ModelID = "openrouter.o3"
+	OpenRouterO3Mini        ModelID = "openrouter.o3-mini"
+	OpenRouterO4Mini        ModelID = "openrouter.o4-mini"
+	OpenRouterGemini25Flash ModelID = "openrouter.gemini-2.5-flash"
+	OpenRouterGemini25      ModelID = "openrouter.gemini-2.5"
 )
 
 var OpenRouterModels = map[ModelID]Model{
@@ -26,7 +24,7 @@ var OpenRouterModels = map[ModelID]Model{
 		ID:                 OpenRouterGPT41,
 		Name:               "OpenRouter – GPT 4.1",
 		Provider:           ProviderOpenRouter,
-		APIModel:           "gpt-4.1",
+		APIModel:           "openai/gpt-4.1",
 		CostPer1MIn:        OpenAIModels[GPT41].CostPer1MIn,
 		CostPer1MInCached:  OpenAIModels[GPT41].CostPer1MInCached,
 		CostPer1MOut:       OpenAIModels[GPT41].CostPer1MOut,
@@ -38,7 +36,7 @@ var OpenRouterModels = map[ModelID]Model{
 		ID:                 OpenRouterGPT41Mini,
 		Name:               "OpenRouter – GPT 4.1 mini",
 		Provider:           ProviderOpenRouter,
-		APIModel:           "gpt-4.1",
+		APIModel:           "openai/gpt-4.1-mini",
 		CostPer1MIn:        OpenAIModels[GPT41Mini].CostPer1MIn,
 		CostPer1MInCached:  OpenAIModels[GPT41Mini].CostPer1MInCached,
 		CostPer1MOut:       OpenAIModels[GPT41Mini].CostPer1MOut,
@@ -50,7 +48,7 @@ var OpenRouterModels = map[ModelID]Model{
 		ID:                 OpenRouterGPT41Nano,
 		Name:               "OpenRouter – GPT 4.1 nano",
 		Provider:           ProviderOpenRouter,
-		APIModel:           "gpt-4.1-nano",
+		APIModel:           "openai/gpt-4.1-nano",
 		CostPer1MIn:        OpenAIModels[GPT41Nano].CostPer1MIn,
 		CostPer1MInCached:  OpenAIModels[GPT41Nano].CostPer1MInCached,
 		CostPer1MOut:       OpenAIModels[GPT41Nano].CostPer1MOut,
@@ -62,7 +60,7 @@ var OpenRouterModels = map[ModelID]Model{
 		ID:                 OpenRouterGPT45Preview,
 		Name:               "OpenRouter – GPT 4.5 preview",
 		Provider:           ProviderOpenRouter,
-		APIModel:           "gpt-4.5-preview",
+		APIModel:           "openai/gpt-4.5-preview",
 		CostPer1MIn:        OpenAIModels[GPT45Preview].CostPer1MIn,
 		CostPer1MInCached:  OpenAIModels[GPT45Preview].CostPer1MInCached,
 		CostPer1MOut:       OpenAIModels[GPT45Preview].CostPer1MOut,
@@ -74,7 +72,7 @@ var OpenRouterModels = map[ModelID]Model{
 		ID:                 OpenRouterGPT4o,
 		Name:               "OpenRouter – GPT 4o",
 		Provider:           ProviderOpenRouter,
-		APIModel:           "gpt-4o",
+		APIModel:           "openai/gpt-4o",
 		CostPer1MIn:        OpenAIModels[GPT4o].CostPer1MIn,
 		CostPer1MInCached:  OpenAIModels[GPT4o].CostPer1MInCached,
 		CostPer1MOut:       OpenAIModels[GPT4o].CostPer1MOut,
@@ -86,7 +84,7 @@ var OpenRouterModels = map[ModelID]Model{
 		ID:                 OpenRouterGPT4oMini,
 		Name:               "OpenRouter – GPT 4o mini",
 		Provider:           ProviderOpenRouter,
-		APIModel:           "gpt-4o-mini",
+		APIModel:           "openai/gpt-4o-mini",
 		CostPer1MIn:        OpenAIModels[GPT4oMini].CostPer1MIn,
 		CostPer1MInCached:  OpenAIModels[GPT4oMini].CostPer1MInCached,
 		CostPer1MOut:       OpenAIModels[GPT4oMini].CostPer1MOut,
@@ -97,7 +95,7 @@ var OpenRouterModels = map[ModelID]Model{
 		ID:                 OpenRouterO1,
 		Name:               "OpenRouter – O1",
 		Provider:           ProviderOpenRouter,
-		APIModel:           "o1",
+		APIModel:           "openai/o1",
 		CostPer1MIn:        OpenAIModels[O1].CostPer1MIn,
 		CostPer1MInCached:  OpenAIModels[O1].CostPer1MInCached,
 		CostPer1MOut:       OpenAIModels[O1].CostPer1MOut,
@@ -110,7 +108,7 @@ var OpenRouterModels = map[ModelID]Model{
 		ID:                 OpenRouterO1Pro,
 		Name:               "OpenRouter – o1 pro",
 		Provider:           ProviderOpenRouter,
-		APIModel:           "o1-pro",
+		APIModel:           "openai/o1-pro",
 		CostPer1MIn:        OpenAIModels[O1Pro].CostPer1MIn,
 		CostPer1MInCached:  OpenAIModels[O1Pro].CostPer1MInCached,
 		CostPer1MOut:       OpenAIModels[O1Pro].CostPer1MOut,
@@ -123,7 +121,7 @@ var OpenRouterModels = map[ModelID]Model{
 		ID:                 OpenRouterO1Mini,
 		Name:               "OpenRouter – o1 mini",
 		Provider:           ProviderOpenRouter,
-		APIModel:           "o1-mini",
+		APIModel:           "openai/o1-mini",
 		CostPer1MIn:        OpenAIModels[O1Mini].CostPer1MIn,
 		CostPer1MInCached:  OpenAIModels[O1Mini].CostPer1MInCached,
 		CostPer1MOut:       OpenAIModels[O1Mini].CostPer1MOut,
@@ -136,7 +134,7 @@ var OpenRouterModels = map[ModelID]Model{
 		ID:                 OpenRouterO3,
 		Name:               "OpenRouter – o3",
 		Provider:           ProviderOpenRouter,
-		APIModel:           "o3",
+		APIModel:           "openai/o3",
 		CostPer1MIn:        OpenAIModels[O3].CostPer1MIn,
 		CostPer1MInCached:  OpenAIModels[O3].CostPer1MInCached,
 		CostPer1MOut:       OpenAIModels[O3].CostPer1MOut,
@@ -149,7 +147,7 @@ var OpenRouterModels = map[ModelID]Model{
 		ID:                 OpenRouterO3Mini,
 		Name:               "OpenRouter – o3 mini",
 		Provider:           ProviderOpenRouter,
-		APIModel:           "o3-mini",
+		APIModel:           "openai/o3-mini-high",
 		CostPer1MIn:        OpenAIModels[O3Mini].CostPer1MIn,
 		CostPer1MInCached:  OpenAIModels[O3Mini].CostPer1MInCached,
 		CostPer1MOut:       OpenAIModels[O3Mini].CostPer1MOut,
@@ -162,7 +160,7 @@ var OpenRouterModels = map[ModelID]Model{
 		ID:                 OpenRouterO4Mini,
 		Name:               "OpenRouter – o4 mini",
 		Provider:           ProviderOpenRouter,
-		APIModel:           "o4-mini",
+		APIModel:           "openai/o4-mini-high",
 		CostPer1MIn:        OpenAIModels[O4Mini].CostPer1MIn,
 		CostPer1MInCached:  OpenAIModels[O4Mini].CostPer1MInCached,
 		CostPer1MOut:       OpenAIModels[O4Mini].CostPer1MOut,
@@ -175,7 +173,7 @@ var OpenRouterModels = map[ModelID]Model{
 		ID:                 OpenRouterGemini25Flash,
 		Name:               "OpenRouter – Gemini 2.5 Flash",
 		Provider:           ProviderOpenRouter,
-		APIModel:           "google/gemini-2.5-flash-preview-04-17",
+		APIModel:           "google/gemini-2.5-flash-preview:thinking",
 		CostPer1MIn:        GeminiModels[Gemini25Flash].CostPer1MIn,
 		CostPer1MInCached:  GeminiModels[Gemini25Flash].CostPer1MInCached,
 		CostPer1MOut:       GeminiModels[Gemini25Flash].CostPer1MOut,
@@ -194,29 +192,5 @@ var OpenRouterModels = map[ModelID]Model{
 		CostPer1MOutCached: GeminiModels[Gemini25].CostPer1MOutCached,
 		ContextWindow:      GeminiModels[Gemini25].ContextWindow,
 		DefaultMaxTokens:   GeminiModels[Gemini25].DefaultMaxTokens,
-	},
-	OpenRouterDeepSeekChatFree: {
-		ID:                 OpenRouterDeepSeekChatFree,
-		Name:               "OpenRouter – DeepSeek Chat (Free)",
-		Provider:           ProviderOpenRouter,
-		APIModel:           "deepseek/deepseek-chat-v3-0324:free",
-		CostPer1MIn:        0,
-		CostPer1MInCached:  0,
-		CostPer1MOutCached: 0,
-		CostPer1MOut:       0,
-		ContextWindow:      12800,
-		DefaultMaxTokens:   50000,
-	},
-	OpenRouterDeepSeekR1Free: {
-		ID:                 OpenRouterDeepSeekR1Free,
-		Name:               "OpenRouter – DeepSeek R1 (Free)",
-		Provider:           ProviderOpenRouter,
-		APIModel:           "deepseek/deepseek-r1:free",
-		CostPer1MIn:        0,
-		CostPer1MInCached:  0,
-		CostPer1MOutCached: 0,
-		CostPer1MOut:       0,
-		ContextWindow:      164000,
-		DefaultMaxTokens:   50000,
 	},
 }
