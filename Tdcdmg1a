@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ecoclasificación - Separación de Basura</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f8f5;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px 10px;
+            text-align: center;
+            border-radius: 8px;
+        }
+        section {
+            margin: 20px 0;
+        }
+        h2 {
+            color: #2E7D32;
+        }
+        ul {
+            list-style: circle;
+            margin-left: 20px;
+        }
+        .category {
+            background-color: #ffffff;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 0.9em;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Proyecto ECOCLASIFICACIÓN</h1>
+    <p>Una nueva forma de entender la separación de basura</p>
+</header>
+
+<section>
+    <h2>¿Qué es Ecoclasificación?</h2>
+    <p>Ecoclasificación es un sistema alternativo que clasifica la basura según su origen y su impacto ambiental, más allá del color del contenedor.</p>
+</section>
+
+<section>
+    <h2>Las 5 categorías de Ecoclasificación:</h2>
+
+    <div class="category">
+        <h3>1. Renovables</h3>
+        <p>Residuos que pueden reintegrarse a la naturaleza fácilmente. Ejemplo: cáscaras de fruta, residuos de jardinería.</p>
+    </div>
+
+    <div class="category">
+        <h3>2. Transformables</h3>
+        <p>Materiales que pueden convertirse en nuevos productos. Ejemplo: botellas PET limpias, latas de aluminio.</p>
+    </div>
+
+    <div class="category">
+        <h3>3. Neutros</h3>
+        <p>Desechos que no contaminan, pero tampoco son fáciles de reciclar. Ejemplo: ropa vieja, muebles rotos.</p>
+    </div>
+
+    <div class="category">
+        <h3>4. Tóxicos</h3>
+        <p>Residuos que requieren manejo especial. Ejemplo: baterías, medicamentos vencidos.</p>
+    </div>
+
+    <div class="category">
+        <h3>5. Infiltrantes</h3>
+        <p>Residuos pequeños que contaminan en silencio. Ejemplo: microplásticos, colillas de cigarro.</p>
+    </div>
+</section>
+
+<section>
+    <h2>¿Cómo empezar?</h2>
+    <ul>
+        <li>Observa tu basura diaria y clasifícala por intención.</li>
+        <li>Crea mini estaciones de clasificación en casa.</li>
+        <li>Conecta con programas locales de reciclaje.</li>
+        <li>Reduce residuos infiltrantes usando productos reutilizables.</li>
+    </ul>
+</section>
+
+<section>
+    <h2>Nuestra meta</h2>
+    <p>Queremos formar una comunidad consciente que entienda el ciclo de vida de los residuos. Cada desecho tiene una historia... tú decides cómo termina.</p>
+</section>
+
+<footer>
+    <p>#MiBasuraMiHistoria | Proyecto Ecoclasificación 2025</p>
+</footer>
+
+</body>
+</html>
