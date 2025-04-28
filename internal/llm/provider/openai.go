@@ -21,6 +21,7 @@ type openaiOptions struct {
 	baseURL         string
 	disableCache    bool
 	reasoningEffort string
+	extraHeaders    map[string]string
 }
 
 type OpenAIOption func(*openaiOptions)
@@ -47,6 +48,12 @@ func newOpenAIClient(opts providerClientOptions) OpenAIClient {
 	}
 	if openaiOpts.baseURL != "" {
 		openaiClientOptions = append(openaiClientOptions, option.WithBaseURL(openaiOpts.baseURL))
+	}
+
+	if openaiOpts.extraHeaders != nil {
+		for key, value := range openaiOpts.extraHeaders {
+			openaiClientOptions = append(openaiClientOptions, option.WithHeader(key, value))
+		}
 	}
 
 	client := openai.NewClient(openaiClientOptions...)
@@ -389,6 +396,12 @@ func (o *openaiClient) usage(completion openai.ChatCompletion) TokenUsage {
 func WithOpenAIBaseURL(baseURL string) OpenAIOption {
 	return func(options *openaiOptions) {
 		options.baseURL = baseURL
+	}
+}
+
+func WithOpenAIExtraHeaders(headers map[string]string) OpenAIOption {
+	return func(options *openaiOptions) {
+		options.extraHeaders = headers
 	}
 }
 
