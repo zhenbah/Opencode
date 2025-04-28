@@ -9,6 +9,7 @@ import (
 	"github.com/opencode-ai/opencode/internal/tui/layout"
 	"github.com/opencode-ai/opencode/internal/tui/styles"
 	"github.com/opencode-ai/opencode/internal/tui/util"
+	"github.com/opencode-ai/opencode/internal/tui/config"
 )
 
 const question = "Are you sure you want to quit?"
@@ -32,27 +33,34 @@ type helpMapping struct {
 	Tab        key.Binding
 }
 
-var helpKeys = helpMapping{
-	LeftRight: key.NewBinding(
-		key.WithKeys("left", "right"),
-		key.WithHelp("←/→", "switch options"),
-	),
-	EnterSpace: key.NewBinding(
-		key.WithKeys("enter", " "),
-		key.WithHelp("enter/space", "confirm"),
-	),
-	Yes: key.NewBinding(
-		key.WithKeys("y", "Y"),
-		key.WithHelp("y/Y", "yes"),
-	),
-	No: key.NewBinding(
-		key.WithKeys("n", "N"),
-		key.WithHelp("n/N", "no"),
-	),
-	Tab: key.NewBinding(
-		key.WithKeys("tab"),
-		key.WithHelp("tab", "switch options"),
-	),
+func NewHelpMapping(hotkeys config.HotkeyConfig) helpMapping {
+	return helpMapping{
+		LeftRight: config.GetKeyBinding(
+			hotkeys.Left+","+hotkeys.Right,
+			"←/→",
+			"switch options",
+		),
+		EnterSpace: config.GetKeyBinding(
+			hotkeys.Enter+",space",
+			"enter/space",
+			"confirm",
+		),
+		Yes: config.GetKeyBinding(
+			"y,Y",
+			"y/Y",
+			"yes",
+		),
+		No: config.GetKeyBinding(
+			"n,N",
+			"n/N",
+			"no",
+		),
+		Tab: config.GetKeyBinding(
+			hotkeys.Tab,
+			hotkeys.Tab,
+			"switch options",
+		),
+	}
 }
 
 func (q *quitDialogCmp) Init() tea.Cmd {

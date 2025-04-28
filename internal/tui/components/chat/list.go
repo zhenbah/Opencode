@@ -16,6 +16,7 @@ import (
 	"github.com/opencode-ai/opencode/internal/session"
 	"github.com/opencode-ai/opencode/internal/tui/styles"
 	"github.com/opencode-ai/opencode/internal/tui/util"
+	"github.com/opencode-ai/opencode/internal/config"
 )
 
 type cacheItem struct {
@@ -43,23 +44,29 @@ type MessageKeys struct {
 	HalfPageDown key.Binding
 }
 
-var messageKeys = MessageKeys{
-	PageDown: key.NewBinding(
-		key.WithKeys("pgdown"),
-		key.WithHelp("f/pgdn", "page down"),
-	),
-	PageUp: key.NewBinding(
-		key.WithKeys("pgup"),
-		key.WithHelp("b/pgup", "page up"),
-	),
-	HalfPageUp: key.NewBinding(
-		key.WithKeys("ctrl+u"),
-		key.WithHelp("ctrl+u", "½ page up"),
-	),
-	HalfPageDown: key.NewBinding(
-		key.WithKeys("ctrl+d", "ctrl+d"),
-		key.WithHelp("ctrl+d", "½ page down"),
-	),
+func NewMessageKeys(hotkeys config.HotkeyConfig) MessageKeys {
+	return MessageKeys{
+		PageDown: config.GetKeyBinding(
+			hotkeys.PageDown,
+			hotkeys.PageDown,
+			"page down",
+		),
+		PageUp: config.GetKeyBinding(
+			hotkeys.PageUp,
+			hotkeys.PageUp,
+			"page up",
+		),
+		HalfPageUp: config.GetKeyBinding(
+			hotkeys.HalfPageUp,
+			hotkeys.HalfPageUp,
+			"½ page up",
+		),
+		HalfPageDown: config.GetKeyBinding(
+			hotkeys.HalfPageDown,
+			hotkeys.HalfPageDown,
+			"½ page down",
+		),
+	}
 }
 
 func (m *messagesCmp) Init() tea.Cmd {

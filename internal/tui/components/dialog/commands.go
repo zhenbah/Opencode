@@ -7,6 +7,7 @@ import (
 	"github.com/opencode-ai/opencode/internal/tui/layout"
 	"github.com/opencode-ai/opencode/internal/tui/styles"
 	"github.com/opencode-ai/opencode/internal/tui/util"
+	"github.com/opencode-ai/opencode/internal/tui/config"
 )
 
 // Command represents a command that can be executed
@@ -50,31 +51,39 @@ type commandKeyMap struct {
 	K      key.Binding
 }
 
-var commandKeys = commandKeyMap{
-	Up: key.NewBinding(
-		key.WithKeys("up"),
-		key.WithHelp("↑", "previous command"),
-	),
-	Down: key.NewBinding(
-		key.WithKeys("down"),
-		key.WithHelp("↓", "next command"),
-	),
-	Enter: key.NewBinding(
-		key.WithKeys("enter"),
-		key.WithHelp("enter", "select command"),
-	),
-	Escape: key.NewBinding(
-		key.WithKeys("esc"),
-		key.WithHelp("esc", "close"),
-	),
-	J: key.NewBinding(
-		key.WithKeys("j"),
-		key.WithHelp("j", "next command"),
-	),
-	K: key.NewBinding(
-		key.WithKeys("k"),
-		key.WithHelp("k", "previous command"),
-	),
+func NewCommandKeyMap(hotkeys config.HotkeyConfig) commandKeyMap {
+	return commandKeyMap{
+		Up: config.GetKeyBinding(
+			hotkeys.Up,
+			"↑",
+			"previous command",
+		),
+		Down: config.GetKeyBinding(
+			hotkeys.Down,
+			"↓",
+			"next command",
+		),
+		Enter: config.GetKeyBinding(
+			hotkeys.Enter,
+			hotkeys.Enter,
+			"select command",
+		),
+		Escape: config.GetKeyBinding(
+			hotkeys.Escape,
+			hotkeys.Escape,
+			"close",
+		),
+		J: config.GetKeyBinding(
+			hotkeys.J,
+			hotkeys.J,
+			"next command",
+		),
+		K: config.GetKeyBinding(
+			hotkeys.K,
+			hotkeys.K,
+			"previous command",
+		),
+	}
 }
 
 func (c *commandDialogCmp) Init() tea.Cmd {

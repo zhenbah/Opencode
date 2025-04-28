@@ -7,6 +7,7 @@ import (
 
 	"github.com/opencode-ai/opencode/internal/tui/styles"
 	"github.com/opencode-ai/opencode/internal/tui/util"
+	"github.com/opencode-ai/opencode/internal/tui/config"
 )
 
 // InitDialogCmp is a component that asks the user if they want to initialize the project.
@@ -32,6 +33,46 @@ type initDialogKeyMap struct {
 	Escape key.Binding
 	Y      key.Binding
 	N      key.Binding
+}
+
+func NewInitDialogKeyMap(hotkeys config.HotkeyConfig) initDialogKeyMap {
+	return initDialogKeyMap{
+		Tab: config.GetKeyBinding(
+			hotkeys.Tab,
+			hotkeys.Tab,
+			"toggle selection",
+		),
+		Left: config.GetKeyBinding(
+			hotkeys.Left,
+			"←",
+			"toggle selection",
+		),
+		Right: config.GetKeyBinding(
+			hotkeys.Right,
+			"→",
+			"toggle selection",
+		),
+		Enter: config.GetKeyBinding(
+			hotkeys.Enter,
+			hotkeys.Enter,
+			"confirm",
+		),
+		Escape: config.GetKeyBinding(
+			hotkeys.Escape,
+			hotkeys.Escape,
+			"cancel",
+		),
+		Y: config.GetKeyBinding(
+			"y",
+			"y",
+			"yes",
+		),
+		N: config.GetKeyBinding(
+			"n",
+			"n",
+			"no",
+		),
+	}
 }
 
 // ShortHelp implements key.Map.

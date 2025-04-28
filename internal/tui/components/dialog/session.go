@@ -8,6 +8,7 @@ import (
 	"github.com/opencode-ai/opencode/internal/tui/layout"
 	"github.com/opencode-ai/opencode/internal/tui/styles"
 	"github.com/opencode-ai/opencode/internal/tui/util"
+	"github.com/opencode-ai/opencode/internal/config"
 )
 
 // SessionSelectedMsg is sent when a session is selected
@@ -43,31 +44,39 @@ type sessionKeyMap struct {
 	K      key.Binding
 }
 
-var sessionKeys = sessionKeyMap{
-	Up: key.NewBinding(
-		key.WithKeys("up"),
-		key.WithHelp("↑", "previous session"),
-	),
-	Down: key.NewBinding(
-		key.WithKeys("down"),
-		key.WithHelp("↓", "next session"),
-	),
-	Enter: key.NewBinding(
-		key.WithKeys("enter"),
-		key.WithHelp("enter", "select session"),
-	),
-	Escape: key.NewBinding(
-		key.WithKeys("esc"),
-		key.WithHelp("esc", "close"),
-	),
-	J: key.NewBinding(
-		key.WithKeys("j"),
-		key.WithHelp("j", "next session"),
-	),
-	K: key.NewBinding(
-		key.WithKeys("k"),
-		key.WithHelp("k", "previous session"),
-	),
+func NewSessionKeyMap(hotkeys config.HotkeyConfig) sessionKeyMap {
+	return sessionKeyMap{
+		Up: config.GetKeyBinding(
+			hotkeys.Up,
+			"↑",
+			"previous session",
+		),
+		Down: config.GetKeyBinding(
+			hotkeys.Down,
+			"↓",
+			"next session",
+		),
+		Enter: config.GetKeyBinding(
+			hotkeys.Enter,
+			hotkeys.Enter,
+			"select session",
+		),
+		Escape: config.GetKeyBinding(
+			hotkeys.Escape,
+			hotkeys.Escape,
+			"close",
+		),
+		J: config.GetKeyBinding(
+			hotkeys.J,
+			hotkeys.J,
+			"next session",
+		),
+		K: config.GetKeyBinding(
+			hotkeys.K,
+			hotkeys.K,
+			"previous session",
+		),
+	}
 }
 
 func (s *sessionDialogCmp) Init() tea.Cmd {

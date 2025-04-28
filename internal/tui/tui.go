@@ -29,35 +29,39 @@ type keyMap struct {
 	Models        key.Binding
 }
 
-var keys = keyMap{
-	Logs: key.NewBinding(
-		key.WithKeys("ctrl+l"),
-		key.WithHelp("ctrl+l", "logs"),
-	),
-
-	Quit: key.NewBinding(
-		key.WithKeys("ctrl+c"),
-		key.WithHelp("ctrl+c", "quit"),
-	),
-	Help: key.NewBinding(
-		key.WithKeys("ctrl+_"),
-		key.WithHelp("ctrl+?", "toggle help"),
-	),
-
-	SwitchSession: key.NewBinding(
-		key.WithKeys("ctrl+a"),
-		key.WithHelp("ctrl+a", "switch session"),
-	),
-
-	Commands: key.NewBinding(
-		key.WithKeys("ctrl+k"),
-		key.WithHelp("ctrl+k", "commands"),
-	),
-
-	Models: key.NewBinding(
-		key.WithKeys("ctrl+o"),
-		key.WithHelp("ctrl+o", "model selection"),
-	),
+func NewKeyMap(hotkeys config.HotkeyConfig) keyMap {
+	return keyMap{
+		Logs: config.GetKeyBinding(
+			hotkeys.Logs,
+			hotkeys.Logs,
+			"logs",
+		),
+		Quit: config.GetKeyBinding(
+			hotkeys.Quit,
+			hotkeys.Quit,
+			"quit",
+		),
+		Help: config.GetKeyBinding(
+			hotkeys.Help,
+			hotkeys.Help,
+			"toggle help",
+		),
+		SwitchSession: config.GetKeyBinding(
+			hotkeys.SwitchSession,
+			hotkeys.SwitchSession,
+			"switch session",
+		),
+		Commands: config.GetKeyBinding(
+			hotkeys.Commands,
+			hotkeys.Commands,
+			"commands",
+		),
+		Models: config.GetKeyBinding(
+			hotkeys.Models,
+			hotkeys.Models,
+			"model selection",
+		),
+	}
 }
 
 var helpEsc = key.NewBinding(

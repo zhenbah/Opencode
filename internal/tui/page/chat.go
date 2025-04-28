@@ -10,6 +10,7 @@ import (
 	"github.com/opencode-ai/opencode/internal/tui/components/chat"
 	"github.com/opencode-ai/opencode/internal/tui/layout"
 	"github.com/opencode-ai/opencode/internal/tui/util"
+	"github.com/opencode-ai/opencode/internal/config"
 )
 
 var ChatPage PageID = "chat"
@@ -27,15 +28,19 @@ type ChatKeyMap struct {
 	Cancel     key.Binding
 }
 
-var keyMap = ChatKeyMap{
-	NewSession: key.NewBinding(
-		key.WithKeys("ctrl+n"),
-		key.WithHelp("ctrl+n", "new session"),
-	),
-	Cancel: key.NewBinding(
-		key.WithKeys("esc"),
-		key.WithHelp("esc", "cancel"),
-	),
+func NewChatKeyMap(hotkeys config.HotkeyConfig) ChatKeyMap {
+	return ChatKeyMap{
+		NewSession: config.GetKeyBinding(
+			hotkeys.NewSession,
+			hotkeys.NewSession,
+			"new session",
+		),
+		Cancel: config.GetKeyBinding(
+			hotkeys.Cancel,
+			hotkeys.Cancel,
+			"cancel",
+		),
+	}
 }
 
 func (p *chatPage) Init() tea.Cmd {

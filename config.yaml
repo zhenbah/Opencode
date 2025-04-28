@@ -1,0 +1,31 @@
+# OpenCode Hotkey Configuration
+# Modify these values to customize your keyboard shortcuts
+# Format: "key" or "modifier+key" (e.g., "ctrl+l", "alt+enter")
+
+# Global hotkeys
+logs: "ctrl+l"          # View logs
+quit: "ctrl+c"          # Quit application
+help: "ctrl+?"          # Toggle help
+switch_session: "ctrl+a" # Switch between sessions
+commands: "ctrl+k"      # Show commands
+
+# Chat page hotkeys
+new_session: "ctrl+n"   # Create new session
+cancel: "esc"           # Cancel current action
+
+# Message navigation hotkeys
+page_down: "pgdown"     # Page down
+page_up: "pgup"         # Page up
+half_page_up: "ctrl+u"  # Half page up
+half_page_down: "ctrl+d" # Half page down
+
+# Dialog navigation hotkeys
+up: "up"               # Move up
+down: "down"           # Move down
+enter: "enter"         # Confirm selection
+escape: "esc"          # Close/cancel
+j: "j"                 # Next item
+k: "k"                 # Previous item
+left: "left"           # Move left
+right: "right"         # Move right
+tab: "tab"             # Switch options 
