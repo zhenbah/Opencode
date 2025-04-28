@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	numVisibleModels = 5
+	numVisibleModels = 10
 	maxDialogWidth   = 40
 )
 
@@ -172,8 +172,11 @@ func (m *modelDialogCmp) switchProvider(offset int) {
 	newOffset := m.hScrollOffset + offset
 
 	// Ensure we stay within bounds
-	if newOffset < 0 || newOffset >= len(m.availableProviders) {
-		return
+	if newOffset < 0 {
+		newOffset = len(m.availableProviders) - 1
+	}
+	if newOffset >= len(m.availableProviders) {
+		newOffset = 0
 	}
 
 	m.hScrollOffset = newOffset
