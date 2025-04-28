@@ -65,7 +65,12 @@
             "openrouter.o3-mini",
             "openrouter.o4-mini",
             "openrouter.gemini-2.5-flash",
-            "openrouter.gemini-2.5"
+            "openrouter.gemini-2.5",
+            "openrouter.claude-3.5-sonnet",
+            "openrouter.claude-3-haiku",
+            "openrouter.claude-3.7-sonnet",
+            "openrouter.claude-3.5-haiku",
+            "openrouter.claude-3-opus"
           ],
           "type": "string"
         },
@@ -146,7 +151,12 @@
               "openrouter.o3-mini",
               "openrouter.o4-mini",
               "openrouter.gemini-2.5-flash",
-              "openrouter.gemini-2.5"
+              "openrouter.gemini-2.5",
+              "openrouter.claude-3.5-sonnet",
+              "openrouter.claude-3-haiku",
+              "openrouter.claude-3.7-sonnet",
+              "openrouter.claude-3.5-haiku",
+              "openrouter.claude-3-opus"
             ],
             "type": "string"
           },
