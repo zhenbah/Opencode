@@ -284,15 +284,20 @@ func getEnabledProviders(cfg *config.Config) []models.ModelProvider {
 			providers = append(providers, providerId)
 		}
 	}
-	// Sort in alphabetical order
+
+	// Sort by provider popularity
 	slices.SortFunc(providers, func(a, b models.ModelProvider) int {
-		if a > b {
-			return 1
-		} else if a < b {
-			return -1
-		} else {
-			return 0
+		rA := models.ProviderPopularity[a]
+		rB := models.ProviderPopularity[b]
+
+		// models not included in popularity ranking default to last
+		if rA == 0 {
+			rA = 999
 		}
+		if rB == 0 {
+			rB = 999
+		}
+		return rA - rB
 	})
 	return providers
 }
