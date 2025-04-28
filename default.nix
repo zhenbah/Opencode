@@ -31,8 +31,5 @@
         homepage = "https://github.com/opencode-ai/opencode";
         mainProgram = "opencode";
         license = licenses.mit;
-        maintainers = with maintainers; [
-          zestsystem
-        ];
       };
     }
