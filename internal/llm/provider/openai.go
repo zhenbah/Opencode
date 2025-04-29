@@ -281,10 +281,6 @@ func (o *openaiClient) stream(ctx context.Context, messages []message.Message, t
 			err := openaiStream.Err()
 			if err == nil || errors.Is(err, io.EOF) {
 				// Stream completed successfully
-				eventChan <- ProviderEvent{
-					Type: EventContentStop,
-				}
-
 				finishReason := o.finishReason(string(acc.ChatCompletion.Choices[0].FinishReason))
 
 				if len(toolCalls) > 0 {
