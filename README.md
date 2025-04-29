@@ -84,6 +84,7 @@ You can configure OpenCode using environment variables:
 
 ```json
 {
+  "$schema": "https://raw.githubusercontent.com/opencode-ai/opencode/main/opencode-schema.json",
   "data": {
     "directory": ".opencode"
   },
