@@ -146,12 +146,12 @@ func (f *filepickerCmp) addAttachmentToMessage() (tea.Model, tea.Cmd) {
 	if isExtSupported(f.dirs[f.cursor].Name()) {
 		f.selectedFile = f.dirs[f.cursor].Name()
 		selectedFilePath := f.basePath + strings.Join(f.cwd, "/") + "/" + f.selectedFile
-		isvalid, err := preview.ValidateFileSize(selectedFilePath, int64(5*1024*1024))
+		isFileLarge, err := preview.ValidateFileSize(selectedFilePath, int64(5*1024*1024))
 		if err != nil {
 			logging.ErrorPersist("unable to read the image")
 			return f, nil
 		}
-		if !isvalid {
+		if isFileLarge {
 			logging.ErrorPersist("file too large, max 5MB")
 			return f, nil
 		}

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -26,6 +27,7 @@ type keyMap struct {
 	SwitchSession key.Binding
 	Commands      key.Binding
 	Filepicker    key.Binding
+	Models        key.Binding
 }
 
 var keys = keyMap{
@@ -55,6 +57,10 @@ var keys = keyMap{
 	Filepicker: key.NewBinding(
 		key.WithKeys("ctrl+f"),
 		key.WithHelp("ctrl+f", "select files to upload"),
+	),
+	Models: key.NewBinding(
+		key.WithKeys("ctrl+o"),
+		key.WithHelp("ctrl+o", "model selection"),
 	),
 }
 
@@ -98,6 +104,9 @@ type appModel struct {
 	commandDialog     dialog.CommandDialog
 	commands          []dialog.Command
 
+	showModelDialog bool
+	modelDialog     dialog.ModelDialog
+
 	showInitDialog bool
 	initDialog     dialog.InitDialogCmp
 
@@ -121,6 +130,8 @@ func (a appModel) Init() tea.Cmd {
 	cmd = a.sessionDialog.Init()
 	cmds = append(cmds, cmd)
 	cmd = a.commandDialog.Init()
+	cmds = append(cmds, cmd)
+	cmd = a.modelDialog.Init()
 	cmds = append(cmds, cmd)
 	cmd = a.initDialog.Init()
 	cmds = append(cmds, cmd)
@@ -259,6 +270,20 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.showCommandDialog = false
 		return a, nil
 
+	case dialog.CloseModelDialogMsg:
+		a.showModelDialog = false
+		return a, nil
+
+	case dialog.ModelSelectedMsg:
+		a.showModelDialog = false
+
+		model, err := a.app.CoderAgent.Update(config.AgentCoder, msg.Model.ID)
+		if err != nil {
+			return a, util.ReportError(err)
+		}
+
+		return a, util.ReportInfo(fmt.Sprintf("Model changed to %s", model.Name))
+
 	case dialog.ShowInitDialogMsg:
 		a.showInitDialog = msg.Show
 		return a, nil
@@ -318,6 +343,9 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if a.showFilepicker {
 				a.showFilepicker = false
 			}
+			if a.showModelDialog {
+				a.showModelDialog = false
+			}
 			return a, nil
 		case key.Matches(msg, keys.SwitchSession):
 			if a.currentPage == page.ChatPage && !a.showQuit && !a.showPermissions && !a.showCommandDialog {
@@ -342,6 +370,17 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				a.commandDialog.SetCommands(a.commands)
 				a.showCommandDialog = true
+				return a, nil
+			}
+			return a, nil
+		case key.Matches(msg, keys.Models):
+			if a.showModelDialog {
+				a.showModelDialog = false
+				return a, nil
+			}
+
+			if a.currentPage == page.ChatPage && !a.showQuit && !a.showPermissions && !a.showSessionDialog && !a.showCommandDialog {
+				a.showModelDialog = true
 				return a, nil
 			}
 			return a, nil
@@ -440,6 +479,16 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		d, commandCmd := a.commandDialog.Update(msg)
 		a.commandDialog = d.(dialog.CommandDialog)
 		cmds = append(cmds, commandCmd)
+		// Only block key messages send all other messages down
+		if _, ok := msg.(tea.KeyMsg); ok {
+			return a, tea.Batch(cmds...)
+		}
+	}
+
+	if a.showModelDialog {
+		d, modelCmd := a.modelDialog.Update(msg)
+		a.modelDialog = d.(dialog.ModelDialog)
+		cmds = append(cmds, modelCmd)
 		// Only block key messages send all other messages down
 		if _, ok := msg.(tea.KeyMsg); ok {
 			return a, tea.Batch(cmds...)
@@ -595,6 +644,21 @@ func (a appModel) View() string {
 		)
 	}
 
+	if a.showModelDialog {
+		overlay := a.modelDialog.View()
+		row := lipgloss.Height(appView) / 2
+		row -= lipgloss.Height(overlay) / 2
+		col := lipgloss.Width(appView) / 2
+		col -= lipgloss.Width(overlay) / 2
+		appView = layout.PlaceOverlay(
+			col,
+			row,
+			overlay,
+			appView,
+			true,
+		)
+	}
+
 	if a.showCommandDialog {
 		overlay := a.commandDialog.View()
 		row := lipgloss.Height(appView) / 2
@@ -634,6 +698,7 @@ func New(app *app.App) tea.Model {
 		quit:          dialog.NewQuitCmp(),
 		sessionDialog: dialog.NewSessionDialogCmp(),
 		commandDialog: dialog.NewCommandDialogCmp(),
+		modelDialog:   dialog.NewModelDialogCmp(),
 		permissions:   dialog.NewPermissionDialogCmp(),
 		initDialog:    dialog.NewInitDialogCmp(),
 		app:           app,
