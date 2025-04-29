@@ -13,8 +13,8 @@ var (
 // NEW STYLES
 var (
 	Background = lipgloss.AdaptiveColor{
-		Dark:  "#212121",
-		Light: "#212121",
+		Dark:  dark.Base().Hex,
+		Light: light.Base().Hex,
 	}
 	BackgroundDim = lipgloss.AdaptiveColor{
 		Dark:  "#2c2c2c",
@@ -30,8 +30,8 @@ var (
 	}
 
 	Forground = lipgloss.AdaptiveColor{
-		Dark:  "#d3d3d3",
-		Light: "#d3d3d3",
+		Dark:  dark.Text().Hex,
+		Light: light.Text().Hex,
 	}
 
 	ForgroundMid = lipgloss.AdaptiveColor{
