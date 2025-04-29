@@ -110,10 +110,20 @@ func (m statusCmp) View() string {
 	}
 
 	diagnostics := styles.Padded.Background(styles.BackgroundDarker).Render(m.projectDiagnostics())
+	model := m.model()
+
+	statusWidth := max(
+		0,
+		m.width-
+			lipgloss.Width(status)-
+			lipgloss.Width(model)-
+			lipgloss.Width(diagnostics),
+	)
+
 	if m.info.Msg != "" {
 		infoStyle := styles.Padded.
 			Foreground(styles.Base).
-			Width(m.availableFooterMsgWidth(diagnostics))
+			Width(statusWidth)
 		switch m.info.Type {
 		case util.InfoTypeInfo:
 			infoStyle = infoStyle.Background(styles.BorderColor)
@@ -124,7 +134,7 @@ func (m statusCmp) View() string {
 		}
 		// Truncate message if it's longer than available width
 		msg := m.info.Msg
-		availWidth := m.availableFooterMsgWidth(diagnostics) - 10
+		availWidth := statusWidth - 10
 		if len(msg) > availWidth && availWidth > 0 {
 			msg = msg[:availWidth] + "..."
 		}
@@ -133,12 +143,12 @@ func (m statusCmp) View() string {
 		status += styles.Padded.
 			Foreground(styles.Base).
 			Background(styles.BackgroundDim).
-			Width(m.availableFooterMsgWidth(diagnostics)).
+			Width(statusWidth).
 			Render("")
 	}
 
 	status += diagnostics
-	status += m.model()
+	status += model
 	return status
 }
 
@@ -217,16 +227,6 @@ func (m *statusCmp) projectDiagnostics() string {
 	}
 
 	return strings.Join(diagnostics, " ")
-}
-
-func (m statusCmp) availableFooterMsgWidth(diagnostics string) int {
-	tokens := ""
-	tokensWidth := 0
-	if m.session.ID != "" {
-		tokens = formatTokensAndCost(m.session.PromptTokens+m.session.CompletionTokens, m.session.Cost)
-		tokensWidth = lipgloss.Width(tokens) + 2
-	}
-	return max(0, m.width-lipgloss.Width(helpWidget)-lipgloss.Width(m.model())-lipgloss.Width(diagnostics)-tokensWidth)
 }
 
 func (m statusCmp) model() string {
