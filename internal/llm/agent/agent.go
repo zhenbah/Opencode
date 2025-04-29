@@ -157,6 +157,10 @@ func (a *agent) err(err error) AgentEvent {
 }
 
 func (a *agent) Run(ctx context.Context, sessionID string, content string, attachments ...message.Attachment) (<-chan AgentEvent, error) {
+	if !a.provider.Model().SupportsAttachments && attachments != nil {
+		errorMessage := fmt.Errorf("Model %s does not support attachments", a.provider.Model().Name)
+		return nil, errorMessage
+	}
 	events := make(chan AgentEvent)
 	if a.IsSessionBusy(sessionID) {
 		return nil, ErrSessionBusy
@@ -185,8 +189,7 @@ func (a *agent) Run(ctx context.Context, sessionID string, content string, attac
 		}
 		result := a.processGeneration(genCtx, sessionID, content, attachmentParts, attachmentPaths.String())
 		if result.Err() != nil && !errors.Is(result.Err(), ErrRequestCancelled) && !errors.Is(result.Err(), context.Canceled) {
-			logging.Info(result.Err().Error())
-			logging.ErrorPersist(fmt.Sprintf("Generation error for session %s: %v", sessionID, result))
+			logging.ErrorPersist(result.Err().Error())
 		}
 		logging.Debug("Request completed", "sessionID", sessionID)
 		a.activeRequests.Delete(sessionID)

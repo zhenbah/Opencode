@@ -2,6 +2,7 @@ package page
 
 import (
 	"context"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/opencode-ai/opencode/internal/app"
@@ -115,7 +116,10 @@ func (p *chatPage) sendMessage(text string, attachments []message.Attachment) te
 		cmds = append(cmds, util.CmdHandler(chat.SessionSelectedMsg(session)))
 	}
 
-	p.app.CoderAgent.Run(context.Background(), p.session.ID, text, attachments...)
+	_, err := p.app.CoderAgent.Run(context.Background(), p.session.ID, text, attachments...)
+	if err != nil {
+		return util.ReportError(err)
+	}
 	return tea.Batch(cmds...)
 }
 

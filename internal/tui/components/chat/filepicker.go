@@ -1,7 +1,6 @@
 package chat
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -19,6 +18,10 @@ import (
 	"github.com/opencode-ai/opencode/internal/preview"
 	"github.com/opencode-ai/opencode/internal/tui/styles"
 	"github.com/opencode-ai/opencode/internal/tui/util"
+)
+
+const (
+	maxAttachmentSize = int64(5 * 1024 * 1024)
 )
 
 var enterKey = key.NewBinding(
@@ -58,8 +61,14 @@ type filepickerCmp struct {
 	cursorChain  stack
 	viewport     viewport.Model
 	dirs         []os.DirEntry
-	cwd          []string
+	cwd          *DirNode
 	selectedFile string
+}
+
+type DirNode struct {
+	parent    *DirNode
+	child     *DirNode
+	directory string
 }
 type stack []int
 
@@ -71,8 +80,6 @@ func (s stack) Pop() (stack, int) {
 	l := len(s)
 	return s[:l-1], s[l-1]
 }
-
-type clearErrorMsg struct{}
 
 type AttachmentAddedMsg struct {
 	Attachment message.Attachment
@@ -106,7 +113,9 @@ func (f *filepickerCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, enter):
 			if f.dirs[f.cursor].IsDir() {
 				f.cursorChain.Push(f.cursor)
-				f.cwd = append(f.cwd, f.dirs[f.cursor].Name())
+				newWorkingDir := DirNode{parent: f.cwd, directory: f.cwd.directory + "/" + f.dirs[f.cursor].Name()}
+				f.cwd.child = &newWorkingDir
+				f.cwd = f.cwd.child
 				f.cursor = 0
 			} else {
 				return f.addAttachmentToMessage()
@@ -116,22 +125,23 @@ func (f *filepickerCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			f.cursor = 0
 		case key.Matches(msg, forward):
 			if f.dirs[f.cursor].IsDir() {
-				f.cwd = append(f.cwd, f.dirs[f.cursor].Name())
+				newWorkingDir := DirNode{parent: f.cwd, directory: f.cwd.directory + "/" + f.dirs[f.cursor].Name()}
+				f.cwd.child = &newWorkingDir
+				f.cwd = f.cwd.child
 				f.cursorChain = f.cursorChain.Push(f.cursor)
-				f.dirs = f.getCWDFiles()
+				f.dirs = readDir(f.cwd.directory, false)
 				f.cursor = 0
 			}
 		case key.Matches(msg, backward):
-			if len(f.cursorChain) != 0 {
+			if len(f.cursorChain) != 0 && f.cwd.parent != nil {
 				f.cursorChain, f.cursor = f.cursorChain.Pop()
-				f.cwd = f.cwd[:len(f.cwd)-1]
-				f.dirs = readDir(f.basePath+strings.Join(f.cwd, "/"), false)
-				if f.dirs[f.cursor].IsDir() {
-					f.dirs = f.getCWDFiles()
-				}
+
+				f.cwd = f.cwd.parent
+				f.cwd.child = nil
+				f.dirs = readDir(f.cwd.directory, false)
 			}
 		case key.Matches(msg, openFilepiceker):
-			f.dirs = f.getCWDFiles()
+			f.dirs = readDir(f.cwd.directory, false)
 			f.cursor = 0
 			f.getCurrentFileBelowCursor()
 		}
@@ -140,13 +150,10 @@ func (f *filepickerCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (f *filepickerCmp) addAttachmentToMessage() (tea.Model, tea.Cmd) {
-
-	var cmd tea.Cmd
-
 	if isExtSupported(f.dirs[f.cursor].Name()) {
 		f.selectedFile = f.dirs[f.cursor].Name()
-		selectedFilePath := f.basePath + strings.Join(f.cwd, "/") + "/" + f.selectedFile
-		isFileLarge, err := preview.ValidateFileSize(selectedFilePath, int64(5*1024*1024))
+		selectedFilePath := f.cwd.directory + "/" + f.selectedFile
+		isFileLarge, err := preview.ValidateFileSize(selectedFilePath, maxAttachmentSize)
 		if err != nil {
 			logging.ErrorPersist("unable to read the image")
 			return f, nil
@@ -156,11 +163,10 @@ func (f *filepickerCmp) addAttachmentToMessage() (tea.Model, tea.Cmd) {
 			return f, nil
 		}
 
-		content, err := os.ReadFile(f.basePath + strings.Join(f.cwd, "/") + "/" + f.selectedFile)
+		content, err := os.ReadFile(f.cwd.directory + "/" + f.selectedFile)
 		if err != nil {
-			f.selectedFile = ""
-			f.err = errors.New("unable to read the selected file")
-			return f, tea.Batch(cmd, clearErrorAfter(2*time.Second))
+			logging.ErrorPersist("Unable read selected file")
+			return f, nil
 		}
 
 		mimeBufferSize := min(512, len(content))
@@ -170,22 +176,11 @@ func (f *filepickerCmp) addAttachmentToMessage() (tea.Model, tea.Cmd) {
 		f.selectedFile = ""
 		return f, util.CmdHandler(AttachmentAddedMsg{attachment})
 	}
-	if !strings.HasSuffix(f.selectedFile, ".png") &&
-		!strings.HasSuffix(f.selectedFile, ".jpg") &&
-		!strings.HasSuffix(f.selectedFile, ".jpeg") &&
-		!strings.HasSuffix(f.selectedFile, ".webp") {
-		f.err = errors.New(f.selectedFile + " is not valid.")
-		f.selectedFile = ""
-		return f, tea.Batch(cmd, clearErrorAfter(2*time.Second))
-
+	if !isExtSupported(f.selectedFile) {
+		logging.ErrorPersist("Unsupported file")
+		return f, nil
 	}
 	return f, nil
-}
-
-func clearErrorAfter(t time.Duration) tea.Cmd {
-	return tea.Tick(t, func(_ time.Time) tea.Msg {
-		return clearErrorMsg{}
-	})
 }
 
 func (f *filepickerCmp) View() string {
@@ -229,6 +224,14 @@ func (f *filepickerCmp) View() string {
 		if len(filename) > adjustedWidth-4 {
 			filename = filename[:adjustedWidth-7] + "..."
 		}
+		if file.IsDir() {
+			filename = "\ue6ad " + filename
+		} else if isExtSupported(file.Name()) {
+			filename = "\uf03e " + filename
+		} else {
+			filename = "\uf15b " + filename
+		}
+
 		files = append(files, itemStyle.Padding(0, 1).Render(filename))
 	}
 
@@ -278,16 +281,12 @@ func NewFilepickerCmp() FilepickerCmp {
 		logging.Error("error loading use files")
 		return nil
 	}
-
+	baseDir := DirNode{parent: nil, directory: homepath}
 	dirs := readDir(homepath, false)
 	viewport := viewport.New(0, 0)
-	return &filepickerCmp{basePath: homepath + "/", dirs: dirs, cursorChain: make(stack, 0), viewport: viewport}
+	return &filepickerCmp{cwd: &baseDir, dirs: dirs, cursorChain: make(stack, 0), viewport: viewport}
 }
 
-func (f *filepickerCmp) getCWDFiles() []os.DirEntry {
-	dirs := readDir(f.basePath+strings.Join(f.cwd, "/"), false)
-	return dirs
-}
 func (f *filepickerCmp) getCurrentFileBelowCursor() {
 	if len(f.dirs) == 0 || f.cursor < 0 || f.cursor >= len(f.dirs) {
 		logging.Error(fmt.Sprintf("Invalid cursor position. Dirs length: %d, Cursor: %d", len(f.dirs), f.cursor))
@@ -298,7 +297,7 @@ func (f *filepickerCmp) getCurrentFileBelowCursor() {
 	dir := f.dirs[f.cursor]
 	filename := dir.Name()
 	if !dir.IsDir() && isExtSupported(filename) {
-		fullPath := f.basePath + strings.Join(f.cwd, "/") + "/" + dir.Name()
+		fullPath := f.cwd.directory + "/" + dir.Name()
 
 		go func() {
 			imageString, err := preview.ImagePreview(f.viewport.Width-4, fullPath)
@@ -324,6 +323,7 @@ func readDir(path string, showHidden bool) []os.DirEntry {
 	go func() {
 		dirEntries, err := os.ReadDir(path)
 		if err != nil {
+			logging.ErrorPersist(err.Error())
 			errChan <- err
 			return
 		}
