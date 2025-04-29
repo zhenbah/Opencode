@@ -6,6 +6,10 @@ import (
 )
 
 var (
+	ImageBakcground = "#212121"
+)
+
+var (
 	light = catppuccin.Latte
 	dark  = catppuccin.Mocha
 )
