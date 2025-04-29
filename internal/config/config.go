@@ -67,14 +67,15 @@ type LSPConfig struct {
 
 // Config is the main configuration structure for the application.
 type Config struct {
-	Data       Data                              `json:"data"`
-	WorkingDir string                            `json:"wd,omitempty"`
-	MCPServers map[string]MCPServer              `json:"mcpServers,omitempty"`
-	Providers  map[models.ModelProvider]Provider `json:"providers,omitempty"`
-	LSP        map[string]LSPConfig              `json:"lsp,omitempty"`
-	Agents     map[AgentName]Agent               `json:"agents"`
-	Debug      bool                              `json:"debug,omitempty"`
-	DebugLSP   bool                              `json:"debugLSP,omitempty"`
+	Data         Data                              `json:"data"`
+	WorkingDir   string                            `json:"wd,omitempty"`
+	MCPServers   map[string]MCPServer              `json:"mcpServers,omitempty"`
+	Providers    map[models.ModelProvider]Provider `json:"providers,omitempty"`
+	LSP          map[string]LSPConfig              `json:"lsp,omitempty"`
+	Agents       map[AgentName]Agent               `json:"agents"`
+	Debug        bool                              `json:"debug,omitempty"`
+	DebugLSP     bool                              `json:"debugLSP,omitempty"`
+	ContextPaths []string                          `json:"contextPaths,omitempty"`
 }
 
 // Application constants
@@ -82,7 +83,23 @@ const (
 	defaultDataDirectory = ".opencode"
 	defaultLogLevel      = "info"
 	appName              = "opencode"
+
+	MaxTokensFallbackDefault = 4096
 )
+
+var defaultContextPaths = []string{
+	".github/copilot-instructions.md",
+	".cursorrules",
+	".cursor/rules/",
+	"CLAUDE.md",
+	"CLAUDE.local.md",
+	"opencode.md",
+	"opencode.local.md",
+	"OpenCode.md",
+	"OpenCode.local.md",
+	"OPENCODE.md",
+	"OPENCODE.local.md",
+}
 
 // Global configuration instance
 var cfg *Config
@@ -185,6 +202,7 @@ func configureViper() {
 // setDefaults configures default values for configuration options.
 func setDefaults(debug bool) {
 	viper.SetDefault("data.directory", defaultDataDirectory)
+	viper.SetDefault("contextPaths", defaultContextPaths)
 
 	if debug {
 		viper.SetDefault("debug", true)
@@ -196,16 +214,29 @@ func setDefaults(debug bool) {
 }
 
 // setProviderDefaults configures LLM provider defaults based on environment variables.
-// the default model priority is:
-// 1. Anthropic
-// 2. OpenAI
-// 3. Google Gemini
-// 4. Groq
-// 5. AWS Bedrock
 func setProviderDefaults() {
-	// Anthropic configuration
+	// Set all API keys we can find in the environment
 	if apiKey := os.Getenv("ANTHROPIC_API_KEY"); apiKey != "" {
 		viper.SetDefault("providers.anthropic.apiKey", apiKey)
+	}
+	if apiKey := os.Getenv("OPENAI_API_KEY"); apiKey != "" {
+		viper.SetDefault("providers.openai.apiKey", apiKey)
+	}
+	if apiKey := os.Getenv("GEMINI_API_KEY"); apiKey != "" {
+		viper.SetDefault("providers.gemini.apiKey", apiKey)
+	}
+	if apiKey := os.Getenv("GROQ_API_KEY"); apiKey != "" {
+		viper.SetDefault("providers.groq.apiKey", apiKey)
+	}
+
+	// Use this order to set the default models
+	// 1. Anthropic
+	// 2. OpenAI
+	// 3. Google Gemini
+	// 4. Groq
+	// 5. AWS Bedrock
+	// Anthropic configuration
+	if apiKey := os.Getenv("ANTHROPIC_API_KEY"); apiKey != "" {
 		viper.SetDefault("agents.coder.model", models.Claude37Sonnet)
 		viper.SetDefault("agents.task.model", models.Claude37Sonnet)
 		viper.SetDefault("agents.title.model", models.Claude37Sonnet)
@@ -214,7 +245,6 @@ func setProviderDefaults() {
 
 	// OpenAI configuration
 	if apiKey := os.Getenv("OPENAI_API_KEY"); apiKey != "" {
-		viper.SetDefault("providers.openai.apiKey", apiKey)
 		viper.SetDefault("agents.coder.model", models.GPT41)
 		viper.SetDefault("agents.task.model", models.GPT41Mini)
 		viper.SetDefault("agents.title.model", models.GPT41Mini)
@@ -223,7 +253,6 @@ func setProviderDefaults() {
 
 	// Google Gemini configuration
 	if apiKey := os.Getenv("GEMINI_API_KEY"); apiKey != "" {
-		viper.SetDefault("providers.gemini.apiKey", apiKey)
 		viper.SetDefault("agents.coder.model", models.Gemini25)
 		viper.SetDefault("agents.task.model", models.Gemini25Flash)
 		viper.SetDefault("agents.title.model", models.Gemini25Flash)
@@ -232,7 +261,6 @@ func setProviderDefaults() {
 
 	// Groq configuration
 	if apiKey := os.Getenv("GROQ_API_KEY"); apiKey != "" {
-		viper.SetDefault("providers.groq.apiKey", apiKey)
 		viper.SetDefault("agents.coder.model", models.QWENQwq)
 		viper.SetDefault("agents.task.model", models.QWENQwq)
 		viper.SetDefault("agents.title.model", models.QWENQwq)
@@ -244,6 +272,15 @@ func setProviderDefaults() {
 		viper.SetDefault("agents.coder.model", models.BedrockClaude37Sonnet)
 		viper.SetDefault("agents.task.model", models.BedrockClaude37Sonnet)
 		viper.SetDefault("agents.title.model", models.BedrockClaude37Sonnet)
+		return
+	}
+
+	if os.Getenv("AZURE_OPENAI_ENDPOINT") != "" {
+		// api-key may be empty when using Entra ID credentials – that's okay
+		viper.SetDefault("providers.azure.apiKey", os.Getenv("AZURE_OPENAI_API_KEY"))
+		viper.SetDefault("agents.coder.model", models.AzureGPT41)
+		viper.SetDefault("agents.task.model", models.AzureGPT41Mini)
+		viper.SetDefault("agents.title.model", models.AzureGPT41Mini)
 		return
 	}
 }
@@ -312,60 +349,33 @@ func applyDefaultValues() {
 	}
 }
 
-// Validate checks if the configuration is valid and applies defaults where needed.
 // It validates model IDs and providers, ensuring they are supported.
-func Validate() error {
-	if cfg == nil {
-		return fmt.Errorf("config not loaded")
+func validateAgent(cfg *Config, name AgentName, agent Agent) error {
+	// Check if model exists
+	model, modelExists := models.SupportedModels[agent.Model]
+	if !modelExists {
+		logging.Warn("unsupported model configured, reverting to default",
+			"agent", name,
+			"configured_model", agent.Model)
+
+		// Set default model based on available providers
+		if setDefaultModelForAgent(name) {
+			logging.Info("set default model for agent", "agent", name, "model", cfg.Agents[name].Model)
+		} else {
+			return fmt.Errorf("no valid provider available for agent %s", name)
+		}
+		return nil
 	}
 
-	// Validate agent models
-	for name, agent := range cfg.Agents {
-		// Check if model exists
-		model, modelExists := models.SupportedModels[agent.Model]
-		if !modelExists {
-			logging.Warn("unsupported model configured, reverting to default",
-				"agent", name,
-				"configured_model", agent.Model)
+	// Check if provider for the model is configured
+	provider := model.Provider
+	providerCfg, providerExists := cfg.Providers[provider]
 
-			// Set default model based on available providers
-			if setDefaultModelForAgent(name) {
-				logging.Info("set default model for agent", "agent", name, "model", cfg.Agents[name].Model)
-			} else {
-				return fmt.Errorf("no valid provider available for agent %s", name)
-			}
-			continue
-		}
-
-		// Check if provider for the model is configured
-		provider := model.Provider
-		providerCfg, providerExists := cfg.Providers[provider]
-
-		if !providerExists {
-			// Provider not configured, check if we have environment variables
-			apiKey := getProviderAPIKey(provider)
-			if apiKey == "" {
-				logging.Warn("provider not configured for model, reverting to default",
-					"agent", name,
-					"model", agent.Model,
-					"provider", provider)
-
-				// Set default model based on available providers
-				if setDefaultModelForAgent(name) {
-					logging.Info("set default model for agent", "agent", name, "model", cfg.Agents[name].Model)
-				} else {
-					return fmt.Errorf("no valid provider available for agent %s", name)
-				}
-			} else {
-				// Add provider with API key from environment
-				cfg.Providers[provider] = Provider{
-					APIKey: apiKey,
-				}
-				logging.Info("added provider from environment", "provider", provider)
-			}
-		} else if providerCfg.Disabled || providerCfg.APIKey == "" {
-			// Provider is disabled or has no API key
-			logging.Warn("provider is disabled or has no API key, reverting to default",
+	if !providerExists {
+		// Provider not configured, check if we have environment variables
+		apiKey := getProviderAPIKey(provider)
+		if apiKey == "" {
+			logging.Warn("provider not configured for model, reverting to default",
 				"agent", name,
 				"model", agent.Model,
 				"provider", provider)
@@ -376,75 +386,110 @@ func Validate() error {
 			} else {
 				return fmt.Errorf("no valid provider available for agent %s", name)
 			}
-		}
-
-		// Validate max tokens
-		if agent.MaxTokens <= 0 {
-			logging.Warn("invalid max tokens, setting to default",
-				"agent", name,
-				"model", agent.Model,
-				"max_tokens", agent.MaxTokens)
-
-			// Update the agent with default max tokens
-			updatedAgent := cfg.Agents[name]
-			if model.DefaultMaxTokens > 0 {
-				updatedAgent.MaxTokens = model.DefaultMaxTokens
-			} else {
-				updatedAgent.MaxTokens = 4096 // Fallback default
+		} else {
+			// Add provider with API key from environment
+			cfg.Providers[provider] = Provider{
+				APIKey: apiKey,
 			}
-			cfg.Agents[name] = updatedAgent
-		} else if model.ContextWindow > 0 && agent.MaxTokens > model.ContextWindow/2 {
-			// Ensure max tokens doesn't exceed half the context window (reasonable limit)
-			logging.Warn("max tokens exceeds half the context window, adjusting",
-				"agent", name,
-				"model", agent.Model,
-				"max_tokens", agent.MaxTokens,
-				"context_window", model.ContextWindow)
-
-			// Update the agent with adjusted max tokens
-			updatedAgent := cfg.Agents[name]
-			updatedAgent.MaxTokens = model.ContextWindow / 2
-			cfg.Agents[name] = updatedAgent
+			logging.Info("added provider from environment", "provider", provider)
 		}
+	} else if providerCfg.Disabled || providerCfg.APIKey == "" {
+		// Provider is disabled or has no API key
+		logging.Warn("provider is disabled or has no API key, reverting to default",
+			"agent", name,
+			"model", agent.Model,
+			"provider", provider)
 
-		// Validate reasoning effort for models that support reasoning
-		if model.CanReason && provider == models.ProviderOpenAI {
-			if agent.ReasoningEffort == "" {
-				// Set default reasoning effort for models that support it
-				logging.Info("setting default reasoning effort for model that supports reasoning",
+		// Set default model based on available providers
+		if setDefaultModelForAgent(name) {
+			logging.Info("set default model for agent", "agent", name, "model", cfg.Agents[name].Model)
+		} else {
+			return fmt.Errorf("no valid provider available for agent %s", name)
+		}
+	}
+
+	// Validate max tokens
+	if agent.MaxTokens <= 0 {
+		logging.Warn("invalid max tokens, setting to default",
+			"agent", name,
+			"model", agent.Model,
+			"max_tokens", agent.MaxTokens)
+
+		// Update the agent with default max tokens
+		updatedAgent := cfg.Agents[name]
+		if model.DefaultMaxTokens > 0 {
+			updatedAgent.MaxTokens = model.DefaultMaxTokens
+		} else {
+			updatedAgent.MaxTokens = MaxTokensFallbackDefault
+		}
+		cfg.Agents[name] = updatedAgent
+	} else if model.ContextWindow > 0 && agent.MaxTokens > model.ContextWindow/2 {
+		// Ensure max tokens doesn't exceed half the context window (reasonable limit)
+		logging.Warn("max tokens exceeds half the context window, adjusting",
+			"agent", name,
+			"model", agent.Model,
+			"max_tokens", agent.MaxTokens,
+			"context_window", model.ContextWindow)
+
+		// Update the agent with adjusted max tokens
+		updatedAgent := cfg.Agents[name]
+		updatedAgent.MaxTokens = model.ContextWindow / 2
+		cfg.Agents[name] = updatedAgent
+	}
+
+	// Validate reasoning effort for models that support reasoning
+	if model.CanReason && provider == models.ProviderOpenAI {
+		if agent.ReasoningEffort == "" {
+			// Set default reasoning effort for models that support it
+			logging.Info("setting default reasoning effort for model that supports reasoning",
+				"agent", name,
+				"model", agent.Model)
+
+			// Update the agent with default reasoning effort
+			updatedAgent := cfg.Agents[name]
+			updatedAgent.ReasoningEffort = "medium"
+			cfg.Agents[name] = updatedAgent
+		} else {
+			// Check if reasoning effort is valid (low, medium, high)
+			effort := strings.ToLower(agent.ReasoningEffort)
+			if effort != "low" && effort != "medium" && effort != "high" {
+				logging.Warn("invalid reasoning effort, setting to medium",
 					"agent", name,
-					"model", agent.Model)
+					"model", agent.Model,
+					"reasoning_effort", agent.ReasoningEffort)
 
-				// Update the agent with default reasoning effort
+				// Update the agent with valid reasoning effort
 				updatedAgent := cfg.Agents[name]
 				updatedAgent.ReasoningEffort = "medium"
 				cfg.Agents[name] = updatedAgent
-			} else {
-				// Check if reasoning effort is valid (low, medium, high)
-				effort := strings.ToLower(agent.ReasoningEffort)
-				if effort != "low" && effort != "medium" && effort != "high" {
-					logging.Warn("invalid reasoning effort, setting to medium",
-						"agent", name,
-						"model", agent.Model,
-						"reasoning_effort", agent.ReasoningEffort)
-
-					// Update the agent with valid reasoning effort
-					updatedAgent := cfg.Agents[name]
-					updatedAgent.ReasoningEffort = "medium"
-					cfg.Agents[name] = updatedAgent
-				}
 			}
-		} else if !model.CanReason && agent.ReasoningEffort != "" {
-			// Model doesn't support reasoning but reasoning effort is set
-			logging.Warn("model doesn't support reasoning but reasoning effort is set, ignoring",
-				"agent", name,
-				"model", agent.Model,
-				"reasoning_effort", agent.ReasoningEffort)
+		}
+	} else if !model.CanReason && agent.ReasoningEffort != "" {
+		// Model doesn't support reasoning but reasoning effort is set
+		logging.Warn("model doesn't support reasoning but reasoning effort is set, ignoring",
+			"agent", name,
+			"model", agent.Model,
+			"reasoning_effort", agent.ReasoningEffort)
 
-			// Update the agent to remove reasoning effort
-			updatedAgent := cfg.Agents[name]
-			updatedAgent.ReasoningEffort = ""
-			cfg.Agents[name] = updatedAgent
+		// Update the agent to remove reasoning effort
+		updatedAgent := cfg.Agents[name]
+		updatedAgent.ReasoningEffort = ""
+		cfg.Agents[name] = updatedAgent
+	}
+
+	return nil
+}
+
+// Validate checks if the configuration is valid and applies defaults where needed.
+func Validate() error {
+	if cfg == nil {
+		return fmt.Errorf("config not loaded")
+	}
+
+	// Validate agent models
+	for name, agent := range cfg.Agents {
+		if err := validateAgent(cfg, name, agent); err != nil {
+			return err
 		}
 	}
 
@@ -480,6 +525,8 @@ func getProviderAPIKey(provider models.ModelProvider) string {
 		return os.Getenv("GEMINI_API_KEY")
 	case models.ProviderGROQ:
 		return os.Getenv("GROQ_API_KEY")
+	case models.ProviderAzure:
+		return os.Getenv("AZURE_OPENAI_API_KEY")
 	case models.ProviderBedrock:
 		if hasAWSCredentials() {
 			return "aws-credentials-available"
@@ -591,4 +638,37 @@ func WorkingDirectory() string {
 		panic("config not loaded")
 	}
 	return cfg.WorkingDir
+}
+
+func UpdateAgentModel(agentName AgentName, modelID models.ModelID) error {
+	if cfg == nil {
+		panic("config not loaded")
+	}
+
+	existingAgentCfg := cfg.Agents[agentName]
+
+	model, ok := models.SupportedModels[modelID]
+	if !ok {
+		return fmt.Errorf("model %s not supported", modelID)
+	}
+
+	maxTokens := existingAgentCfg.MaxTokens
+	if model.DefaultMaxTokens > 0 {
+		maxTokens = model.DefaultMaxTokens
+	}
+
+	newAgentCfg := Agent{
+		Model:           modelID,
+		MaxTokens:       maxTokens,
+		ReasoningEffort: existingAgentCfg.ReasoningEffort,
+	}
+	cfg.Agents[agentName] = newAgentCfg
+
+	if err := validateAgent(cfg, agentName, newAgentCfg); err != nil {
+		// revert config update on failure
+		cfg.Agents[agentName] = existingAgentCfg
+		return fmt.Errorf("failed to update agent model: %w", err)
+	}
+
+	return nil
 }

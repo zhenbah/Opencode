@@ -4,24 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 
 	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/opencode-ai/opencode/internal/llm/models"
+	"github.com/opencode-ai/opencode/internal/logging"
 )
-
-// contextFiles is a list of potential context files to check for
-var contextFiles = []string{
-	".github/copilot-instructions.md",
-	".cursorrules",
-	"CLAUDE.md",
-	"CLAUDE.local.md",
-	"opencode.md",
-	"opencode.local.md",
-	"OpenCode.md",
-	"OpenCode.local.md",
-	"OPENCODE.md",
-	"OPENCODE.local.md",
-}
 
 func GetAgentPrompt(agentName config.AgentName, provider models.ModelProvider) string {
 	basePrompt := ""
@@ -38,26 +27,109 @@ func GetAgentPrompt(agentName config.AgentName, provider models.ModelProvider) s
 
 	if agentName == config.AgentCoder || agentName == config.AgentTask {
 		// Add context from project-specific instruction files if they exist
-		contextContent := getContextFromFiles()
+		contextContent := getContextFromPaths()
+		logging.Debug("Context content", "Context", contextContent)
 		if contextContent != "" {
-			return fmt.Sprintf("%s\n\n# Project-Specific Context\n%s", basePrompt, contextContent)
+			return fmt.Sprintf("%s\n\n# Project-Specific Context\n Make sure to follow the instructions in the context below\n%s", basePrompt, contextContent)
 		}
 	}
 	return basePrompt
 }
 
-// getContextFromFiles checks for the existence of context files and returns their content
-func getContextFromFiles() string {
-	workDir := config.WorkingDirectory()
-	var contextContent string
+var (
+	onceContext    sync.Once
+	contextContent string
+)
 
-	for _, file := range contextFiles {
-		filePath := filepath.Join(workDir, file)
-		content, err := os.ReadFile(filePath)
-		if err == nil {
-			contextContent += fmt.Sprintf("\n%s\n", string(content))
-		}
-	}
+func getContextFromPaths() string {
+	onceContext.Do(func() {
+		var (
+			cfg          = config.Get()
+			workDir      = cfg.WorkingDir
+			contextPaths = cfg.ContextPaths
+		)
+
+		contextContent = processContextPaths(workDir, contextPaths)
+	})
 
 	return contextContent
+}
+
+func processContextPaths(workDir string, paths []string) string {
+	var (
+		wg       sync.WaitGroup
+		resultCh = make(chan string)
+	)
+
+	// Track processed files to avoid duplicates
+	processedFiles := make(map[string]bool)
+	var processedMutex sync.Mutex
+
+	for _, path := range paths {
+		wg.Add(1)
+		go func(p string) {
+			defer wg.Done()
+
+			if strings.HasSuffix(p, "/") {
+				filepath.WalkDir(filepath.Join(workDir, p), func(path string, d os.DirEntry, err error) error {
+					if err != nil {
+						return err
+					}
+					if !d.IsDir() {
+						// Check if we've already processed this file (case-insensitive)
+						processedMutex.Lock()
+						lowerPath := strings.ToLower(path)
+						if !processedFiles[lowerPath] {
+							processedFiles[lowerPath] = true
+							processedMutex.Unlock()
+
+							if result := processFile(path); result != "" {
+								resultCh <- result
+							}
+						} else {
+							processedMutex.Unlock()
+						}
+					}
+					return nil
+				})
+			} else {
+				fullPath := filepath.Join(workDir, p)
+
+				// Check if we've already processed this file (case-insensitive)
+				processedMutex.Lock()
+				lowerPath := strings.ToLower(fullPath)
+				if !processedFiles[lowerPath] {
+					processedFiles[lowerPath] = true
+					processedMutex.Unlock()
+
+					result := processFile(fullPath)
+					if result != "" {
+						resultCh <- result
+					}
+				} else {
+					processedMutex.Unlock()
+				}
+			}
+		}(path)
+	}
+
+	go func() {
+		wg.Wait()
+		close(resultCh)
+	}()
+
+	results := make([]string, 0)
+	for result := range resultCh {
+		results = append(results, result)
+	}
+
+	return strings.Join(results, "\n")
+}
+
+func processFile(filePath string) string {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return ""
+	}
+	return "# From:" + filePath + "\n" + string(content)
 }

@@ -77,6 +77,27 @@ func generateSchema() map[string]any {
 		"default":     false,
 	}
 
+	schema["properties"].(map[string]any)["contextPaths"] = map[string]any{
+		"type":        "array",
+		"description": "Context paths for the application",
+		"items": map[string]any{
+			"type": "string",
+		},
+		"default": []string{
+			".github/copilot-instructions.md",
+			".cursorrules",
+			".cursor/rules/",
+			"CLAUDE.md",
+			"CLAUDE.local.md",
+			"opencode.md",
+			"opencode.local.md",
+			"OpenCode.md",
+			"OpenCode.local.md",
+			"OPENCODE.md",
+			"OPENCODE.local.md",
+		},
+	}
+
 	// Add MCP servers
 	schema["properties"].(map[string]any)["mcpServers"] = map[string]any{
 		"type":        "object",
@@ -153,6 +174,7 @@ func generateSchema() map[string]any {
 		string(models.ProviderGemini),
 		string(models.ProviderGROQ),
 		string(models.ProviderBedrock),
+		string(models.ProviderAzure),
 	}
 
 	providerSchema["additionalProperties"].(map[string]any)["properties"].(map[string]any)["provider"] = map[string]any{
@@ -259,4 +281,3 @@ func generateSchema() map[string]any {
 
 	return schema
 }
-

@@ -54,20 +54,6 @@ func newGeminiClient(opts providerClientOptions) GeminiClient {
 
 func (g *geminiClient) convertMessages(messages []message.Message) []*genai.Content {
 	var history []*genai.Content
-
-	// Add system message first
-	fmt.Println(g.providerOptions.systemMessage)
-	history = append(history, &genai.Content{
-		Parts: []genai.Part{genai.Text(g.providerOptions.systemMessage)},
-		Role:  "user",
-	})
-
-	// Add a system response to acknowledge the system message
-	history = append(history, &genai.Content{
-		Parts: []genai.Part{genai.Text("I'll help you with that.")},
-		Role:  "model",
-	})
-
 	for _, msg := range messages {
 		switch msg.Role {
 		case message.User:
@@ -138,7 +124,8 @@ func (g *geminiClient) convertMessages(messages []message.Message) []*genai.Cont
 }
 
 func (g *geminiClient) convertTools(tools []tools.BaseTool) []*genai.Tool {
-	geminiTools := make([]*genai.Tool, 0, len(tools))
+	geminiTool := &genai.Tool{}
+	geminiTool.FunctionDeclarations = make([]*genai.FunctionDeclaration, 0, len(tools))
 
 	for _, tool := range tools {
 		info := tool.Info()
@@ -152,23 +139,18 @@ func (g *geminiClient) convertTools(tools []tools.BaseTool) []*genai.Tool {
 			},
 		}
 
-		geminiTools = append(geminiTools, &genai.Tool{
-			FunctionDeclarations: []*genai.FunctionDeclaration{declaration},
-		})
+		geminiTool.FunctionDeclarations = append(geminiTool.FunctionDeclarations, declaration)
 	}
 
-	return geminiTools
+	return []*genai.Tool{geminiTool}
 }
 
 func (g *geminiClient) finishReason(reason genai.FinishReason) message.FinishReason {
-	reasonStr := reason.String()
 	switch {
-	case reasonStr == "STOP":
+	case reason == genai.FinishReasonStop:
 		return message.FinishReasonEndTurn
-	case reasonStr == "MAX_TOKENS":
+	case reason == genai.FinishReasonMaxTokens:
 		return message.FinishReasonMaxTokens
-	case strings.Contains(reasonStr, "FUNCTION") || strings.Contains(reasonStr, "TOOL"):
-		return message.FinishReasonToolUse
 	default:
 		return message.FinishReasonUnknown
 	}
@@ -177,7 +159,11 @@ func (g *geminiClient) finishReason(reason genai.FinishReason) message.FinishRea
 func (g *geminiClient) send(ctx context.Context, messages []message.Message, tools []tools.BaseTool) (*ProviderResponse, error) {
 	model := g.client.GenerativeModel(g.providerOptions.model.APIModel)
 	model.SetMaxOutputTokens(int32(g.providerOptions.maxTokens))
-
+	model.SystemInstruction = &genai.Content{
+		Parts: []genai.Part{
+			genai.Text(g.providerOptions.systemMessage),
+		},
+	}
 	// Convert tools
 	if len(tools) > 0 {
 		model.Tools = g.convertTools(tools)
@@ -195,19 +181,13 @@ func (g *geminiClient) send(ctx context.Context, messages []message.Message, too
 	attempts := 0
 	for {
 		attempts++
+		var toolCalls []message.ToolCall
 		chat := model.StartChat()
 		chat.History = geminiMessages[:len(geminiMessages)-1] // All but last message
 
 		lastMsg := geminiMessages[len(geminiMessages)-1]
-		var lastText string
-		for _, part := range lastMsg.Parts {
-			if text, ok := part.(genai.Text); ok {
-				lastText = string(text)
-				break
-			}
-		}
 
-		resp, err := chat.SendMessage(ctx, genai.Text(lastText))
+		resp, err := chat.SendMessage(ctx, lastMsg.Parts...)
 		// If there is an error we are going to see if we can retry the call
 		if err != nil {
 			retry, after, retryErr := g.shouldRetry(attempts, err)
@@ -215,7 +195,7 @@ func (g *geminiClient) send(ctx context.Context, messages []message.Message, too
 				return nil, retryErr
 			}
 			if retry {
-				logging.WarnPersist("Retrying due to rate limit... attempt %d of %d", logging.PersistTimeArg, time.Millisecond*time.Duration(after+100))
+				logging.WarnPersist(fmt.Sprintf("Retrying due to rate limit... attempt %d of %d", attempts, maxRetries), logging.PersistTimeArg, time.Millisecond*time.Duration(after+100))
 				select {
 				case <-ctx.Done():
 					return nil, ctx.Err()
@@ -227,7 +207,6 @@ func (g *geminiClient) send(ctx context.Context, messages []message.Message, too
 		}
 
 		content := ""
-		var toolCalls []message.ToolCall
 
 		if len(resp.Candidates) > 0 && resp.Candidates[0].Content != nil {
 			for _, part := range resp.Candidates[0].Content.Parts {
@@ -238,20 +217,28 @@ func (g *geminiClient) send(ctx context.Context, messages []message.Message, too
 					id := "call_" + uuid.New().String()
 					args, _ := json.Marshal(p.Args)
 					toolCalls = append(toolCalls, message.ToolCall{
-						ID:    id,
-						Name:  p.Name,
-						Input: string(args),
-						Type:  "function",
+						ID:       id,
+						Name:     p.Name,
+						Input:    string(args),
+						Type:     "function",
+						Finished: true,
 					})
 				}
 			}
+		}
+		finishReason := message.FinishReasonEndTurn
+		if len(resp.Candidates) > 0 {
+			finishReason = g.finishReason(resp.Candidates[0].FinishReason)
+		}
+		if len(toolCalls) > 0 {
+			finishReason = message.FinishReasonToolUse
 		}
 
 		return &ProviderResponse{
 			Content:      content,
 			ToolCalls:    toolCalls,
 			Usage:        g.usage(resp),
-			FinishReason: g.finishReason(resp.Candidates[0].FinishReason),
+			FinishReason: finishReason,
 		}, nil
 	}
 }
@@ -259,7 +246,11 @@ func (g *geminiClient) send(ctx context.Context, messages []message.Message, too
 func (g *geminiClient) stream(ctx context.Context, messages []message.Message, tools []tools.BaseTool) <-chan ProviderEvent {
 	model := g.client.GenerativeModel(g.providerOptions.model.APIModel)
 	model.SetMaxOutputTokens(int32(g.providerOptions.maxTokens))
-
+	model.SystemInstruction = &genai.Content{
+		Parts: []genai.Part{
+			genai.Text(g.providerOptions.systemMessage),
+		},
+	}
 	// Convert tools
 	if len(tools) > 0 {
 		model.Tools = g.convertTools(tools)
@@ -283,18 +274,10 @@ func (g *geminiClient) stream(ctx context.Context, messages []message.Message, t
 		for {
 			attempts++
 			chat := model.StartChat()
-			chat.History = geminiMessages[:len(geminiMessages)-1] // All but last message
-
+			chat.History = geminiMessages[:len(geminiMessages)-1]
 			lastMsg := geminiMessages[len(geminiMessages)-1]
-			var lastText string
-			for _, part := range lastMsg.Parts {
-				if text, ok := part.(genai.Text); ok {
-					lastText = string(text)
-					break
-				}
-			}
 
-			iter := chat.SendMessageStream(ctx, genai.Text(lastText))
+			iter := chat.SendMessageStream(ctx, lastMsg.Parts...)
 
 			currentContent := ""
 			toolCalls := []message.ToolCall{}
@@ -314,7 +297,7 @@ func (g *geminiClient) stream(ctx context.Context, messages []message.Message, t
 						return
 					}
 					if retry {
-						logging.WarnPersist("Retrying due to rate limit... attempt %d of %d", logging.PersistTimeArg, time.Millisecond*time.Duration(after+100))
+						logging.WarnPersist(fmt.Sprintf("Retrying due to rate limit... attempt %d of %d", attempts, maxRetries), logging.PersistTimeArg, time.Millisecond*time.Duration(after+100))
 						select {
 						case <-ctx.Done():
 							if ctx.Err() != nil {
@@ -337,23 +320,23 @@ func (g *geminiClient) stream(ctx context.Context, messages []message.Message, t
 					for _, part := range resp.Candidates[0].Content.Parts {
 						switch p := part.(type) {
 						case genai.Text:
-							newText := string(p)
-							delta := newText[len(currentContent):]
+							delta := string(p)
 							if delta != "" {
 								eventChan <- ProviderEvent{
 									Type:    EventContentDelta,
 									Content: delta,
 								}
-								currentContent = newText
+								currentContent += delta
 							}
 						case genai.FunctionCall:
 							id := "call_" + uuid.New().String()
 							args, _ := json.Marshal(p.Args)
 							newCall := message.ToolCall{
-								ID:    id,
-								Name:  p.Name,
-								Input: string(args),
-								Type:  "function",
+								ID:       id,
+								Name:     p.Name,
+								Input:    string(args),
+								Type:     "function",
+								Finished: true,
 							}
 
 							isNew := true
@@ -375,37 +358,26 @@ func (g *geminiClient) stream(ctx context.Context, messages []message.Message, t
 			eventChan <- ProviderEvent{Type: EventContentStop}
 
 			if finalResp != nil {
+
+				finishReason := message.FinishReasonEndTurn
+				if len(finalResp.Candidates) > 0 {
+					finishReason = g.finishReason(finalResp.Candidates[0].FinishReason)
+				}
+				if len(toolCalls) > 0 {
+					finishReason = message.FinishReasonToolUse
+				}
 				eventChan <- ProviderEvent{
 					Type: EventComplete,
 					Response: &ProviderResponse{
 						Content:      currentContent,
 						ToolCalls:    toolCalls,
 						Usage:        g.usage(finalResp),
-						FinishReason: g.finishReason(finalResp.Candidates[0].FinishReason),
+						FinishReason: finishReason,
 					},
 				}
 				return
 			}
 
-			// If we get here, we need to retry
-			if attempts > maxRetries {
-				eventChan <- ProviderEvent{
-					Type:  EventError,
-					Error: fmt.Errorf("maximum retry attempts reached: %d retries", maxRetries),
-				}
-				return
-			}
-
-			// Wait before retrying
-			select {
-			case <-ctx.Done():
-				if ctx.Err() != nil {
-					eventChan <- ProviderEvent{Type: EventError, Error: ctx.Err()}
-				}
-				return
-			case <-time.After(time.Duration(2000*(1<<(attempts-1))) * time.Millisecond):
-				continue
-			}
 		}
 	}()
 

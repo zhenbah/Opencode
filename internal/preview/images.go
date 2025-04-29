@@ -19,7 +19,6 @@ func ValidateFileSize(filePath string, sizeLimit int64) (bool, error) {
 
 	if fileInfo.Size() > sizeLimit {
 
-		fmt.Sprintln("yessss")
 		return true, nil
 	}
 
