@@ -2,6 +2,7 @@ package chat
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -9,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/filepicker"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/opencode-ai/opencode/internal/logging"
@@ -43,15 +44,22 @@ var backward = key.NewBinding(
 var openFilepiceker = key.NewBinding(
 	key.WithKeys("ctrl+f"),
 )
+var returnKey = key.NewBinding(
+	key.WithKeys("esc"),
+	key.WithHelp("esc", "close"),
+)
 
 type filepickerCmp struct {
-	width       int
-	height      int
-	filepicker  filepicker.Model
-	cursor      int
-	err         error
-	cursorChain stack
-	imageString string
+	basePath     string
+	width        int
+	height       int
+	cursor       int
+	err          error
+	cursorChain  stack
+	viewport     viewport.Model
+	dirs         []os.DirEntry
+	cwd          []string
+	selectedFile string
 }
 type stack []int
 
@@ -71,59 +79,107 @@ type AttachmentAddedMsg struct {
 }
 
 func (f *filepickerCmp) Init() tea.Cmd {
-	return f.filepicker.Init()
+	return nil
 }
 
 func (f *filepickerCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		f.width = 80
-		f.height = 10
+		f.width = 60
+		f.height = 20
+		f.viewport.Width = 80
+		f.viewport.Height = 23
+		f.cursor = 0
+		f.getCurrentFileBelowCursor()
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, down):
-			f.cursor++
-			f.getCurrentFileBelowCursor()
+			if f.cursor < len(f.dirs)-1 {
+				f.cursor++
+				f.getCurrentFileBelowCursor()
+			}
 		case key.Matches(msg, up):
-			f.cursor--
+			if f.cursor > 0 {
+				f.cursor--
+				f.getCurrentFileBelowCursor()
+			}
 		case key.Matches(msg, enter):
-			if didSelect, _ := f.filepicker.DidSelectFile(msg); !didSelect {
+			if f.dirs[f.cursor].IsDir() {
 				f.cursorChain.Push(f.cursor)
+				f.cwd = append(f.cwd, f.dirs[f.cursor].Name())
+				f.cursor = 0
+			} else {
+				return f.addAttachmentToMessage()
+			}
+		case key.Matches(msg, returnKey):
+			f.cursorChain = make(stack, 0)
+			f.cursor = 0
+		case key.Matches(msg, forward):
+			if f.dirs[f.cursor].IsDir() {
+				f.cwd = append(f.cwd, f.dirs[f.cursor].Name())
+				f.cursorChain = f.cursorChain.Push(f.cursor)
+				f.dirs = f.getCWDFiles()
 				f.cursor = 0
 			}
-		case key.Matches(msg, forward):
-			f.cursor = 0
 		case key.Matches(msg, backward):
 			if len(f.cursorChain) != 0 {
 				f.cursorChain, f.cursor = f.cursorChain.Pop()
+				f.cwd = f.cwd[:len(f.cwd)-1]
+				f.dirs = readDir(f.basePath+strings.Join(f.cwd, "/"), false)
+				if f.dirs[f.cursor].IsDir() {
+					f.dirs = f.getCWDFiles()
+				}
 			}
 		case key.Matches(msg, openFilepiceker):
+			f.dirs = f.getCWDFiles()
 			f.cursor = 0
+			f.getCurrentFileBelowCursor()
 		}
 	}
-	var cmd tea.Cmd
-	f.filepicker, cmd = f.filepicker.Update(msg)
+	return f, nil
+}
 
-	if didSelect, path := f.filepicker.DidSelectFile(msg); didSelect {
-		content, err := os.ReadFile(path)
+func (f *filepickerCmp) addAttachmentToMessage() (tea.Model, tea.Cmd) {
+
+	var cmd tea.Cmd
+
+	if isExtSupported(f.dirs[f.cursor].Name()) {
+		f.selectedFile = f.dirs[f.cursor].Name()
+		selectedFilePath := f.basePath + strings.Join(f.cwd, "/") + "/" + f.selectedFile
+		isvalid, err := preview.ValidateFileSize(selectedFilePath, int64(5*1024*1024))
 		if err != nil {
+			logging.ErrorPersist("unable to read the image")
+			return f, nil
+		}
+		if !isvalid {
+			logging.ErrorPersist("file too large, max 5MB")
+			return f, nil
+		}
+
+		content, err := os.ReadFile(f.basePath + strings.Join(f.cwd, "/") + "/" + f.selectedFile)
+		if err != nil {
+			f.selectedFile = ""
 			f.err = errors.New("unable to read the selected file")
 			return f, tea.Batch(cmd, clearErrorAfter(2*time.Second))
 		}
 
 		mimeBufferSize := min(512, len(content))
 		mimeType := http.DetectContentType(content[:mimeBufferSize])
-		fileName := filepath.Base(path)
-		attachment := message.Attachment{FilePath: path, FileName: fileName, MimeType: mimeType, Content: content}
+		fileName := f.selectedFile
+		attachment := message.Attachment{FilePath: selectedFilePath, FileName: fileName, MimeType: mimeType, Content: content}
+		f.selectedFile = ""
 		return f, util.CmdHandler(AttachmentAddedMsg{attachment})
 	}
-
-	if didSelect, path := f.filepicker.DidSelectDisabledFile(msg); didSelect {
-		f.err = errors.New(path + " is not valid.")
+	if !strings.HasSuffix(f.selectedFile, ".png") &&
+		!strings.HasSuffix(f.selectedFile, ".jpg") &&
+		!strings.HasSuffix(f.selectedFile, ".jpeg") &&
+		!strings.HasSuffix(f.selectedFile, ".webp") {
+		f.err = errors.New(f.selectedFile + " is not valid.")
+		f.selectedFile = ""
 		return f, tea.Batch(cmd, clearErrorAfter(2*time.Second))
-	}
 
-	return f, cmd
+	}
+	return f, nil
 }
 
 func clearErrorAfter(t time.Duration) tea.Cmd {
@@ -133,34 +189,83 @@ func clearErrorAfter(t time.Duration) tea.Cmd {
 }
 
 func (f *filepickerCmp) View() string {
-	var s strings.Builder
+	const maxVisibleDirs = 20
+	const maxWidth = 80
 
-	headerStyle := styles.BaseStyle.
+	adjustedWidth := maxWidth
+	for _, file := range f.dirs {
+		if len(file.Name()) > adjustedWidth-4 { // Account for padding
+			adjustedWidth = len(file.Name()) + 4
+		}
+	}
+	adjustedWidth = max(30, min(adjustedWidth, f.width-15))
+
+	files := make([]string, 0, maxVisibleDirs)
+	startIdx := 0
+
+	if len(f.dirs) > maxVisibleDirs {
+		halfVisible := maxVisibleDirs / 2
+		if f.cursor >= halfVisible && f.cursor < len(f.dirs)-halfVisible {
+			startIdx = f.cursor - halfVisible
+		} else if f.cursor >= len(f.dirs)-halfVisible {
+			startIdx = len(f.dirs) - maxVisibleDirs
+		}
+	}
+
+	endIdx := min(startIdx+maxVisibleDirs, len(f.dirs))
+
+	for i := startIdx; i < endIdx; i++ {
+		file := f.dirs[i]
+		itemStyle := styles.BaseStyle.Width(adjustedWidth)
+
+		if i == f.cursor {
+			itemStyle = itemStyle.
+				Background(styles.PrimaryColor).
+				Foreground(styles.Background).
+				Bold(true)
+		}
+		filename := file.Name()
+
+		if len(filename) > adjustedWidth-4 {
+			filename = filename[:adjustedWidth-7] + "..."
+		}
+		files = append(files, itemStyle.Padding(0, 1).Render(filename))
+	}
+
+	// Pad to always show exactly 21 lines
+	for len(files) < maxVisibleDirs {
+		files = append(files, styles.BaseStyle.Width(adjustedWidth).Render(""))
+	}
+
+	title := styles.BaseStyle.
+		Foreground(styles.PrimaryColor).
 		Bold(true).
-		Foreground(styles.PrimaryColor)
-	s.WriteString("\n  ")
-	if f.err != nil {
-		s.WriteString(f.filepicker.Styles.DisabledFile.Render(f.err.Error()))
-	}
-	s.WriteString(headerStyle.Render("Pick a file:"))
-	s.WriteString("\n\n" + f.filepicker.View() + "\n")
+		Width(adjustedWidth).
+		Padding(0, 1).
+		Render("Pick a file")
 
-	if f.imageString != "" {
-
-		return lipgloss.JoinVertical(lipgloss.Left, styles.BaseStyle.Padding(1).
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(styles.ForgroundDim).
-			Width(f.width).
-			BorderBackground(styles.Background).
-			Render(s.String()), f.imageString)
-	}
-
-	return styles.BaseStyle.Padding(1).
+	viewportstyle := lipgloss.NewStyle().
+		Width(f.viewport.Width-2).
+		Background(styles.Background).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(styles.ForgroundDim).
-		Width(f.width).
+		Padding(1, 1, 1, 1).
+		Render(f.viewport.View())
+
+	content := lipgloss.JoinVertical(
+		lipgloss.Left,
+		title,
+		styles.BaseStyle.Width(adjustedWidth).Render(""),
+		styles.BaseStyle.Width(adjustedWidth).Render(lipgloss.JoinVertical(lipgloss.Left, files...)),
+		styles.BaseStyle.Width(adjustedWidth).Render(""),
+	)
+
+	return lipgloss.JoinHorizontal(lipgloss.Center, styles.BaseStyle.Padding(1, 2).
+		Border(lipgloss.RoundedBorder()).
 		BorderBackground(styles.Background).
-		Render(s.String())
+		BorderForeground(styles.ForgroundDim).
+		Width(lipgloss.Width(content)+4).
+		Render(content), viewportstyle)
 }
 
 type FilepickerCmp interface {
@@ -168,60 +273,102 @@ type FilepickerCmp interface {
 }
 
 func NewFilepickerCmp() FilepickerCmp {
-	fp := filepicker.New()
-	fp.CurrentDirectory, _ = os.UserHomeDir()
-	fp.Height = 10
-	fp.AutoHeight = false
-	r := lipgloss.NewStyle()
-	fp.Styles = filepicker.Styles{
-		DisabledCursor:   r.Foreground(styles.Grey),
-		Symlink:          r.Foreground(lipgloss.Color("36")),
-		Directory:        r.Foreground(styles.Forground),
-		DisabledFile:     r.Foreground(styles.Grey),
-		DisabledSelected: r.Foreground(styles.Grey),
-		Permission:       r.Foreground(styles.Lavender),
-		Selected:         r.Foreground(styles.PrimaryColor).Bold(true),
+	homepath, err := os.UserHomeDir()
+	if err != nil {
+		logging.Error("error loading use files")
+		return nil
 	}
-	fp.ShowSize = false
-	fp.AllowedTypes = []string{".png", ".jpg", ".jpeg", ".webp"}
-	return &filepickerCmp{filepicker: fp, cursorChain: make(stack, 0)}
+
+	dirs := readDir(homepath, false)
+	viewport := viewport.New(0, 0)
+	return &filepickerCmp{basePath: homepath + "/", dirs: dirs, cursorChain: make(stack, 0), viewport: viewport}
 }
 
+func (f *filepickerCmp) getCWDFiles() []os.DirEntry {
+	dirs := readDir(f.basePath+strings.Join(f.cwd, "/"), false)
+	return dirs
+}
 func (f *filepickerCmp) getCurrentFileBelowCursor() {
-	dirs := readDir(f.filepicker.CurrentDirectory, f.filepicker.ShowHidden)
-	dir := dirs[f.cursor]
-	if !dir.IsDir() {
-		f.imageString = preview.PreviewImage(f.filepicker.CurrentDirectory+"/"+dir.Name(), 200, 100)
+	if len(f.dirs) == 0 || f.cursor < 0 || f.cursor >= len(f.dirs) {
+		logging.Error(fmt.Sprintf("Invalid cursor position. Dirs length: %d, Cursor: %d", len(f.dirs), f.cursor))
+		f.viewport.SetContent("Preview unavailable")
+		return
+	}
+
+	dir := f.dirs[f.cursor]
+	filename := dir.Name()
+	if !dir.IsDir() && isExtSupported(filename) {
+		fullPath := f.basePath + strings.Join(f.cwd, "/") + "/" + dir.Name()
+
+		go func() {
+			imageString, err := preview.ImagePreview(f.viewport.Width-4, fullPath)
+			if err != nil {
+				logging.ErrorPersist(err.Error())
+				f.viewport.SetContent("Preview unavailable")
+				return
+			}
+
+			f.viewport.SetContent(imageString)
+		}()
+	} else {
+		f.viewport.SetContent("Preview unavailable")
 	}
 }
 
 func readDir(path string, showHidden bool) []os.DirEntry {
-	dirEntries, err := os.ReadDir(path)
-	if err != nil {
-		logging.ErrorPersist("Error while selecting files", err)
-	}
+	logging.Info(fmt.Sprintf("Reading directory: %s", path))
 
-	sort.Slice(dirEntries, func(i, j int) bool {
-		if dirEntries[i].IsDir() == dirEntries[j].IsDir() {
-			return dirEntries[i].Name() < dirEntries[j].Name()
-		}
-		return dirEntries[i].IsDir()
-	})
+	entriesChan := make(chan []os.DirEntry, 1)
+	errChan := make(chan error, 1)
 
-	if showHidden {
-		return dirEntries
-	}
-	var sanitizedDirEntries []os.DirEntry
-	for _, dirEntry := range dirEntries {
-		isHidden, _ := IsHidden(dirEntry.Name())
-		if isHidden {
-			continue
+	go func() {
+		dirEntries, err := os.ReadDir(path)
+		if err != nil {
+			errChan <- err
+			return
 		}
-		sanitizedDirEntries = append(sanitizedDirEntries, dirEntry)
+		entriesChan <- dirEntries
+	}()
+
+	select {
+	case dirEntries := <-entriesChan:
+		sort.Slice(dirEntries, func(i, j int) bool {
+			if dirEntries[i].IsDir() == dirEntries[j].IsDir() {
+				return dirEntries[i].Name() < dirEntries[j].Name()
+			}
+			return dirEntries[i].IsDir()
+		})
+
+		if showHidden {
+			return dirEntries
+		}
+
+		var sanitizedDirEntries []os.DirEntry
+		for _, dirEntry := range dirEntries {
+			isHidden, _ := IsHidden(dirEntry.Name())
+			if !isHidden {
+				sanitizedDirEntries = append(sanitizedDirEntries, dirEntry)
+			}
+		}
+
+		return sanitizedDirEntries
+
+	case err := <-errChan:
+		logging.ErrorPersist(fmt.Sprintf("Error reading directory %s", path), err)
+		return []os.DirEntry{}
+
+	case <-time.After(5 * time.Second):
+		logging.ErrorPersist(fmt.Sprintf("Timeout reading directory %s", path), nil)
+		return []os.DirEntry{}
 	}
-	return sanitizedDirEntries
 }
 
 func IsHidden(file string) (bool, error) {
 	return strings.HasPrefix(file, "."), nil
+}
+
+func isExtSupported(path string) bool {
+
+	ext := strings.ToLower(filepath.Ext(path))
+	return (ext == ".jpg" || ext == ".jpeg" || ext == ".webp" || ext == ".png")
 }
