@@ -42,7 +42,7 @@ func (b *mcpTool) Info() tools.ToolInfo {
 }
 
 func runTool(ctx context.Context, c MCPClient, toolName string, input string) (tools.ToolResponse, error) {
-	defer c.Close()
+	defer c.Close() //nolint:errcheck
 	initRequest := mcp.InitializeRequest{}
 	initRequest.Params.ProtocolVersion = mcp.LATEST_PROTOCOL_VERSION
 	initRequest.Params.ClientInfo = mcp.Implementation{
@@ -158,7 +158,7 @@ func getTools(ctx context.Context, name string, m config.MCPServer, permissions 
 	for _, t := range tools.Tools {
 		stdioTools = append(stdioTools, NewMcpTool(name, t, permissions, m))
 	}
-	defer c.Close()
+	defer c.Close() //nolint:errcheck
 	return stdioTools
 }
 

@@ -29,8 +29,7 @@ to assist developers in writing, debugging, and understanding code directly from
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// If the help flag is set, show the help message
 		if cmd.Flag("help").Changed {
-			cmd.Help()
-			return nil
+			return cmd.Help()
 		}
 		if cmd.Flag("version").Changed {
 			fmt.Println(version.Version)

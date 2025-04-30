@@ -12,7 +12,6 @@ import (
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/bedrock"
 	"github.com/anthropics/anthropic-sdk-go/option"
-	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/opencode-ai/opencode/internal/llm/tools"
 	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/message"
@@ -194,11 +193,6 @@ func (a *anthropicClient) preparedMessages(messages []anthropic.MessageParam, to
 
 func (a *anthropicClient) send(ctx context.Context, messages []message.Message, tools []tools.BaseTool) (resposne *ProviderResponse, err error) {
 	preparedMessages := a.preparedMessages(a.convertMessages(messages), a.convertTools(tools))
-	cfg := config.Get()
-	if cfg.Debug {
-		// jsonData, _ := json.Marshal(preparedMessages)
-		// logging.Debug("Prepared messages", "messages", string(jsonData))
-	}
 	attempts := 0
 	for {
 		attempts++
@@ -241,11 +235,6 @@ func (a *anthropicClient) send(ctx context.Context, messages []message.Message, 
 
 func (a *anthropicClient) stream(ctx context.Context, messages []message.Message, tools []tools.BaseTool) <-chan ProviderEvent {
 	preparedMessages := a.preparedMessages(a.convertMessages(messages), a.convertTools(tools))
-	cfg := config.Get()
-	if cfg.Debug {
-		// jsonData, _ := json.Marshal(preparedMessages)
-		// logging.Debug("Prepared messages", "messages", string(jsonData))
-	}
 	attempts := 0
 	eventChan := make(chan ProviderEvent)
 	go func() {
@@ -268,9 +257,10 @@ func (a *anthropicClient) stream(ctx context.Context, messages []message.Message
 
 				switch event := event.AsAny().(type) {
 				case anthropic.ContentBlockStartEvent:
-					if event.ContentBlock.Type == "text" {
+					switch event.ContentBlock.Type {
+					case "text":
 						eventChan <- ProviderEvent{Type: EventContentStart}
-					} else if event.ContentBlock.Type == "tool_use" {
+					case "tool_use":
 						currentToolCallID = event.ContentBlock.ID
 						eventChan <- ProviderEvent{
 							Type: EventToolUseStart,

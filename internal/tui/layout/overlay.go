@@ -43,7 +43,7 @@ func PlaceOverlay(
 	fgHeight := len(fgLines)
 
 	if shadow {
-		var shadowbg string = ""
+		var shadowbg string
 		shadowchar := lipgloss.NewStyle().
 			Background(styles.BackgroundDarker).
 			Foreground(styles.Background).
