@@ -672,5 +672,16 @@ If there are Cursor rules (in .cursor/rules/ or .cursorrules) or Copilot rules (
 			)
 		},
 	})
+	
+	// Load custom commands
+	customCommands, err := dialog.LoadCustomCommands()
+	if err != nil {
+		logging.Warn("Failed to load custom commands", "error", err)
+	} else {
+		for _, cmd := range customCommands {
+			model.RegisterCommand(cmd)
+		}
+	}
+	
 	return model
 }
