@@ -60,13 +60,13 @@ func LoadCustomCommands() ([]Command, error) {
 
 		// Get the command ID from the file name without the .md extension
 		commandID := strings.TrimSuffix(info.Name(), filepath.Ext(info.Name()))
-		
+
 		// Get relative path from commands directory
 		relPath, err := filepath.Rel(commandsDir, path)
 		if err != nil {
 			return fmt.Errorf("failed to get relative path for %s: %w", path, err)
 		}
-		
+
 		// Create the command ID from the relative path
 		// Replace directory separators with colons
 		commandIDPath := strings.ReplaceAll(filepath.Dir(relPath), string(filepath.Separator), ":")
@@ -77,7 +77,7 @@ func LoadCustomCommands() ([]Command, error) {
 		// Create a command
 		command := Command{
 			ID:          CustomCommandPrefix + commandID,
-			Title:       commandID,
+			Title:       "User: " + commandID,
 			Description: fmt.Sprintf("Custom command from %s", relPath),
 			Handler: func(cmd Command) tea.Cmd {
 				return util.CmdHandler(CommandRunCustomMsg{
@@ -101,3 +101,4 @@ func LoadCustomCommands() ([]Command, error) {
 type CommandRunCustomMsg struct {
 	Content string
 }
+
