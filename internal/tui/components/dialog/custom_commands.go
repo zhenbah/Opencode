@@ -77,7 +77,7 @@ func LoadCustomCommands() ([]Command, error) {
 		// Create a command
 		command := Command{
 			ID:          CustomCommandPrefix + commandID,
-			Title:       "User: " + commandID,
+			Title:       CustomCommandPrefix + commandID,
 			Description: fmt.Sprintf("Custom command from %s", relPath),
 			Handler: func(cmd Command) tea.Cmd {
 				return util.CmdHandler(CommandRunCustomMsg{
@@ -101,4 +101,3 @@ func LoadCustomCommands() ([]Command, error) {
 type CommandRunCustomMsg struct {
 	Content string
 }
-
