@@ -58,6 +58,10 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return p, cmd
 		}
 	case dialog.CommandRunCustomMsg:
+		// Check if the agent is busy before executing custom commands
+		if p.app.CoderAgent.IsBusy() {
+			return p, util.ReportWarn("Agent is busy, please wait before executing a command...")
+		}
 		// Handle custom command execution
 		cmd := p.sendMessage(msg.Content)
 		if cmd != nil {
