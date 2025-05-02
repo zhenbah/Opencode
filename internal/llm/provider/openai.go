@@ -69,19 +69,17 @@ func (o *openaiClient) convertMessages(messages []message.Message) (openaiMessag
 	// Add system message first
 	openaiMessages = append(openaiMessages, openai.SystemMessage(o.providerOptions.systemMessage))
 
-	for i, msg := range messages {
+	for _, msg := range messages {
 		switch msg.Role {
 		case message.User:
 			var content []openai.ChatCompletionContentPartUnionParam
 			textBlock := openai.ChatCompletionContentPartTextParam{Text: msg.Content().String()}
 			content = append(content, openai.ChatCompletionContentPartUnionParam{OfText: &textBlock})
-			if i == len(messages)-1 {
-				for _, binaryContent := range msg.BinaryContent() {
-					imageURL := openai.ChatCompletionContentPartImageImageURLParam{URL: binaryContent.String(models.ProviderOpenAI)}
-					imageBlock := openai.ChatCompletionContentPartImageParam{ImageURL: imageURL}
+			for _, binaryContent := range msg.BinaryContent() {
+				imageURL := openai.ChatCompletionContentPartImageImageURLParam{URL: binaryContent.String(models.ProviderOpenAI)}
+				imageBlock := openai.ChatCompletionContentPartImageParam{ImageURL: imageURL}
 
-					content = append(content, openai.ChatCompletionContentPartUnionParam{OfImageURL: &imageBlock})
-				}
+				content = append(content, openai.ChatCompletionContentPartUnionParam{OfImageURL: &imageBlock})
 			}
 
 			openaiMessages = append(openaiMessages, openai.UserMessage(content))

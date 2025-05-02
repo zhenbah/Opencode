@@ -73,15 +73,12 @@ func (a *anthropicClient) convertMessages(messages []message.Message) (anthropic
 			}
 			var contentBlocks []anthropic.ContentBlockParamUnion
 			contentBlocks = append(contentBlocks, content)
-			if i == len(messages)-1 {
-				for _, binaryContent := range msg.BinaryContent() {
-					base64Image := binaryContent.String(models.ProviderAnthropic)
-					imageBlock := anthropic.NewImageBlockBase64(binaryContent.MIMEType, base64Image)
-					contentBlocks = append(contentBlocks, imageBlock)
-				}
-				anthropicMessages = append(anthropicMessages, anthropic.NewUserMessage(contentBlocks...))
-
+			for _, binaryContent := range msg.BinaryContent() {
+				base64Image := binaryContent.String(models.ProviderAnthropic)
+				imageBlock := anthropic.NewImageBlockBase64(binaryContent.MIMEType, base64Image)
+				contentBlocks = append(contentBlocks, imageBlock)
 			}
+			anthropicMessages = append(anthropicMessages, anthropic.NewUserMessage(contentBlocks...))
 
 		case message.Assistant:
 			blocks := []anthropic.ContentBlockParamUnion{}
@@ -218,7 +215,6 @@ func (a *anthropicClient) send(ctx context.Context, messages []message.Message, 
 			ctx,
 			preparedMessages,
 		)
-
 		// If there is an error we are going to see if we can retry the call
 		if err != nil {
 			logging.Error("Error in Anthropic API call", "error", err)
