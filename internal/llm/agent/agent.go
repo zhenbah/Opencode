@@ -116,7 +116,10 @@ func (a *agent) IsSessionBusy(sessionID string) bool {
 	return busy
 }
 
-func (a *agent) generateTitle(ctx context.Context, sessionID string, content string, attachmentParts []message.ContentPart) error {
+func (a *agent) generateTitle(ctx context.Context, sessionID string, content string) error {
+	if content == "" {
+		return nil
+	}
 	if a.titleProvider == nil {
 		return nil
 	}
@@ -125,7 +128,6 @@ func (a *agent) generateTitle(ctx context.Context, sessionID string, content str
 		return err
 	}
 	parts := []message.ContentPart{message.TextContent{Text: content}}
-	parts = append(parts, attachmentParts...)
 	response, err := a.titleProvider.SendMessages(
 		ctx,
 		[]message.Message{
@@ -176,7 +178,6 @@ func (a *agent) Run(ctx context.Context, sessionID string, content string, attac
 		var attachmentParts []message.ContentPart
 		for _, attachment := range attachments {
 			attachmentParts = append(attachmentParts, message.BinaryContent{Path: attachment.FilePath, MIMEType: attachment.MimeType, Data: attachment.Content})
-
 		}
 		result := a.processGeneration(genCtx, sessionID, content, attachmentParts)
 		if result.Err() != nil && !errors.Is(result.Err(), ErrRequestCancelled) && !errors.Is(result.Err(), context.Canceled) {
@@ -202,7 +203,7 @@ func (a *agent) processGeneration(ctx context.Context, sessionID, content string
 			defer logging.RecoverPanic("agent.Run", func() {
 				logging.ErrorPersist("panic while generating title")
 			})
-			titleErr := a.generateTitle(context.Background(), sessionID, content, attachmentParts)
+			titleErr := a.generateTitle(context.Background(), sessionID, content)
 			if titleErr != nil {
 				logging.ErrorPersist(fmt.Sprintf("failed to generate title: %v", titleErr))
 			}

@@ -121,7 +121,7 @@ type appModel struct {
 	initDialog     dialog.InitDialogCmp
 
 	showFilepicker bool
-	filepicker     chat.FilepickerCmp
+	filepicker     dialog.FilepickerCmp
 
 	showThemeDialog bool
 	themeDialog     dialog.ThemeDialog
@@ -195,7 +195,7 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, commandCmd)
 
 		filepicker, filepickerCmd := a.filepicker.Update(msg)
-		a.filepicker = filepicker.(chat.FilepickerCmp)
+		a.filepicker = filepicker.(dialog.FilepickerCmp)
 		cmds = append(cmds, filepickerCmd)
 
 		a.initDialog.SetSize(msg.Width, msg.Height)
@@ -467,14 +467,14 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	default:
 		f, filepickerCmd := a.filepicker.Update(msg)
-		a.filepicker = f.(chat.FilepickerCmp)
+		a.filepicker = f.(dialog.FilepickerCmp)
 		cmds = append(cmds, filepickerCmd)
 
 	}
 
 	if a.showFilepicker {
 		f, filepickerCmd := a.filepicker.Update(msg)
-		a.filepicker = f.(chat.FilepickerCmp)
+		a.filepicker = f.(dialog.FilepickerCmp)
 		cmds = append(cmds, filepickerCmd)
 		// Only block key messages send all other messages down
 		if _, ok := msg.(tea.KeyMsg); ok {
@@ -770,7 +770,7 @@ func New(app *app.App) tea.Model {
 			page.ChatPage: page.NewChatPage(app),
 			page.LogsPage: page.NewLogsPage(),
 		},
-		filepicker: chat.NewFilepickerCmp(app),
+		filepicker: dialog.NewFilepickerCmp(app),
 	}
 
 	model.RegisterCommand(dialog.Command{

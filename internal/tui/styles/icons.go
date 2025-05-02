@@ -12,4 +12,3 @@ const (
 	LoadingIcon  string = "⟳"
 	DocumentIcon string = "🖼"
 )
-

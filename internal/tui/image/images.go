@@ -1,4 +1,4 @@
-package preview
+package image
 
 import (
 	"fmt"
@@ -18,7 +18,6 @@ func ValidateFileSize(filePath string, sizeLimit int64) (bool, error) {
 	}
 
 	if fileInfo.Size() > sizeLimit {
-
 		return true, nil
 	}
 
@@ -71,5 +70,3 @@ func ImagePreview(width int, filename string) (string, error) {
 
 	return imageString, nil
 }
-
-// SetFileName sets the image file and converts it to a string.
