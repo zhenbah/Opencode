@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"path/filepath"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -230,47 +229,14 @@ func (m *messagesCmp) renderView() {
 	}
 
 	messages := make([]string, 0)
-	var attahmentContent string
-	var styledAttachment string
-	t := theme.CurrentTheme()
 	for _, v := range m.uiMessages {
-		if len(v.Attachments) > 0 {
-			var styledAttachments []string
-			attachmentStyles := styles.BaseStyle().
-				Height(1).
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(t.Primary())
-
-			for _, attachment := range v.Attachments {
-				filename := filepath.Base(attachment.Path)
-				if len(filename) > 10 {
-					filename = "\uf44c " + filename[0:7] + "..."
-				}
-				styledAttachments = append(styledAttachments, attachmentStyles.Width(len(filename)).Render(filename))
-			}
-			attahmentContent = lipgloss.JoinHorizontal(lipgloss.Left, styledAttachments...)
-			m.attachments.SetContent(attahmentContent)
-			styledAttachment = lipgloss.NewStyle().Background(t.Background()).Render(m.attachments.View())
-		}
-		if len(styledAttachment) > 0 {
-			messages = append(messages, lipgloss.JoinVertical(lipgloss.Left, styledAttachment, v.content),
-				baseStyle.
-					Width(m.width).
-					Render(
-						"",
-					),
-			)
-		} else {
-			messages = append(messages, lipgloss.JoinVertical(lipgloss.Left, v.content),
-				baseStyle.
-					Width(m.width).
-					Render(
-						"",
-					),
-			)
-		}
-		attahmentContent = ""
-		styledAttachment = ""
+		messages = append(messages, lipgloss.JoinVertical(lipgloss.Left, v.content),
+			baseStyle.
+				Width(m.width).
+				Render(
+					"",
+				),
+		)
 	}
 
 	m.viewport.SetContent(

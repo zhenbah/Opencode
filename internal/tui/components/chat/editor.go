@@ -9,7 +9,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/opencode-ai/opencode/internal/app"
@@ -24,10 +23,11 @@ import (
 )
 
 type editorCmp struct {
+	width       int
+	height      int
 	app         *app.App
 	session     session.Session
 	textarea    textarea.Model
-	viewport    viewport.Model
 	attachments []message.Attachment
 	deleteMode  bool
 }
@@ -44,6 +44,7 @@ type bluredEditorKeyMaps struct {
 }
 type DeleteAttachmentKeyMaps struct {
 	AttachmentDeleteMode key.Binding
+	Escape               key.Binding
 	DeleteAllAttachments key.Binding
 }
 
@@ -62,6 +63,10 @@ var DeleteKeyMaps = DeleteAttachmentKeyMaps{
 	AttachmentDeleteMode: key.NewBinding(
 		key.WithKeys("ctrl+r"),
 		key.WithHelp("ctrl+r+{i}", "delete attachment at index i"),
+	),
+	Escape: key.NewBinding(
+		key.WithKeys("esc"),
+		key.WithHelp("esc", "cancel delete mode"),
 	),
 	DeleteAllAttachments: key.NewBinding(
 		key.WithKeys("r"),
@@ -151,25 +156,6 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 		m.attachments = append(m.attachments, msg.Attachment)
-
-		var styledAttachments []string
-		t := theme.CurrentTheme()
-		attachmentStyles := styles.BaseStyle().
-			Height(1).
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(t.Primary())
-		m.viewport.Height = 3
-		for _, attachment := range m.attachments {
-			var filename string
-			if len(attachment.FileName) > 10 {
-				filename = "\uf44c " + attachment.FileName[0:7] + "..."
-			} else {
-				filename = "\uf44c " + attachment.FileName
-			}
-			styledAttachments = append(styledAttachments, attachmentStyles.Width(len(filename)).Render(filename))
-		}
-		content := lipgloss.JoinHorizontal(lipgloss.Left, styledAttachments...)
-		m.viewport.SetContent(content)
 	case tea.KeyMsg:
 		if key.Matches(msg, DeleteKeyMaps.AttachmentDeleteMode) {
 			m.deleteMode = true
@@ -202,6 +188,10 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, m.openEditor()
 		}
+		if key.Matches(msg, DeleteKeyMaps.Escape) {
+			m.deleteMode = false
+			return m, nil
+		}
 		// Handle Enter key
 		if m.textarea.Focused() && key.Matches(msg, editorMaps.Send) {
 			value := m.textarea.Value()
@@ -232,14 +222,17 @@ func (m *editorCmp) View() string {
 	if len(m.attachments) == 0 {
 		return lipgloss.JoinHorizontal(lipgloss.Top, style.Render(">"), m.textarea.View())
 	}
+	m.textarea.SetHeight(m.height - 1)
 	return lipgloss.JoinVertical(lipgloss.Top,
-		m.viewport.View(),
+		m.attachmentsContent(),
 		lipgloss.JoinHorizontal(lipgloss.Top, style.Render(">"),
 			m.textarea.View()),
 	)
 }
 
 func (m *editorCmp) SetSize(width, height int) tea.Cmd {
+	m.width = width
+	m.height = height
 	m.textarea.SetWidth(width - 3) // account for the prompt and padding right
 	m.textarea.SetHeight(height)
 	m.textarea.SetWidth(width)
@@ -248,6 +241,29 @@ func (m *editorCmp) SetSize(width, height int) tea.Cmd {
 
 func (m *editorCmp) GetSize() (int, int) {
 	return m.textarea.Width(), m.textarea.Height()
+}
+
+func (m *editorCmp) attachmentsContent() string {
+	var styledAttachments []string
+	t := theme.CurrentTheme()
+	attachmentStyles := styles.BaseStyle().
+		MarginLeft(1).
+		Background(t.TextMuted()).
+		Foreground(t.Text())
+	for i, attachment := range m.attachments {
+		var filename string
+		if len(attachment.FileName) > 10 {
+			filename = fmt.Sprintf(" %s %s...", styles.DocumentIcon, attachment.FileName[0:7])
+		} else {
+			filename = fmt.Sprintf(" %s %s", styles.DocumentIcon, attachment.FileName)
+		}
+		if m.deleteMode {
+			filename = fmt.Sprintf("%d%s", i, filename)
+		}
+		styledAttachments = append(styledAttachments, attachmentStyles.Render(filename))
+	}
+	content := lipgloss.JoinHorizontal(lipgloss.Left, styledAttachments...)
+	return content
 }
 
 func (m *editorCmp) BindingKeys() []key.Binding {
@@ -287,22 +303,10 @@ func CreateTextArea(existing *textarea.Model) textarea.Model {
 	return ta
 }
 
-func createViewport() viewport.Model {
-
-	t := theme.CurrentTheme()
-	bgColor := t.Background()
-	textColor := t.Text()
-	vi := viewport.New(200, 0)
-	vi.Style.Background(bgColor).Foreground(textColor)
-	return vi
-}
-
 func NewEditorCmp(app *app.App) tea.Model {
 	ta := CreateTextArea(nil)
-	vi := createViewport()
 	return &editorCmp{
 		app:      app,
 		textarea: ta,
-		viewport: vi,
 	}
 }
