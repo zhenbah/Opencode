@@ -325,7 +325,7 @@ OpenCode supports custom commands that can be created by users to quickly send p
 
 ### Creating Custom Commands
 
-Custom commands are just pre-defined prompts stored as Markdown files in the `commands` directory within your OpenCode data directory:
+Custom commands are just predefined prompts stored as Markdown files in the `commands` directory within your OpenCode data directory:
 
 Global 
 ```
