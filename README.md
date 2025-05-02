@@ -1,5 +1,7 @@
 # ⌬ OpenCode
 
+[繁體中文](README.zh-TW.md)
+
 > **⚠️ Early Development Notice:** This project is in early development and is not yet ready for production use. Features may change, break, or be incomplete. Use at your own risk.
 
 A powerful terminal-based AI assistant for developers, providing intelligent coding assistance directly in your terminal.
@@ -67,7 +69,7 @@ OpenCode looks for configuration in the following locations:
 You can configure OpenCode using environment variables:
 
 | Environment Variable       | Purpose                                                |
-|----------------------------|--------------------------------------------------------|
+| -------------------------- | ------------------------------------------------------ |
 | `ANTHROPIC_API_KEY`        | For Claude models                                      |
 | `OPENAI_API_KEY`           | For OpenAI models                                      |
 | `GEMINI_API_KEY`           | For Google Gemini models                               |
@@ -78,7 +80,6 @@ You can configure OpenCode using environment variables:
 | `AZURE_OPENAI_ENDPOINT`    | For Azure OpenAI models                                |
 | `AZURE_OPENAI_API_KEY`     | For Azure OpenAI models (optional when using Entra ID) |
 | `AZURE_OPENAI_API_VERSION` | For Azure OpenAI models                                |
-
 
 ### Configuration File Structure
 
