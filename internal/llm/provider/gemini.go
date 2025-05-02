@@ -167,19 +167,21 @@ func (g *geminiClient) send(ctx context.Context, messages []message.Message, too
 		logging.Debug("Prepared messages", "messages", string(jsonData))
 	}
 
+	history := geminiMessages[:len(geminiMessages)-1] // All but last message
+	lastMsg := geminiMessages[len(geminiMessages)-1]
+	chat, _ := g.client.Chats.Create(ctx, g.providerOptions.model.APIModel, &genai.GenerateContentConfig{
+		MaxOutputTokens: int32(g.providerOptions.maxTokens),
+		SystemInstruction: &genai.Content{
+			Parts: []*genai.Part{{Text: g.providerOptions.systemMessage}},
+		},
+		Tools: g.convertTools(tools),
+	}, history)
+
 	attempts := 0
 	for {
 		attempts++
 		var toolCalls []message.ToolCall
-		chat, _ := g.client.Chats.Create(ctx, g.providerOptions.model.APIModel, &genai.GenerateContentConfig{
-			MaxOutputTokens: int32(g.providerOptions.maxTokens),
-			SystemInstruction: &genai.Content{
-				Parts: []*genai.Part{{Text: g.providerOptions.systemMessage}},
-			},
-			Tools: g.convertTools(tools),
-		}, nil)
 
-		lastMsg := geminiMessages[len(geminiMessages)-1]
 		var lastMsgParts []genai.Part
 		for _, part := range lastMsg.Parts {
 			lastMsgParts = append(lastMsgParts, *part)
@@ -258,19 +260,6 @@ func (g *geminiClient) stream(ctx context.Context, messages []message.Message, t
 
 		for {
 			attempts++
-			chat, _ := g.client.Chats.Create(ctx, g.providerOptions.model.APIModel, &genai.GenerateContentConfig{
-				MaxOutputTokens: int32(g.providerOptions.maxTokens),
-				SystemInstruction: &genai.Content{
-					Parts: []*genai.Part{{Text: g.providerOptions.systemMessage}},
-				},
-				Tools: g.convertTools(tools),
-			}, nil)
-
-			lastMsg := geminiMessages[len(geminiMessages)-1]
-			var lastMsgParts []genai.Part
-			for _, part := range lastMsg.Parts {
-				lastMsgParts = append(lastMsgParts, *part)
-			}
 
 			currentContent := ""
 			toolCalls := []message.ToolCall{}
@@ -278,6 +267,10 @@ func (g *geminiClient) stream(ctx context.Context, messages []message.Message, t
 
 			eventChan <- ProviderEvent{Type: EventContentStart}
 
+			var lastMsgParts []genai.Part
+			for _, part := range lastMsg.Parts {
+				lastMsgParts = append(lastMsgParts, *part)
+			}
 			for resp, err := range chat.SendMessageStream(ctx, lastMsgParts...) {
 				if err != nil {
 					retry, after, retryErr := g.shouldRetry(attempts, err)
