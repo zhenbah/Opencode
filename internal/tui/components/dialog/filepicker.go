@@ -127,6 +127,9 @@ func (f *filepickerCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		f.cursor = 0
 		f.getCurrentFileBelowCursor()
 	case tea.KeyMsg:
+		if f.cwd.Focused() {
+			f.cwd, cmd = f.cwd.Update(msg)
+		}
 		switch {
 		case key.Matches(msg, filePickerKeyMap.InsertCWD):
 			f.cwd.Focus()
@@ -215,9 +218,6 @@ func (f *filepickerCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			f.cursor = 0
 			f.getCurrentFileBelowCursor()
 		}
-	}
-	if f.cwd.Focused() {
-		f.cwd, cmd = f.cwd.Update(msg)
 	}
 	return f, cmd
 }
