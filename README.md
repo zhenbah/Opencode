@@ -322,29 +322,28 @@ OpenCode is built with a modular architecture:
 
 OpenCode supports custom commands that can be created by users to quickly send predefined prompts to the AI assistant.
 
-
 ### Creating Custom Commands
 
-Custom commands are just predefined prompts stored as Markdown files in the `commands` directory within your OpenCode data directory:
+Custom commands are predefined prompts stored as Markdown files in one of two locations:
 
-Global 
-```
-$HOME/.opencode/commands/
-```
+1. **User Commands** (prefixed with `user:`):
+   ```
+   $XDG_CONFIG_HOME/opencode/commands/
+   ```
+   (typically `~/.config/opencode/commands/` on Linux/macOS)
 
-Per Project
-```
-<PROJECT DIR>/.opencode/commands
-```
+2. **Project Commands** (prefixed with `project:`):
+   ```
+   <PROJECT DIR>/.opencode/commands/
+   ```
 
-Each `.md` file in this directory becomes a custom command. The file name (without extension) becomes the command ID.
+Each `.md` file in these directories becomes a custom command. The file name (without extension) becomes the command ID.
 
-For example, creating a file at `$HOME/.opencode/commands/prime-context.md` with content:
+For example, creating a file at `~/.config/opencode/commands/prime-context.md` with content:
 
 ```markdown
 RUN git ls-files
 READ README.md
-
 ```
 
 This creates a command called `user:prime-context`.
@@ -354,7 +353,7 @@ This creates a command called `user:prime-context`.
 You can organize commands in subdirectories:
 
 ```
-$HOME/.opencode/commands/git/commit.md
+~/.config/opencode/commands/git/commit.md
 ```
 
 This creates a command with ID `user:git:commit`.
@@ -362,7 +361,7 @@ This creates a command with ID `user:git:commit`.
 ### Using Custom Commands
 
 1. Press `Ctrl+K` to open the command dialog
-2. Select your custom command (prefixed with `user:`)
+2. Select your custom command (prefixed with either `user:` or `project:`)
 3. Press Enter to execute the command
 
 The content of the command file will be sent as a message to the AI assistant.
