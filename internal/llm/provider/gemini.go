@@ -55,13 +55,19 @@ func (g *geminiClient) convertMessages(messages []message.Message) []*genai.Cont
 	for _, msg := range messages {
 		switch msg.Role {
 		case message.User:
+			var parts []*genai.Part
+			parts = append(parts, &genai.Part{Text: msg.Content().String()})
+			for _, binaryContent := range msg.BinaryContent() {
+				imageFormat := strings.Split(binaryContent.MIMEType, "/")
+				parts = append(parts, &genai.Part{InlineData: &genai.Blob{
+					MIMEType: imageFormat[1],
+					Data:     binaryContent.Data,
+				}})
+			}
 			history = append(history, &genai.Content{
-				Parts: []*genai.Part{
-					{Text: msg.Content().String()},
-				},
-				Role: "user",
+				Parts: parts,
+				Role:  "user",
 			})
-
 		case message.Assistant:
 			content := &genai.Content{
 				Role:  "model",
@@ -252,6 +258,16 @@ func (g *geminiClient) stream(ctx context.Context, messages []message.Message, t
 		logging.Debug("Prepared messages", "messages", string(jsonData))
 	}
 
+	history := geminiMessages[:len(geminiMessages)-1] // All but last message
+	lastMsg := geminiMessages[len(geminiMessages)-1]
+	chat, _ := g.client.Chats.Create(ctx, g.providerOptions.model.APIModel, &genai.GenerateContentConfig{
+		MaxOutputTokens: int32(g.providerOptions.maxTokens),
+		SystemInstruction: &genai.Content{
+			Parts: []*genai.Part{{Text: g.providerOptions.systemMessage}},
+		},
+		Tools: g.convertTools(tools),
+	}, history)
+
 	attempts := 0
 	eventChan := make(chan ProviderEvent)
 
@@ -268,6 +284,7 @@ func (g *geminiClient) stream(ctx context.Context, messages []message.Message, t
 			eventChan <- ProviderEvent{Type: EventContentStart}
 
 			var lastMsgParts []genai.Part
+
 			for _, part := range lastMsg.Parts {
 				lastMsgParts = append(lastMsgParts, *part)
 			}
