@@ -386,9 +386,10 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return a, nil
 		case key.Matches(msg, a.keybinds.LogsKeyReturnKey) || key.Matches(msg):
-			// if slices.Contains(a.keybinds.LogsKeyReturnKey.Keys(), msg.String()) {
-			if a.currentPage == page.LogsPage {
-				return a, a.moveToPage(page.ChatPage)
+			if slices.Contains(a.keybinds.LogsKeyReturnKey.Keys(), msg.String()) {
+				if a.currentPage == page.LogsPage {
+					return a, a.moveToPage(page.ChatPage)
+				}
 			} else if !a.filepicker.IsCWDFocused() {
 				if a.showQuit {
 					a.showQuit = !a.showQuit
