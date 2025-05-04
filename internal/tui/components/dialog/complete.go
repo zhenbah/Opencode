@@ -81,6 +81,7 @@ type CompletionDialog interface {
 }
 
 type completionDialogCmp struct {
+	query              string
 	completionProvider CompletionProvider
 	width              int
 	height             int
@@ -183,14 +184,17 @@ func (c *completionDialogCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				query = query[1:]
 			}
 
-			logging.Info("Query", query)
-			// c.listView.Filter(query)
-			items, err := c.completionProvider.GetChildEntries(query)
-			if err != nil {
-				logging.Error("Failed to get child entries", err)
+			if query != c.query {
+				logging.Info("Query", query)
+				items, err := c.completionProvider.GetChildEntries(query)
+				if err != nil {
+					logging.Error("Failed to get child entries", err)
+				}
+
+				c.listView.SetItems(items)
+				c.query = query
 			}
 
-			c.listView.SetItems(items)
 			u, cmd := c.listView.Update(msg)
 			c.listView = u.(utilComponents.SimpleList[CompletionItemI])
 
@@ -260,6 +264,7 @@ func NewCompletionDialogCmp(completionProvider CompletionProvider) CompletionDia
 	li := utilComponents.NewSimpleList(items)
 
 	return &completionDialogCmp{
+		query:              "",
 		completionProvider: completionProvider,
 		searchTextArea:     ti,
 		listView:           li,
