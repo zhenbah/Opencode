@@ -163,35 +163,22 @@ func (f *filepickerCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return f, cmd
 				}
 				isPathDir = fileInfo.IsDir()
-				if isPathDir {
-					newWorkingDir := DirNode{parent: f.cwdDetails, directory: path}
-					f.cwdDetails.child = &newWorkingDir
-					f.cwdDetails = f.cwdDetails.child
-					f.cursorChain = f.cursorChain.Push(f.cursor)
-					f.dirs = readDir(f.cwdDetails.directory, false)
-					f.cursor = 0
-					f.cwd.SetValue(f.cwdDetails.directory)
-					f.getCurrentFileBelowCursor()
-				} else {
-					f.selectedFile = path
-					return f.addAttachmentToMessage()
-				}
 			} else {
 				path = filepath.Join(f.cwdDetails.directory, "/", f.dirs[f.cursor].Name())
 				isPathDir = f.dirs[f.cursor].IsDir()
-				if isPathDir {
-					newWorkingDir := DirNode{parent: f.cwdDetails, directory: path}
-					f.cwdDetails.child = &newWorkingDir
-					f.cwdDetails = f.cwdDetails.child
-					f.cursorChain = f.cursorChain.Push(f.cursor)
-					f.dirs = readDir(f.cwdDetails.directory, false)
-					f.cursor = 0
-					f.cwd.SetValue(f.cwdDetails.directory)
-					f.getCurrentFileBelowCursor()
-				} else {
-					f.selectedFile = path
-					return f.addAttachmentToMessage()
-				}
+			}
+			if isPathDir {
+				newWorkingDir := DirNode{parent: f.cwdDetails, directory: path}
+				f.cwdDetails.child = &newWorkingDir
+				f.cwdDetails = f.cwdDetails.child
+				f.cursorChain = f.cursorChain.Push(f.cursor)
+				f.dirs = readDir(f.cwdDetails.directory, false)
+				f.cursor = 0
+				f.cwd.SetValue(f.cwdDetails.directory)
+				f.getCurrentFileBelowCursor()
+			} else {
+				f.selectedFile = path
+				return f.addAttachmentToMessage()
 			}
 		case key.Matches(msg, filePickerKeyMap.Esc):
 			if !f.cwd.Focused() {
