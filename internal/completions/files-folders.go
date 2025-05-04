@@ -25,12 +25,16 @@ func (cg *filesAndFoldersContextGroup) GetEntry() dialog.CompletionItemI {
 	})
 }
 
-func getFilesRg() ([]string, error) {
+func getFilesRg(query string) ([]string, error) {
 	searchRoot := "."
 
 	rgBin, err := exec.LookPath("rg")
 	if err != nil {
 		return nil, fmt.Errorf("ripgrep not found in $PATH: %w", err)
+	}
+	fzfBin, err := exec.LookPath("fzf")
+	if err != nil {
+		return nil, fmt.Errorf("fzf not found in $PATH: %w", err)
 	}
 
 	args := []string{
@@ -42,12 +46,30 @@ func getFilesRg() ([]string, error) {
 	cmd := exec.Command(rgBin, args...)
 	cmd.Dir = "."
 
-	out, err := cmd.CombinedOutput()
+	args2 := []string{
+		"--filter",
+		query,
+		"--exit-0",
+	}
+
+	cmd2 := exec.Command(fzfBin, args2...)
+	cmd2.Dir = "."
+
+	pipReader, err := cmd.StdoutPipe()
 	if err != nil {
 		if ee, ok := err.(*exec.ExitError); ok && ee.ExitCode() == 1 {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("ripgrep: %w\n%s", err, out)
+		return nil, fmt.Errorf("ripgrep: %w", err)
+	}
+	cmd2.Stdin = pipReader
+
+	out, err := cmd2.CombinedOutput()
+	if err != nil {
+		if ee, ok := err.(*exec.ExitError); ok && ee.ExitCode() == 1 {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("fzf: %w\n%s", err, out)
 	}
 
 	var matches []string
@@ -66,8 +88,8 @@ func getFilesRg() ([]string, error) {
 	return matches, nil
 }
 
-func (cg *filesAndFoldersContextGroup) GetChildEntries() ([]dialog.CompletionItemI, error) {
-	matches, err := getFilesRg()
+func (cg *filesAndFoldersContextGroup) GetChildEntries(query string) ([]dialog.CompletionItemI, error) {
+	matches, err := getFilesRg(query)
 	if err != nil {
 		return nil, err
 	}

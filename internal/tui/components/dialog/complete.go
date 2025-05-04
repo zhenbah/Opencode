@@ -19,17 +19,38 @@ type CompletionItem struct {
 	Value string
 }
 
+type CompletionItemI interface {
+	utilComponents.SimpleListItem
+	GetValue() string
+	DisplayValue() string
+}
+
+func (ci *CompletionItem) Render(selected bool) string {
+	t := theme.CurrentTheme()
+	baseStyle := styles.BaseStyle()
+
+	itemStyle := baseStyle
+
+	if selected {
+		itemStyle = itemStyle.
+			Background(t.Background()).
+			Foreground(t.Primary()).
+			Bold(true)
+	}
+
+	title := itemStyle.Render(
+		ci.GetValue(),
+	)
+
+	return title
+}
+
 func (ci *CompletionItem) DisplayValue() string {
 	return ci.Title
 }
 
 func (ci *CompletionItem) GetValue() string {
 	return ci.Value
-}
-
-type CompletionItemI interface {
-	GetValue() string
-	DisplayValue() string
 }
 
 func NewCompletionItem(completionItem CompletionItem) CompletionItemI {
@@ -39,7 +60,7 @@ func NewCompletionItem(completionItem CompletionItem) CompletionItemI {
 type CompletionProvider interface {
 	GetId() string
 	GetEntry() CompletionItemI
-	GetChildEntries() ([]CompletionItemI, error)
+	GetChildEntries(query string) ([]CompletionItemI, error)
 }
 
 type CompletionSelectedMsg struct {
@@ -61,13 +82,10 @@ type CompletionDialog interface {
 
 type completionDialogCmp struct {
 	completionProvider CompletionProvider
-	completionItems    []CompletionItemI
-	selectedIdx        int
 	width              int
 	height             int
-	counter            int
 	searchTextArea     textarea.Model
-	listView           utilComponents.SimpleList
+	listView           utilComponents.SimpleList[CompletionItemI]
 }
 
 type completionDialogKeyMap struct {
@@ -143,7 +161,7 @@ func (c *completionDialogCmp) complete(item CompletionItemI) tea.Cmd {
 }
 
 func (c *completionDialogCmp) close() tea.Cmd {
-	c.listView.Reset()
+	// c.listView.Reset()
 	c.searchTextArea.Reset()
 	c.searchTextArea.Blur()
 
@@ -166,10 +184,15 @@ func (c *completionDialogCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			logging.Info("Query", query)
-			c.listView.Filter(query)
+			// c.listView.Filter(query)
+			items, err := c.completionProvider.GetChildEntries(query)
+			if err != nil {
+				logging.Error("Failed to get child entries", err)
+			}
 
+			c.listView.SetItems(items)
 			u, cmd := c.listView.Update(msg)
-			c.listView = u.(utilComponents.SimpleList)
+			c.listView = u.(utilComponents.SimpleList[CompletionItemI])
 
 			cmds = append(cmds, cmd)
 
@@ -179,15 +202,8 @@ func (c *completionDialogCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if i == -1 {
 					return c, nil
 				}
-				var matchedItem CompletionItemI
 
-				for _, citem := range c.completionItems {
-					if item.GetValue() == citem.GetValue() {
-						matchedItem = citem
-					}
-				}
-
-				cmd := c.complete(matchedItem)
+				cmd := c.complete(item)
 
 				return c, cmd
 			case key.Matches(msg, completionDialogKeys.Escape) || key.Matches(msg, completionDialogKeys.Space) ||
@@ -229,31 +245,22 @@ func (c *completionDialogCmp) SetWidth(width int) {
 	c.width = width
 }
 
-func mapperFunc(i CompletionItemI) utilComponents.SimpleListItem {
-	return utilComponents.NewListItem(
-		// i.DisplayValue(),
-		// "",
-		i.GetValue(),
-	)
-}
-
 func (c *completionDialogCmp) BindingKeys() []key.Binding {
 	return layout.KeyMapToSlice(completionDialogKeys)
 }
 
 func NewCompletionDialogCmp(completionProvider CompletionProvider) CompletionDialog {
 	ti := textarea.New()
-	items, err := completionProvider.GetChildEntries()
-	li := utilComponents.NewSimpleList(utilComponents.MapSlice(items, mapperFunc))
+
+	items, err := completionProvider.GetChildEntries("")
 	if err != nil {
 		logging.Error("Failed to get child entries", err)
 	}
 
+	li := utilComponents.NewSimpleList(items)
+
 	return &completionDialogCmp{
 		completionProvider: completionProvider,
-		completionItems:    items,
-		selectedIdx:        0,
-		counter:            0,
 		searchTextArea:     ti,
 		listView:           li,
 	}

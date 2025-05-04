@@ -1,8 +1,6 @@
 package utilComponents
 
 import (
-	"strings"
-
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -11,48 +9,22 @@ import (
 	"github.com/opencode-ai/opencode/internal/tui/theme"
 )
 
-type listItem struct {
-	// title       string
-	// description string
-	value string
-}
-
-func (li *listItem) GetValue() string {
-	return li.value
-}
-
 type SimpleListItem interface {
-	GetValue() string
+	Render(selected bool) string
 }
 
-func NewListItem(
-	// title string,
-	// description string,
-	value string,
-) SimpleListItem {
-	return &listItem{
-		// title:       title,
-		// description: description,
-		value: value,
-	}
-}
-
-type SimpleList interface {
+type SimpleList[T SimpleListItem] interface {
 	tea.Model
 	layout.Bindings
-	GetSelectedItem() (item SimpleListItem, idx int)
-	SetItems(items []SimpleListItem)
-	Filter(query string)
-	Reset()
+	GetSelectedItem() (item T, idx int)
+	SetItems(items []T)
 }
 
-type simpleListCmp struct {
-	items         []SimpleListItem
-	filtereditems []SimpleListItem
-	query         string
-	selectedIdx   int
-	width         int
-	height        int
+type simpleListCmp[T SimpleListItem] struct {
+	items       []T
+	selectedIdx int
+	width       int
+	height      int
 }
 
 type simpleListKeyMap struct {
@@ -76,11 +48,11 @@ var simpleListKeys = simpleListKeyMap{
 	),
 }
 
-func (c *simpleListCmp) Init() tea.Cmd {
+func (c *simpleListCmp[T]) Init() tea.Cmd {
 	return nil
 }
 
-func (c *simpleListCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (c *simpleListCmp[T]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
@@ -90,7 +62,7 @@ func (c *simpleListCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return c, nil
 		case key.Matches(msg, simpleListKeys.Down):
-			if c.selectedIdx < len(c.filtereditems)-1 {
+			if c.selectedIdx < len(c.items)-1 {
 				c.selectedIdx++
 			}
 			return c, nil
@@ -100,114 +72,60 @@ func (c *simpleListCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return c, nil
 }
 
-func (c *simpleListCmp) BindingKeys() []key.Binding {
+func (c *simpleListCmp[T]) BindingKeys() []key.Binding {
 	return layout.KeyMapToSlice(simpleListKeys)
 }
 
-func (c *simpleListCmp) GetSelectedItem() (SimpleListItem, int) {
-	if len(c.filtereditems) > 0 {
-		return c.filtereditems[c.selectedIdx], c.selectedIdx
+func (c *simpleListCmp[T]) GetSelectedItem() (T, int) {
+	if len(c.items) > 0 {
+		return c.items[c.selectedIdx], c.selectedIdx
 	}
 
-	return nil, -1
+	var zero T
+	return zero, -1
 }
 
-func (c *simpleListCmp) SetItems(items []SimpleListItem) {
+func (c *simpleListCmp[T]) SetItems(items []T) {
 	c.selectedIdx = 0
 	c.items = items
 }
 
-func (c *simpleListCmp) Filter(query string) {
-	if query == c.query {
-		return
-	}
-	c.query = query
-
-	filteredItems := make([]SimpleListItem, 0)
-
-	for _, item := range c.items {
-		if strings.Contains(item.GetValue(), query) {
-			filteredItems = append(filteredItems, item)
-		}
-	}
-
-	c.selectedIdx = 0
-	c.filtereditems = filteredItems
-}
-
-func (c *simpleListCmp) Reset() {
-	c.selectedIdx = 0
-	c.filtereditems = c.items
-}
-
-func MapSlice[In any](input []In, mapper func(In) SimpleListItem) []SimpleListItem {
-	if input == nil {
-		return nil
-	}
-
-	output := make([]SimpleListItem, len(input))
-
-	for i, element := range input {
-		output[i] = mapper(element)
-	}
-
-	return output
-}
-
-func (c *simpleListCmp) View() string {
+func (c *simpleListCmp[T]) View() string {
 	t := theme.CurrentTheme()
 	baseStyle := styles.BaseStyle()
 
-	items := c.filtereditems
+	items := c.items
 	maxWidth := 80
-	maxVisibleCommands := 7
+	maxVisibleItems := 7
 	startIdx := 0
 
 	if len(items) <= 0 {
 		return "No content available"
 	}
 
-	if len(items) > maxVisibleCommands {
-		// Center the selected item when possible
-		halfVisible := maxVisibleCommands / 2
+	if len(items) > maxVisibleItems {
+		halfVisible := maxVisibleItems / 2
 		if c.selectedIdx >= halfVisible && c.selectedIdx < len(items)-halfVisible {
 			startIdx = c.selectedIdx - halfVisible
 		} else if c.selectedIdx >= len(items)-halfVisible {
-			startIdx = len(items) - maxVisibleCommands
+			startIdx = len(items) - maxVisibleItems
 		}
 	}
 
-	endIdx := min(startIdx+maxVisibleCommands, len(items))
+	endIdx := min(startIdx+maxVisibleItems, len(items))
 
-	// return styles.BaseStyle.Padding(0, 0).
-	// 	Render(fmt.Sprintf("lenItems %d, s: %d, e: %d", len(c.items), startIdx+maxVisibleCommands, endIdx))
-
-	listItems := make([]string, 0, maxVisibleCommands)
+	listItems := make([]string, 0, maxVisibleItems)
 
 	for i := startIdx; i < endIdx; i++ {
 		item := items[i]
-		itemStyle := baseStyle.Width(maxWidth)
-		// descStyle := styles.BaseStyle.Width(maxWidth).Foreground(styles.ForgroundDim)
-
-		if i == c.selectedIdx {
-			itemStyle = itemStyle.
-				Background(t.Background()).
-				Foreground(t.Primary()).
-				Bold(true)
-			// descStyle = descStyle.
-			// 	Background(styles.PrimaryColor).
-			// 	Foreground(styles.Background)
-		}
-
-		title := itemStyle.Render(
-			item.GetValue(),
-		)
+		title := item.Render(i == c.selectedIdx)
 		listItems = append(listItems, title)
 	}
 
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
 		baseStyle.
+			Background(t.Background()).
 			Width(maxWidth).
 			Padding(0, 1).
 			Render(
@@ -217,13 +135,9 @@ func (c *simpleListCmp) View() string {
 	)
 }
 
-func NewSimpleList(items []SimpleListItem) SimpleList {
-	return &simpleListCmp{
-		items:         items,
-		filtereditems: items,
-		selectedIdx:   0,
-		query:         "",
-		// selectedStyle:     lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true),
-		// normalStyle:       lipgloss.NewStyle(),
+func NewSimpleList[T SimpleListItem](items []T) SimpleList[T] {
+	return &simpleListCmp[T]{
+		items:       items,
+		selectedIdx: 0,
 	}
 }
