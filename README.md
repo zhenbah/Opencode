@@ -348,6 +348,16 @@ READ README.md
 
 This creates a command called `user:prime-context`.
 
+### Command Arguments
+
+You can create commands that accept arguments by including the `$ARGUMENTS` placeholder in your command file:
+
+```markdown
+RUN git show $ARGUMENTS
+```
+
+When you run this command, OpenCode will prompt you to enter the text that should replace `$ARGUMENTS`.
+
 ### Organizing Commands
 
 You can organize commands in subdirectories:

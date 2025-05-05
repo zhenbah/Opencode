@@ -118,8 +118,20 @@ func loadCommandsFromDir(commandsDir string, prefix string) ([]Command, error) {
 			Title:       prefix + commandID,
 			Description: fmt.Sprintf("Custom command from %s", relPath),
 			Handler: func(cmd Command) tea.Cmd {
+				commandContent := string(content)
+				
+				// Check if the command contains $ARGUMENTS placeholder
+				if strings.Contains(commandContent, "$ARGUMENTS") {
+					// Show arguments dialog
+					return util.CmdHandler(ShowArgumentsDialogMsg{
+						CommandID: cmd.ID,
+						Content:   commandContent,
+					})
+				}
+				
+				// No arguments needed, run command directly
 				return util.CmdHandler(CommandRunCustomMsg{
-					Content: string(content),
+					Content: commandContent,
 				})
 			},
 		}
