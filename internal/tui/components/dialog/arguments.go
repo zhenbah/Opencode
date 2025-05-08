@@ -101,7 +101,7 @@ func (m ArgumentsDialogCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m ArgumentsDialogCmp) View() string {
 	t := theme.CurrentTheme()
 	baseStyle := styles.BaseStyle()
-	
+
 	// Calculate width needed for content
 	maxWidth := 60 // Width for explanation text
 
@@ -129,16 +129,15 @@ func (m ArgumentsDialogCmp) View() string {
 	content := lipgloss.JoinVertical(
 		lipgloss.Left,
 		title,
-		baseStyle.Width(maxWidth).Render(""),
 		explanation,
 		inputField,
-		baseStyle.Width(maxWidth).Render(""),
 	)
 
 	return baseStyle.Padding(1, 2).
 		Border(lipgloss.RoundedBorder()).
 		BorderBackground(t.Background()).
 		BorderForeground(t.TextMuted()).
+		Background(t.Background()).
 		Width(lipgloss.Width(content) + 4).
 		Render(content)
 }
@@ -167,3 +166,4 @@ type ShowArgumentsDialogMsg struct {
 	CommandID string
 	Content   string
 }
+
