@@ -40,10 +40,23 @@ func LoadCustomCommands() ([]Command, error) {
 		userCommandsDir := filepath.Join(xdgConfigHome, "opencode", "commands")
 		userCommands, err := loadCommandsFromDir(userCommandsDir, UserCommandPrefix)
 		if err != nil {
-			// Log error but continue - we'll still try to load project commands
-			fmt.Printf("Warning: failed to load user commands: %v\n", err)
+			// Log error but continue - we'll still try to load other commands
+			fmt.Printf("Warning: failed to load user commands from XDG_CONFIG_HOME: %v\n", err)
 		} else {
 			commands = append(commands, userCommands...)
+		}
+	}
+
+	// Load commands from $HOME/.opencode/commands
+	home, err := os.UserHomeDir()
+	if err == nil {
+		homeCommandsDir := filepath.Join(home, ".opencode", "commands")
+		homeCommands, err := loadCommandsFromDir(homeCommandsDir, UserCommandPrefix)
+		if err != nil {
+			// Log error but continue - we'll still try to load other commands
+			fmt.Printf("Warning: failed to load home commands: %v\n", err)
+		} else {
+			commands = append(commands, homeCommands...)
 		}
 	}
 
@@ -119,7 +132,7 @@ func loadCommandsFromDir(commandsDir string, prefix string) ([]Command, error) {
 			Description: fmt.Sprintf("Custom command from %s", relPath),
 			Handler: func(cmd Command) tea.Cmd {
 				commandContent := string(content)
-				
+
 				// Check if the command contains $ARGUMENTS placeholder
 				if strings.Contains(commandContent, "$ARGUMENTS") {
 					// Show arguments dialog
@@ -128,7 +141,7 @@ func loadCommandsFromDir(commandsDir string, prefix string) ([]Command, error) {
 						Content:   commandContent,
 					})
 				}
-				
+
 				// No arguments needed, run command directly
 				return util.CmdHandler(CommandRunCustomMsg{
 					Content: commandContent,

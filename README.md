@@ -324,13 +324,19 @@ OpenCode supports custom commands that can be created by users to quickly send p
 
 ### Creating Custom Commands
 
-Custom commands are predefined prompts stored as Markdown files in one of two locations:
+Custom commands are predefined prompts stored as Markdown files in one of three locations:
 
 1. **User Commands** (prefixed with `user:`):
    ```
    $XDG_CONFIG_HOME/opencode/commands/
    ```
    (typically `~/.config/opencode/commands/` on Linux/macOS)
+
+   or
+
+   ```
+   $HOME/.opencode/commands/
+   ```
 
 2. **Project Commands** (prefixed with `project:`):
    ```
