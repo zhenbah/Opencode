@@ -71,6 +71,8 @@ You can configure OpenCode using environment variables:
 | `ANTHROPIC_API_KEY`        | For Claude models                                      |
 | `OPENAI_API_KEY`           | For OpenAI models                                      |
 | `GEMINI_API_KEY`           | For Google Gemini models                               |
+| `VERTEXAI_PROJECT`         | For Google Cloud VertexAI (Gemini)                     |
+| `VERTEXAI_LOCATION`        | For Google Cloud VertexAI (Gemini)                     |
 | `GROQ_API_KEY`             | For Groq models                                        |
 | `AWS_ACCESS_KEY_ID`        | For AWS Bedrock (Claude)                               |
 | `AWS_SECRET_ACCESS_KEY`    | For AWS Bedrock (Claude)                               |

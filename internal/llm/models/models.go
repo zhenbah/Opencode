@@ -91,4 +91,5 @@ func init() {
 	maps.Copy(SupportedModels, AzureModels)
 	maps.Copy(SupportedModels, OpenRouterModels)
 	maps.Copy(SupportedModels, XAIModels)
+	maps.Copy(SupportedModels, VertexAIGeminiModels)
 }

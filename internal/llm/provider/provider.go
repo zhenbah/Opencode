@@ -102,6 +102,11 @@ func NewProvider(providerName models.ModelProvider, opts ...ProviderClientOption
 			options: clientOptions,
 			client:  newGeminiClient(clientOptions),
 		}, nil
+	case models.ProviderVertexAI:
+		return &baseProvider[VertexAIClient]{
+			options: clientOptions,
+			client:  newVertexAIClient(clientOptions),
+		}, nil
 	case models.ProviderBedrock:
 		return &baseProvider[BedrockClient]{
 			options: clientOptions,
