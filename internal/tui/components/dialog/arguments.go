@@ -22,11 +22,15 @@ type ArgumentsDialogCmp struct {
 
 // NewArgumentsDialogCmp creates a new ArgumentsDialogCmp.
 func NewArgumentsDialogCmp(commandID, content string) ArgumentsDialogCmp {
+	t := theme.CurrentTheme()
 	ti := textinput.New()
 	ti.Placeholder = "Enter arguments..."
 	ti.Focus()
 	ti.Width = 40
 	ti.Prompt = ""
+	ti.PlaceholderStyle = ti.PlaceholderStyle.Background(t.Background())
+	ti.PromptStyle = ti.PromptStyle.Background(t.Background())
+	ti.TextStyle = ti.TextStyle.Background(t.Background())
 
 	return ArgumentsDialogCmp{
 		textInput: ti,
