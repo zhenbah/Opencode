@@ -21,6 +21,7 @@ type SimpleList[T SimpleListItem] interface {
 }
 
 type simpleListCmp[T SimpleListItem] struct {
+	fallbackMsg string
 	items       []T
 	selectedIdx int
 	width       int
@@ -100,7 +101,11 @@ func (c *simpleListCmp[T]) View() string {
 	startIdx := 0
 
 	if len(items) <= 0 {
-		return "No content available"
+		return baseStyle.
+			Background(t.Background()).
+			Padding(0, 1).
+			Width(maxWidth).
+			Render(c.fallbackMsg)
 	}
 
 	if len(items) > maxVisibleItems {
@@ -135,8 +140,9 @@ func (c *simpleListCmp[T]) View() string {
 	)
 }
 
-func NewSimpleList[T SimpleListItem](items []T) SimpleList[T] {
+func NewSimpleList[T SimpleListItem](items []T, fallbackMsg string) SimpleList[T] {
 	return &simpleListCmp[T]{
+		fallbackMsg: fallbackMsg,
 		items:       items,
 		selectedIdx: 0,
 	}

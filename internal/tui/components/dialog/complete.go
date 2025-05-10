@@ -145,7 +145,7 @@ func (c *completionDialogCmp) complete(item CompletionItemI) tea.Cmd {
 }
 
 func (c *completionDialogCmp) close() tea.Cmd {
-	// c.listView.Reset()
+	c.listView.SetItems([]CompletionItemI{})
 	c.pseudoSearchTextArea.Reset()
 	c.pseudoSearchTextArea.Blur()
 
@@ -216,6 +216,12 @@ func (c *completionDialogCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		switch {
 		case key.Matches(msg, completionDialogKeys.Start):
+			items, err := c.completionProvider.GetChildEntries("")
+			if err != nil {
+				logging.Error("Failed to get child entries", err)
+			}
+
+			c.listView.SetItems(items)
 			c.pseudoSearchTextArea.SetValue(msg.String())
 			return c, c.pseudoSearchTextArea.Focus()
 		}
@@ -258,7 +264,10 @@ func NewCompletionDialogCmp(completionProvider CompletionProvider) CompletionDia
 		logging.Error("Failed to get child entries", err)
 	}
 
-	li := utilComponents.NewSimpleList(items)
+	li := utilComponents.NewSimpleList(
+		items,
+		"No file matches found",
+	)
 
 	return &completionDialogCmp{
 		query:                "",
