@@ -62,12 +62,29 @@ OpenCode looks for configuration in the following locations:
 - `$XDG_CONFIG_HOME/opencode/.opencode.json`
 - `./.opencode.json` (local directory)
 
+### Auto Compact Feature
+
+OpenCode includes an auto compact feature that automatically summarizes your conversation when it approaches the model's context window limit. When enabled (default setting), this feature:
+
+- Monitors token usage during your conversation
+- Automatically triggers summarization when usage reaches 95% of the model's context window
+- Creates a new session with the summary, allowing you to continue your work without losing context
+- Helps prevent "out of context" errors that can occur with long conversations
+
+You can enable or disable this feature in your configuration file:
+
+```json
+{
+  "autoCompact": true // default is true
+}
+```
+
 ### Environment Variables
 
 You can configure OpenCode using environment variables:
 
 | Environment Variable       | Purpose                                                |
-|----------------------------|--------------------------------------------------------|
+| -------------------------- | ------------------------------------------------------ |
 | `ANTHROPIC_API_KEY`        | For Claude models                                      |
 | `OPENAI_API_KEY`           | For OpenAI models                                      |
 | `GEMINI_API_KEY`           | For Google Gemini models                               |
@@ -78,7 +95,6 @@ You can configure OpenCode using environment variables:
 | `AZURE_OPENAI_ENDPOINT`    | For Azure OpenAI models                                |
 | `AZURE_OPENAI_API_KEY`     | For Azure OpenAI models (optional when using Entra ID) |
 | `AZURE_OPENAI_API_VERSION` | For Azure OpenAI models                                |
-
 
 ### Configuration File Structure
 
@@ -134,7 +150,8 @@ You can configure OpenCode using environment variables:
     }
   },
   "debug": false,
-  "debugLSP": false
+  "debugLSP": false,
+  "autoCompact": true
 }
 ```
 
@@ -317,6 +334,81 @@ OpenCode is built with a modular architecture:
 - **internal/message**: Message handling
 - **internal/session**: Session management
 - **internal/lsp**: Language Server Protocol integration
+
+## Custom Commands
+
+OpenCode supports custom commands that can be created by users to quickly send predefined prompts to the AI assistant.
+
+### Creating Custom Commands
+
+Custom commands are predefined prompts stored as Markdown files in one of three locations:
+
+1. **User Commands** (prefixed with `user:`):
+
+   ```
+   $XDG_CONFIG_HOME/opencode/commands/
+   ```
+
+   (typically `~/.config/opencode/commands/` on Linux/macOS)
+
+   or
+
+   ```
+   $HOME/.opencode/commands/
+   ```
+
+2. **Project Commands** (prefixed with `project:`):
+   ```
+   <PROJECT DIR>/.opencode/commands/
+   ```
+
+Each `.md` file in these directories becomes a custom command. The file name (without extension) becomes the command ID.
+
+For example, creating a file at `~/.config/opencode/commands/prime-context.md` with content:
+
+```markdown
+RUN git ls-files
+READ README.md
+```
+
+This creates a command called `user:prime-context`.
+
+### Command Arguments
+
+You can create commands that accept arguments by including the `$ARGUMENTS` placeholder in your command file:
+
+```markdown
+RUN git show $ARGUMENTS
+```
+
+When you run this command, OpenCode will prompt you to enter the text that should replace `$ARGUMENTS`.
+
+### Organizing Commands
+
+You can organize commands in subdirectories:
+
+```
+~/.config/opencode/commands/git/commit.md
+```
+
+This creates a command with ID `user:git:commit`.
+
+### Using Custom Commands
+
+1. Press `Ctrl+K` to open the command dialog
+2. Select your custom command (prefixed with either `user:` or `project:`)
+3. Press Enter to execute the command
+
+The content of the command file will be sent as a message to the AI assistant.
+
+### Built-in Commands
+
+OpenCode includes several built-in commands:
+
+| Command            | Description                                                                                         |
+| ------------------ | --------------------------------------------------------------------------------------------------- |
+| Initialize Project | Creates or updates the OpenCode.md memory file with project-specific information                    |
+| Compact Session    | Manually triggers the summarization of the current session, creating a new session with the summary |
 
 ## MCP (Model Context Protocol)
 

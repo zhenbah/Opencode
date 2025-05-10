@@ -36,9 +36,10 @@ type MCPServer struct {
 type AgentName string
 
 const (
-	AgentCoder AgentName = "coder"
-	AgentTask  AgentName = "task"
-	AgentTitle AgentName = "title"
+	AgentCoder      AgentName = "coder"
+	AgentSummarizer AgentName = "summarizer"
+	AgentTask       AgentName = "task"
+	AgentTitle      AgentName = "title"
 )
 
 // Agent defines configuration for different LLM models and their token limits.
@@ -84,6 +85,7 @@ type Config struct {
 	DebugLSP     bool                              `json:"debugLSP,omitempty"`
 	ContextPaths []string                          `json:"contextPaths,omitempty"`
 	TUI          TUIConfig                         `json:"tui"`
+	AutoCompact  bool                              `json:"autoCompact,omitempty"`
 }
 
 // Application constants
@@ -213,6 +215,7 @@ func setDefaults(debug bool) {
 	viper.SetDefault("data.directory", defaultDataDirectory)
 	viper.SetDefault("contextPaths", defaultContextPaths)
 	viper.SetDefault("tui.theme", "opencode")
+	viper.SetDefault("autoCompact", true)
 
 	if debug {
 		viper.SetDefault("debug", true)
@@ -260,47 +263,54 @@ func setProviderDefaults() {
 	// 7. Azure
 
 	// Anthropic configuration
-	if viper.Get("providers.anthropic.apiKey") != "" {
+	if key := viper.GetString("providers.anthropic.apiKey"); strings.TrimSpace(key) != "" {
 		viper.SetDefault("agents.coder.model", models.Claude37Sonnet)
+		viper.SetDefault("agents.summarizer.model", models.Claude37Sonnet)
 		viper.SetDefault("agents.task.model", models.Claude37Sonnet)
 		viper.SetDefault("agents.title.model", models.Claude37Sonnet)
 		return
 	}
 
 	// OpenAI configuration
-	if viper.Get("providers.openai.apiKey") != "" {
+	if key := viper.GetString("providers.openai.apiKey"); strings.TrimSpace(key) != "" {
 		viper.SetDefault("agents.coder.model", models.GPT41)
+		viper.SetDefault("agents.summarizer.model", models.GPT41)
 		viper.SetDefault("agents.task.model", models.GPT41Mini)
 		viper.SetDefault("agents.title.model", models.GPT41Mini)
 		return
 	}
 
 	// Google Gemini configuration
-	if viper.Get("providers.google.gemini.apiKey") != "" {
+	if key := viper.GetString("providers.gemini.apiKey"); strings.TrimSpace(key) != "" {
 		viper.SetDefault("agents.coder.model", models.Gemini25)
+		viper.SetDefault("agents.summarizer.model", models.Gemini25)
 		viper.SetDefault("agents.task.model", models.Gemini25Flash)
 		viper.SetDefault("agents.title.model", models.Gemini25Flash)
 		return
 	}
 
 	// Groq configuration
-	if viper.Get("providers.groq.apiKey") != "" {
+	if key := viper.GetString("providers.groq.apiKey"); strings.TrimSpace(key) != "" {
 		viper.SetDefault("agents.coder.model", models.QWENQwq)
+		viper.SetDefault("agents.summarizer.model", models.QWENQwq)
 		viper.SetDefault("agents.task.model", models.QWENQwq)
 		viper.SetDefault("agents.title.model", models.QWENQwq)
 		return
 	}
 
 	// OpenRouter configuration
-	if viper.Get("providers.openrouter.apiKey") != "" {
+	if key := viper.GetString("providers.openrouter.apiKey"); strings.TrimSpace(key) != "" {
 		viper.SetDefault("agents.coder.model", models.OpenRouterClaude37Sonnet)
+		viper.SetDefault("agents.summarizer.model", models.OpenRouterClaude37Sonnet)
 		viper.SetDefault("agents.task.model", models.OpenRouterClaude37Sonnet)
 		viper.SetDefault("agents.title.model", models.OpenRouterClaude35Haiku)
 		return
 	}
 
-	if viper.Get("providers.xai.apiKey") != "" {
+	// XAI configuration
+	if key := viper.GetString("providers.xai.apiKey"); strings.TrimSpace(key) != "" {
 		viper.SetDefault("agents.coder.model", models.XAIGrok3Beta)
+		viper.SetDefault("agents.summarizer.model", models.XAIGrok3Beta)
 		viper.SetDefault("agents.task.model", models.XAIGrok3Beta)
 		viper.SetDefault("agents.title.model", models.XAiGrok3MiniFastBeta)
 		return
@@ -309,13 +319,16 @@ func setProviderDefaults() {
 	// AWS Bedrock configuration
 	if hasAWSCredentials() {
 		viper.SetDefault("agents.coder.model", models.BedrockClaude37Sonnet)
+		viper.SetDefault("agents.summarizer.model", models.BedrockClaude37Sonnet)
 		viper.SetDefault("agents.task.model", models.BedrockClaude37Sonnet)
 		viper.SetDefault("agents.title.model", models.BedrockClaude37Sonnet)
 		return
 	}
 
+	// Azure OpenAI configuration
 	if os.Getenv("AZURE_OPENAI_ENDPOINT") != "" {
 		viper.SetDefault("agents.coder.model", models.AzureGPT41)
+		viper.SetDefault("agents.summarizer.model", models.AzureGPT41)
 		viper.SetDefault("agents.task.model", models.AzureGPT41Mini)
 		viper.SetDefault("agents.title.model", models.AzureGPT41Mini)
 		return

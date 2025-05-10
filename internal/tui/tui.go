@@ -3,20 +3,24 @@ package tui
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/opencode-ai/opencode/internal/app"
 	"github.com/opencode-ai/opencode/internal/config"
+	"github.com/opencode-ai/opencode/internal/llm/agent"
 	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/permission"
 	"github.com/opencode-ai/opencode/internal/pubsub"
+	"github.com/opencode-ai/opencode/internal/session"
 	"github.com/opencode-ai/opencode/internal/tui/components/chat"
 	"github.com/opencode-ai/opencode/internal/tui/components/core"
 	"github.com/opencode-ai/opencode/internal/tui/components/dialog"
 	"github.com/opencode-ai/opencode/internal/tui/layout"
 	"github.com/opencode-ai/opencode/internal/tui/page"
+	"github.com/opencode-ai/opencode/internal/tui/theme"
 	"github.com/opencode-ai/opencode/internal/tui/util"
 )
 
@@ -26,9 +30,16 @@ type keyMap struct {
 	Help          key.Binding
 	SwitchSession key.Binding
 	Commands      key.Binding
+	Filepicker    key.Binding
 	Models        key.Binding
 	SwitchTheme   key.Binding
 }
+
+type startCompactSessionMsg struct{}
+
+const (
+	quitKey = "q"
+)
 
 var keys = keyMap{
 	Logs: key.NewBinding(
@@ -54,7 +65,10 @@ var keys = keyMap{
 		key.WithKeys("ctrl+k"),
 		key.WithHelp("ctrl+k", "commands"),
 	),
-
+	Filepicker: key.NewBinding(
+		key.WithKeys("ctrl+f"),
+		key.WithHelp("ctrl+f", "select files to upload"),
+	),
 	Models: key.NewBinding(
 		key.WithKeys("ctrl+o"),
 		key.WithHelp("ctrl+o", "model selection"),
@@ -77,18 +91,19 @@ var returnKey = key.NewBinding(
 )
 
 var logsKeyReturnKey = key.NewBinding(
-	key.WithKeys("esc", "backspace", "q"),
+	key.WithKeys("esc", "backspace", quitKey),
 	key.WithHelp("esc/q", "go back"),
 )
 
 type appModel struct {
-	width, height int
-	currentPage   page.PageID
-	previousPage  page.PageID
-	pages         map[page.PageID]tea.Model
-	loadedPages   map[page.PageID]bool
-	status        core.StatusCmp
-	app           *app.App
+	width, height   int
+	currentPage     page.PageID
+	previousPage    page.PageID
+	pages           map[page.PageID]tea.Model
+	loadedPages     map[page.PageID]bool
+	status          core.StatusCmp
+	app             *app.App
+	selectedSession session.Session
 
 	showPermissions bool
 	permissions     dialog.PermissionDialogCmp
@@ -112,8 +127,17 @@ type appModel struct {
 	showInitDialog bool
 	initDialog     dialog.InitDialogCmp
 
+	showFilepicker bool
+	filepicker     dialog.FilepickerCmp
+
 	showThemeDialog bool
 	themeDialog     dialog.ThemeDialog
+
+	showArgumentsDialog bool
+	argumentsDialog     dialog.ArgumentsDialogCmp
+
+	isCompacting      bool
+	compactingMessage string
 }
 
 func (a appModel) Init() tea.Cmd {
@@ -134,6 +158,8 @@ func (a appModel) Init() tea.Cmd {
 	cmd = a.modelDialog.Init()
 	cmds = append(cmds, cmd)
 	cmd = a.initDialog.Init()
+	cmds = append(cmds, cmd)
+	cmd = a.filepicker.Init()
 	cmds = append(cmds, cmd)
 	cmd = a.themeDialog.Init()
 	cmds = append(cmds, cmd)
@@ -182,7 +208,18 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.commandDialog = command.(dialog.CommandDialog)
 		cmds = append(cmds, commandCmd)
 
+		filepicker, filepickerCmd := a.filepicker.Update(msg)
+		a.filepicker = filepicker.(dialog.FilepickerCmp)
+		cmds = append(cmds, filepickerCmd)
+
 		a.initDialog.SetSize(msg.Width, msg.Height)
+
+		if a.showArgumentsDialog {
+			a.argumentsDialog.SetSize(msg.Width, msg.Height)
+			args, argsCmd := a.argumentsDialog.Update(msg)
+			a.argumentsDialog = args.(dialog.ArgumentsDialogCmp)
+			cmds = append(cmds, argsCmd, a.argumentsDialog.Init())
+		}
 
 		return a, tea.Batch(cmds...)
 	// Status
@@ -266,6 +303,70 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.showCommandDialog = false
 		return a, nil
 
+	case startCompactSessionMsg:
+		// Start compacting the current session
+		a.isCompacting = true
+		a.compactingMessage = "Starting summarization..."
+
+		if a.selectedSession.ID == "" {
+			a.isCompacting = false
+			return a, util.ReportWarn("No active session to summarize")
+		}
+
+		// Start the summarization process
+		return a, func() tea.Msg {
+			ctx := context.Background()
+			a.app.CoderAgent.Summarize(ctx, a.selectedSession.ID)
+			return nil
+		}
+
+	case pubsub.Event[agent.AgentEvent]:
+		payload := msg.Payload
+		if payload.Error != nil {
+			a.isCompacting = false
+			return a, util.ReportError(payload.Error)
+		}
+
+		a.compactingMessage = payload.Progress
+
+		if payload.Done && payload.Type == agent.AgentEventTypeSummarize {
+			a.isCompacting = false
+
+			if payload.SessionID != "" {
+				// Switch to the new session
+				return a, func() tea.Msg {
+					sessions, err := a.app.Sessions.List(context.Background())
+					if err != nil {
+						return util.InfoMsg{
+							Type: util.InfoTypeError,
+							Msg:  "Failed to list sessions: " + err.Error(),
+						}
+					}
+
+					for _, s := range sessions {
+						if s.ID == payload.SessionID {
+							return dialog.SessionSelectedMsg{Session: s}
+						}
+					}
+
+					return util.InfoMsg{
+						Type: util.InfoTypeError,
+						Msg:  "Failed to find new session",
+					}
+				}
+			}
+			return a, util.ReportInfo("Session summarization complete")
+		} else if payload.Done && payload.Type == agent.AgentEventTypeResponse && a.selectedSession.ID != "" {
+			model := a.app.CoderAgent.Model()
+			contextWindow := model.ContextWindow
+			tokens := a.selectedSession.CompletionTokens + a.selectedSession.PromptTokens
+			if (tokens >= int64(float64(contextWindow)*0.95)) && config.Get().AutoCompact {
+				return a, util.CmdHandler(startCompactSessionMsg{})
+			}
+		}
+		// Continue listening for events
+		return a, nil
+
 	case dialog.CloseThemeDialogMsg:
 		a.showThemeDialog = false
 		return a, nil
@@ -315,7 +416,13 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, nil
 
 	case chat.SessionSelectedMsg:
+		a.selectedSession = msg
 		a.sessionDialog.SetSelectedSession(msg.ID)
+
+	case pubsub.Event[session.Session]:
+		if msg.Type == pubsub.UpdatedEvent && msg.Payload.ID == a.selectedSession.ID {
+			a.selectedSession = msg.Payload
+		}
 	case dialog.SessionSelectedMsg:
 		a.showSessionDialog = false
 		if a.currentPage == page.ChatPage {
@@ -331,8 +438,38 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return a, util.ReportInfo("Command selected: " + msg.Command.Title)
 
+	case dialog.ShowArgumentsDialogMsg:
+		// Show arguments dialog
+		a.argumentsDialog = dialog.NewArgumentsDialogCmp(msg.CommandID, msg.Content)
+		a.showArgumentsDialog = true
+		return a, a.argumentsDialog.Init()
+
+	case dialog.CloseArgumentsDialogMsg:
+		// Close arguments dialog
+		a.showArgumentsDialog = false
+
+		// If submitted, replace $ARGUMENTS and run the command
+		if msg.Submit {
+			// Replace $ARGUMENTS with the provided arguments
+			content := strings.ReplaceAll(msg.Content, "$ARGUMENTS", msg.Arguments)
+
+			// Execute the command with arguments
+			return a, util.CmdHandler(dialog.CommandRunCustomMsg{
+				Content: content,
+			})
+		}
+		return a, nil
+
 	case tea.KeyMsg:
+		// If arguments dialog is open, let it handle the key press first
+		if a.showArgumentsDialog {
+			args, cmd := a.argumentsDialog.Update(msg)
+			a.argumentsDialog = args.(dialog.ArgumentsDialogCmp)
+			return a, cmd
+		}
+
 		switch {
+
 		case key.Matches(msg, keys.Quit):
 			a.showQuit = !a.showQuit
 			if a.showHelp {
@@ -344,8 +481,15 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if a.showCommandDialog {
 				a.showCommandDialog = false
 			}
+			if a.showFilepicker {
+				a.showFilepicker = false
+				a.filepicker.ToggleFilepicker(a.showFilepicker)
+			}
 			if a.showModelDialog {
 				a.showModelDialog = false
+			}
+			if a.showArgumentsDialog {
+				a.showArgumentsDialog = false
 			}
 			return a, nil
 		case key.Matches(msg, keys.SwitchSession):
@@ -364,7 +508,7 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return a, nil
 		case key.Matches(msg, keys.Commands):
-			if a.currentPage == page.ChatPage && !a.showQuit && !a.showPermissions && !a.showSessionDialog && !a.showThemeDialog {
+			if a.currentPage == page.ChatPage && !a.showQuit && !a.showPermissions && !a.showSessionDialog && !a.showThemeDialog && !a.showFilepicker {
 				// Show commands dialog
 				if len(a.commands) == 0 {
 					return a, util.ReportWarn("No commands available")
@@ -392,26 +536,36 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return a, a.themeDialog.Init()
 			}
 			return a, nil
-		case key.Matches(msg, logsKeyReturnKey):
-			if a.currentPage == page.LogsPage {
-				return a, a.moveToPage(page.ChatPage)
-			}
-		case key.Matches(msg, returnKey):
-			if a.showQuit {
-				a.showQuit = !a.showQuit
-				return a, nil
-			}
-			if a.showHelp {
-				a.showHelp = !a.showHelp
-				return a, nil
-			}
-			if a.showInitDialog {
-				a.showInitDialog = false
-				// Mark the project as initialized without running the command
-				if err := config.MarkProjectInitialized(); err != nil {
-					return a, util.ReportError(err)
+		case key.Matches(msg, returnKey) || key.Matches(msg):
+			if msg.String() == quitKey {
+				if a.currentPage == page.LogsPage {
+					return a, a.moveToPage(page.ChatPage)
 				}
-				return a, nil
+			} else if !a.filepicker.IsCWDFocused() {
+				if a.showQuit {
+					a.showQuit = !a.showQuit
+					return a, nil
+				}
+				if a.showHelp {
+					a.showHelp = !a.showHelp
+					return a, nil
+				}
+				if a.showInitDialog {
+					a.showInitDialog = false
+					// Mark the project as initialized without running the command
+					if err := config.MarkProjectInitialized(); err != nil {
+						return a, util.ReportError(err)
+					}
+					return a, nil
+				}
+				if a.showFilepicker {
+					a.showFilepicker = false
+					a.filepicker.ToggleFilepicker(a.showFilepicker)
+					return a, nil
+				}
+				if a.currentPage == page.LogsPage {
+					return a, a.moveToPage(page.ChatPage)
+				}
 			}
 		case key.Matches(msg, keys.Logs):
 			return a, a.moveToPage(page.LogsPage)
@@ -429,8 +583,26 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				a.showHelp = !a.showHelp
 				return a, nil
 			}
+		case key.Matches(msg, keys.Filepicker):
+			a.showFilepicker = !a.showFilepicker
+			a.filepicker.ToggleFilepicker(a.showFilepicker)
+			return a, nil
 		}
+	default:
+		f, filepickerCmd := a.filepicker.Update(msg)
+		a.filepicker = f.(dialog.FilepickerCmp)
+		cmds = append(cmds, filepickerCmd)
 
+	}
+
+	if a.showFilepicker {
+		f, filepickerCmd := a.filepicker.Update(msg)
+		a.filepicker = f.(dialog.FilepickerCmp)
+		cmds = append(cmds, filepickerCmd)
+		// Only block key messages send all other messages down
+		if _, ok := msg.(tea.KeyMsg); ok {
+			return a, tea.Batch(cmds...)
+		}
 	}
 
 	if a.showQuit {
@@ -514,11 +686,21 @@ func (a *appModel) RegisterCommand(cmd dialog.Command) {
 	a.commands = append(a.commands, cmd)
 }
 
+func (a *appModel) findCommand(id string) (dialog.Command, bool) {
+	for _, cmd := range a.commands {
+		if cmd.ID == id {
+			return cmd, true
+		}
+	}
+	return dialog.Command{}, false
+}
+
 func (a *appModel) moveToPage(pageID page.PageID) tea.Cmd {
 	if a.app.CoderAgent.IsBusy() {
 		// For now we don't move to any page if the agent is busy
 		return util.ReportWarn("Agent is busy, please wait...")
 	}
+
 	var cmds []tea.Cmd
 	if _, ok := a.loadedPages[pageID]; !ok {
 		cmd := a.pages[pageID].Init()
@@ -559,10 +741,45 @@ func (a appModel) View() string {
 		)
 	}
 
-	if !a.app.CoderAgent.IsBusy() {
-		a.status.SetHelpWidgetMsg("ctrl+? help")
-	} else {
-		a.status.SetHelpWidgetMsg("? help")
+	if a.showFilepicker {
+		overlay := a.filepicker.View()
+		row := lipgloss.Height(appView) / 2
+		row -= lipgloss.Height(overlay) / 2
+		col := lipgloss.Width(appView) / 2
+		col -= lipgloss.Width(overlay) / 2
+		appView = layout.PlaceOverlay(
+			col,
+			row,
+			overlay,
+			appView,
+			true,
+		)
+
+	}
+
+	// Show compacting status overlay
+	if a.isCompacting {
+		t := theme.CurrentTheme()
+		style := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(t.BorderFocused()).
+			BorderBackground(t.Background()).
+			Padding(1, 2).
+			Background(t.Background()).
+			Foreground(t.Text())
+
+		overlay := style.Render("Summarizing\n" + a.compactingMessage)
+		row := lipgloss.Height(appView) / 2
+		row -= lipgloss.Height(overlay) / 2
+		col := lipgloss.Width(appView) / 2
+		col -= lipgloss.Width(overlay) / 2
+		appView = layout.PlaceOverlay(
+			col,
+			row,
+			overlay,
+			appView,
+			true,
+		)
 	}
 
 	if a.showHelp {
@@ -681,6 +898,21 @@ func (a appModel) View() string {
 		)
 	}
 
+	if a.showArgumentsDialog {
+		overlay := a.argumentsDialog.View()
+		row := lipgloss.Height(appView) / 2
+		row -= lipgloss.Height(overlay) / 2
+		col := lipgloss.Width(appView) / 2
+		col -= lipgloss.Width(overlay) / 2
+		appView = layout.PlaceOverlay(
+			col,
+			row,
+			overlay,
+			appView,
+			true,
+		)
+	}
+
 	return appView
 }
 
@@ -704,6 +936,7 @@ func New(app *app.App) tea.Model {
 			page.ChatPage: page.NewChatPage(app),
 			page.LogsPage: page.NewLogsPage(),
 		},
+		filepicker: dialog.NewFilepickerCmp(app),
 	}
 
 	model.RegisterCommand(dialog.Command{
@@ -725,5 +958,26 @@ If there are Cursor rules (in .cursor/rules/ or .cursorrules) or Copilot rules (
 			)
 		},
 	})
+
+	model.RegisterCommand(dialog.Command{
+		ID:          "compact",
+		Title:       "Compact Session",
+		Description: "Summarize the current session and create a new one with the summary",
+		Handler: func(cmd dialog.Command) tea.Cmd {
+			return func() tea.Msg {
+				return startCompactSessionMsg{}
+			}
+		},
+	})
+	// Load custom commands
+	customCommands, err := dialog.LoadCustomCommands()
+	if err != nil {
+		logging.Warn("Failed to load custom commands", "error", err)
+	} else {
+		for _, cmd := range customCommands {
+			model.RegisterCommand(cmd)
+		}
+	}
+
 	return model
 }
