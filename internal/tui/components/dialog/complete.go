@@ -25,7 +25,7 @@ type CompletionItemI interface {
 	DisplayValue() string
 }
 
-func (ci *CompletionItem) Render(selected bool) string {
+func (ci *CompletionItem) Render(selected bool, width int) string {
 	t := theme.CurrentTheme()
 	baseStyle := styles.BaseStyle()
 
@@ -33,6 +33,7 @@ func (ci *CompletionItem) Render(selected bool) string {
 
 	if selected {
 		itemStyle = itemStyle.
+			Width(width).
 			Background(t.Background()).
 			Foreground(t.Primary()).
 			Bold(true)

@@ -10,7 +10,7 @@ import (
 )
 
 type SimpleListItem interface {
-	Render(selected bool) string
+	Render(selected bool, width int) string
 }
 
 type SimpleList[T SimpleListItem] interface {
@@ -118,7 +118,7 @@ func (c *simpleListCmp[T]) View() string {
 
 	for i := startIdx; i < endIdx; i++ {
 		item := items[i]
-		title := item.Render(i == c.selectedIdx)
+		title := item.Render(i == c.selectedIdx, maxWidth)
 		listItems = append(listItems, title)
 	}
 
