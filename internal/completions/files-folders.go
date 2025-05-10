@@ -27,10 +27,7 @@ func (cg *filesAndFoldersContextGroup) GetEntry() dialog.CompletionItemI {
 	})
 }
 
-// processNullTerminatedOutput processes output bytes with null terminators
-// and returns a slice of filtered file paths
-func processNullTerminatedOutput(outputBytes []byte, applyRelativePath bool) []string {
-	// Trim trailing null terminator if present
+func processNullTerminatedOutput(outputBytes []byte) []string {
 	if len(outputBytes) > 0 && outputBytes[len(outputBytes)-1] == 0 {
 		outputBytes = outputBytes[:len(outputBytes)-1]
 	}
@@ -48,9 +45,7 @@ func processNullTerminatedOutput(outputBytes []byte, applyRelativePath bool) []s
 		}
 
 		path := string(p)
-		if applyRelativePath {
-			path = filepath.Join(".", path) // Assuming rg gives relative paths
-		}
+		path = filepath.Join(".", path)
 
 		if !fileutil.SkipHidden(path) {
 			matches = append(matches, path)
@@ -97,7 +92,7 @@ func (cg *filesAndFoldersContextGroup) getFiles(query string) ([]string, error) 
 			return nil, fmt.Errorf("fzf command failed: %w\nStderr: %s", errFzf, fzfErr.String())
 		}
 
-		matches = processNullTerminatedOutput(fzfOut.Bytes(), true)
+		matches = processNullTerminatedOutput(fzfOut.Bytes())
 
 		// Case 2: Only rg available
 	} else if cmdRg != nil {
@@ -111,7 +106,7 @@ func (cg *filesAndFoldersContextGroup) getFiles(query string) ([]string, error) 
 			return nil, fmt.Errorf("rg command failed: %w\nStderr: %s", err, rgErr.String())
 		}
 
-		allFiles := processNullTerminatedOutput(rgOut.Bytes(), true)
+		allFiles := processNullTerminatedOutput(rgOut.Bytes())
 		matches = fuzzy.Find(query, allFiles)
 
 		// Case 3: Only fzf available
@@ -148,7 +143,7 @@ func (cg *filesAndFoldersContextGroup) getFiles(query string) ([]string, error) 
 			return nil, fmt.Errorf("fzf command failed: %w\nStderr: %s", err, fzfErr.String())
 		}
 
-		matches = processNullTerminatedOutput(fzfOut.Bytes(), false)
+		matches = processNullTerminatedOutput(fzfOut.Bytes())
 
 		// Case 4: Fallback to doublestar with fuzzy match
 	} else {

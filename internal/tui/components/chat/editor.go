@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"slices"
+	"strings"
 	"unicode"
 
 	"github.com/charmbracelet/bubbles/key"
