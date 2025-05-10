@@ -75,6 +75,10 @@ type CompletionDialogCompleteItemMsg struct {
 
 type CompletionDialogCloseMsg struct{}
 
+type CompletionDialogInterruptUpdateMsg struct {
+	InterrupCmd tea.Cmd
+}
+
 type CompletionDialog interface {
 	tea.Model
 	layout.Bindings
@@ -82,64 +86,42 @@ type CompletionDialog interface {
 }
 
 type completionDialogCmp struct {
-	query              string
-	completionProvider CompletionProvider
-	width              int
-	height             int
-	searchTextArea     textarea.Model
-	listView           utilComponents.SimpleList[CompletionItemI]
+	query                string
+	completionProvider   CompletionProvider
+	width                int
+	height               int
+	pseudoSearchTextArea textarea.Model
+	listView             utilComponents.SimpleList[CompletionItemI]
 }
 
 type completionDialogKeyMap struct {
-	Up        key.Binding
-	Down      key.Binding
 	Enter     key.Binding
-	Tab       key.Binding
-	Space     key.Binding
+	Complete  key.Binding
+	Cancel    key.Binding
 	Backspace key.Binding
 	Escape    key.Binding
 	J         key.Binding
 	K         key.Binding
-	At        key.Binding
+	Start     key.Binding
 }
 
 var completionDialogKeys = completionDialogKeyMap{
-	At: key.NewBinding(
+	Start: key.NewBinding(
 		key.WithKeys("@"),
 	),
 	Backspace: key.NewBinding(
 		key.WithKeys("backspace"),
 	),
-	Tab: key.NewBinding(
+	Complete: key.NewBinding(
 		key.WithKeys("tab"),
 	),
-	Space: key.NewBinding(
-		key.WithKeys(" "),
+	Cancel: key.NewBinding(
+		key.WithKeys(" ", "esc"),
 	),
-	Up: key.NewBinding(
-		key.WithKeys("up"),
-		key.WithHelp("↑", "previous item"),
-	),
-	Down: key.NewBinding(
-		key.WithKeys("down"),
-		key.WithHelp("↓", "next item"),
-	),
-	Enter: key.NewBinding(
-		key.WithKeys("enter"),
-		key.WithHelp("enter", "select item"),
-	),
-	Escape: key.NewBinding(
-		key.WithKeys("esc"),
-		key.WithHelp("esc", "close"),
-	),
-	J: key.NewBinding(
-		key.WithKeys("j"),
-		key.WithHelp("j", "next item"),
-	),
-	K: key.NewBinding(
-		key.WithKeys("k"),
-		key.WithHelp("k", "previous item"),
-	),
+	// Enter: key.NewBinding(
+	// 	key.WithKeys("enter"),
+	// 	key.WithHelp("enter", "select item"),
+	// ),
 }
 
 func (c *completionDialogCmp) Init() tea.Cmd {
@@ -147,7 +129,7 @@ func (c *completionDialogCmp) Init() tea.Cmd {
 }
 
 func (c *completionDialogCmp) complete(item CompletionItemI) tea.Cmd {
-	value := c.searchTextArea.Value()
+	value := c.pseudoSearchTextArea.Value()
 
 	if value == "" {
 		return nil
@@ -164,8 +146,8 @@ func (c *completionDialogCmp) complete(item CompletionItemI) tea.Cmd {
 
 func (c *completionDialogCmp) close() tea.Cmd {
 	// c.listView.Reset()
-	c.searchTextArea.Reset()
-	c.searchTextArea.Blur()
+	c.pseudoSearchTextArea.Reset()
+	c.pseudoSearchTextArea.Blur()
 
 	return util.CmdHandler(CompletionDialogCloseMsg{})
 }
@@ -174,13 +156,13 @@ func (c *completionDialogCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if c.searchTextArea.Focused() {
+		if c.pseudoSearchTextArea.Focused() {
 			var cmd tea.Cmd
-			c.searchTextArea, cmd = c.searchTextArea.Update(msg)
+			c.pseudoSearchTextArea, cmd = c.pseudoSearchTextArea.Update(msg)
 			cmds = append(cmds, cmd)
 
 			var query string
-			query = c.searchTextArea.Value()
+			query = c.pseudoSearchTextArea.Value()
 			if query != "" {
 				query = query[1:]
 			}
@@ -202,7 +184,21 @@ func (c *completionDialogCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 
 			switch {
-			case key.Matches(msg, completionDialogKeys.Tab):
+			// case key.Matches(msg, completionDialogKeys.Enter):
+			// 	logging.Info("InterrupCmd1")
+			// 	item, i := c.listView.GetSelectedItem()
+			// 	if i == -1 {
+			// 		logging.Info("InterrupCmd2", "i", i)
+			// 		return c, nil
+			// 	}
+			//
+			// 	cmd := c.complete(item)
+			//
+			// 	logging.Info("InterrupCmd")
+			// 	return c, util.CmdHandler(CompletionDialogInterruptUpdateMsg{
+			// 		InterrupCmd: cmd,
+			// 	})
+			case key.Matches(msg, completionDialogKeys.Complete):
 				item, i := c.listView.GetSelectedItem()
 				if i == -1 {
 					return c, nil
@@ -211,17 +207,17 @@ func (c *completionDialogCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd := c.complete(item)
 
 				return c, cmd
-			case key.Matches(msg, completionDialogKeys.Escape) || key.Matches(msg, completionDialogKeys.Space) ||
-				(key.Matches(msg, completionDialogKeys.Backspace) && len(c.searchTextArea.Value()) <= 0):
+			case key.Matches(msg, completionDialogKeys.Cancel) ||
+				(key.Matches(msg, completionDialogKeys.Backspace) && len(c.pseudoSearchTextArea.Value()) <= 0):
 				return c, c.close()
 			}
 
 			return c, tea.Batch(cmds...)
 		}
 		switch {
-		case key.Matches(msg, completionDialogKeys.At):
-			c.searchTextArea.SetValue("@")
-			return c, c.searchTextArea.Focus()
+		case key.Matches(msg, completionDialogKeys.Start):
+			c.pseudoSearchTextArea.SetValue(msg.String())
+			return c, c.pseudoSearchTextArea.Focus()
 		}
 	case tea.WindowSizeMsg:
 		c.width = msg.Width
@@ -265,9 +261,9 @@ func NewCompletionDialogCmp(completionProvider CompletionProvider) CompletionDia
 	li := utilComponents.NewSimpleList(items)
 
 	return &completionDialogCmp{
-		query:              "",
-		completionProvider: completionProvider,
-		searchTextArea:     ti,
-		listView:           li,
+		query:                "",
+		completionProvider:   completionProvider,
+		pseudoSearchTextArea: ti,
+		listView:             li,
 	}
 }

@@ -43,6 +43,9 @@ func GetRgCmd(globPattern string) *exec.Cmd {
 		"--null",
 	}
 	if globPattern != "" {
+		if !filepath.IsAbs(globPattern) && !strings.HasPrefix(globPattern, "/") {
+			globPattern = "/" + globPattern
+		}
 		rgArgs = append(rgArgs, "--glob", globPattern)
 	}
 	cmd := exec.Command(rgPath, rgArgs...)
