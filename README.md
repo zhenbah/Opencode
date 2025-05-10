@@ -189,6 +189,11 @@ OpenCode supports a variety of AI models from different providers:
 - O3 family (o3, o3-mini)
 - O4 Mini
 
+### Google Cloud VertexAI
+
+- Gemini 2.5
+- Gemini 2.5 Flash
+ 
 ## Usage
 
 ```bash
