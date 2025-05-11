@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/opencode-ai/opencode/internal/app"
 	"github.com/opencode-ai/opencode/internal/completions"
-	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/message"
 	"github.com/opencode-ai/opencode/internal/session"
 	"github.com/opencode-ai/opencode/internal/tui/components/chat"
@@ -112,15 +111,14 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if p.showContextDialog {
 		context, contextCmd := p.contextDialog.Update(msg)
 		p.contextDialog = context.(dialog.CompletionDialog)
-
-		// Handles enter key
-		if interruptMessasge, ok := msg.(dialog.CompletionDialogInterruptUpdateMsg); ok {
-			logging.Info("Interrupted")
-			cmds = append(cmds, interruptMessasge.InterrupCmd)
-			return p, tea.Batch(cmds...)
-		}
-
 		cmds = append(cmds, contextCmd)
+
+		// Doesn't forward event if enter key is pressed
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			if keyMsg.String() == "enter" {
+				return p, tea.Batch(cmds...)
+			}
+		}
 	}
 
 	u, cmd := p.layout.Update(msg)

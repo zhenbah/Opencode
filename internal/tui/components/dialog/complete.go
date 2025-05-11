@@ -96,33 +96,17 @@ type completionDialogCmp struct {
 }
 
 type completionDialogKeyMap struct {
-	Enter     key.Binding
-	Complete  key.Binding
-	Cancel    key.Binding
-	Backspace key.Binding
-	Escape    key.Binding
-	J         key.Binding
-	K         key.Binding
-	Start     key.Binding
+	Complete key.Binding
+	Cancel   key.Binding
 }
 
 var completionDialogKeys = completionDialogKeyMap{
-	Start: key.NewBinding(
-		key.WithKeys("@"),
-	),
-	Backspace: key.NewBinding(
-		key.WithKeys("backspace"),
-	),
 	Complete: key.NewBinding(
-		key.WithKeys("tab"),
+		key.WithKeys("tab", "enter"),
 	),
 	Cancel: key.NewBinding(
-		key.WithKeys(" ", "esc"),
+		key.WithKeys(" ", "esc", "backspace"),
 	),
-	// Enter: key.NewBinding(
-	// 	key.WithKeys("enter"),
-	// 	key.WithHelp("enter", "select item"),
-	// ),
 }
 
 func (c *completionDialogCmp) Init() tea.Cmd {
@@ -158,47 +142,37 @@ func (c *completionDialogCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if c.pseudoSearchTextArea.Focused() {
-			var cmd tea.Cmd
-			c.pseudoSearchTextArea, cmd = c.pseudoSearchTextArea.Update(msg)
-			cmds = append(cmds, cmd)
 
-			var query string
-			query = c.pseudoSearchTextArea.Value()
-			if query != "" {
-				query = query[1:]
-			}
+			if !key.Matches(msg, completionDialogKeys.Complete) {
 
-			if query != c.query {
-				logging.Info("Query", query)
-				items, err := c.completionProvider.GetChildEntries(query)
-				if err != nil {
-					logging.Error("Failed to get child entries", err)
+				var cmd tea.Cmd
+				c.pseudoSearchTextArea, cmd = c.pseudoSearchTextArea.Update(msg)
+				cmds = append(cmds, cmd)
+
+				var query string
+				query = c.pseudoSearchTextArea.Value()
+				if query != "" {
+					query = query[1:]
 				}
 
-				c.listView.SetItems(items)
-				c.query = query
+				if query != c.query {
+					logging.Info("Query", query)
+					items, err := c.completionProvider.GetChildEntries(query)
+					if err != nil {
+						logging.Error("Failed to get child entries", err)
+					}
+
+					c.listView.SetItems(items)
+					c.query = query
+				}
+
+				u, cmd := c.listView.Update(msg)
+				c.listView = u.(utilComponents.SimpleList[CompletionItemI])
+
+				cmds = append(cmds, cmd)
 			}
 
-			u, cmd := c.listView.Update(msg)
-			c.listView = u.(utilComponents.SimpleList[CompletionItemI])
-
-			cmds = append(cmds, cmd)
-
 			switch {
-			// case key.Matches(msg, completionDialogKeys.Enter):
-			// 	logging.Info("InterrupCmd1")
-			// 	item, i := c.listView.GetSelectedItem()
-			// 	if i == -1 {
-			// 		logging.Info("InterrupCmd2", "i", i)
-			// 		return c, nil
-			// 	}
-			//
-			// 	cmd := c.complete(item)
-			//
-			// 	logging.Info("InterrupCmd")
-			// 	return c, util.CmdHandler(CompletionDialogInterruptUpdateMsg{
-			// 		InterrupCmd: cmd,
-			// 	})
 			case key.Matches(msg, completionDialogKeys.Complete):
 				item, i := c.listView.GetSelectedItem()
 				if i == -1 {
@@ -208,15 +182,15 @@ func (c *completionDialogCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd := c.complete(item)
 
 				return c, cmd
-			case key.Matches(msg, completionDialogKeys.Cancel) ||
-				(key.Matches(msg, completionDialogKeys.Backspace) && len(c.pseudoSearchTextArea.Value()) <= 0):
-				return c, c.close()
+			case key.Matches(msg, completionDialogKeys.Cancel):
+				// Only close on backspace when there are no characters left
+				if msg.String() != "backspace" || len(c.pseudoSearchTextArea.Value()) <= 0 {
+					return c, c.close()
+				}
 			}
 
 			return c, tea.Batch(cmds...)
-		}
-		switch {
-		case key.Matches(msg, completionDialogKeys.Start):
+		} else {
 			items, err := c.completionProvider.GetChildEntries("")
 			if err != nil {
 				logging.Error("Failed to get child entries", err)
@@ -240,9 +214,9 @@ func (c *completionDialogCmp) View() string {
 
 	maxWidth := 40
 
-	commands := c.listView.GetItems()
+	completions := c.listView.GetItems()
 
-	for _, cmd := range commands {
+	for _, cmd := range completions {
 		title := cmd.DisplayValue()
 		if len(title) > maxWidth-4 {
 			maxWidth = len(title) + 4
