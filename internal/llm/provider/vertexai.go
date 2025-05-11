@@ -22,7 +22,7 @@ func newVertexAIClient(opts providerClientOptions) VertexAIClient {
 		Backend:  genai.BackendVertexAI,
 	})
 	if err != nil {
-		logging.Error("Failed to create Gemini client", "error", err)
+		logging.Error("Failed to create VertexAI client", "error", err)
 		return nil
 	}
 
