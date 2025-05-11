@@ -23,19 +23,22 @@ type SimpleList[T SimpleListItem] interface {
 }
 
 type simpleListCmp[T SimpleListItem] struct {
-	fallbackMsg     string
-	items           []T
-	selectedIdx     int
-	maxWidth        int
-	maxVisibleItems int
-	width           int
-	height          int
+	fallbackMsg         string
+	items               []T
+	selectedIdx         int
+	maxWidth            int
+	maxVisibleItems     int
+	useAlphaNumericKeys bool
+	width               int
+	height              int
 }
 
 type simpleListKeyMap struct {
-	Up    key.Binding
-	Down  key.Binding
-	Enter key.Binding
+	Up        key.Binding
+	Down      key.Binding
+	UpAlpha   key.Binding
+	DownAlpha key.Binding
+	Enter     key.Binding
 }
 
 var simpleListKeys = simpleListKeyMap{
@@ -45,6 +48,14 @@ var simpleListKeys = simpleListKeyMap{
 	),
 	Down: key.NewBinding(
 		key.WithKeys("down"),
+		key.WithHelp("↓", "next list item"),
+	),
+	UpAlpha: key.NewBinding(
+		key.WithKeys("k"),
+		key.WithHelp("↑", "previous list item"),
+	),
+	DownAlpha: key.NewBinding(
+		key.WithKeys("j"),
 		key.WithHelp("↓", "next list item"),
 	),
 	Enter: key.NewBinding(
@@ -61,12 +72,12 @@ func (c *simpleListCmp[T]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, simpleListKeys.Up):
+		case key.Matches(msg, simpleListKeys.Up) || (c.useAlphaNumericKeys && key.Matches(msg, simpleListKeys.UpAlpha)):
 			if c.selectedIdx > 0 {
 				c.selectedIdx--
 			}
 			return c, nil
-		case key.Matches(msg, simpleListKeys.Down):
+		case key.Matches(msg, simpleListKeys.Down) || (c.useAlphaNumericKeys && key.Matches(msg, simpleListKeys.DownAlpha)):
 			if c.selectedIdx < len(c.items)-1 {
 				c.selectedIdx++
 			}
@@ -142,11 +153,12 @@ func (c *simpleListCmp[T]) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left, listItems...)
 }
 
-func NewSimpleList[T SimpleListItem](items []T, maxVisibleItems int, fallbackMsg string) SimpleList[T] {
+func NewSimpleList[T SimpleListItem](items []T, maxVisibleItems int, fallbackMsg string, useAlphaNumericKeys bool) SimpleList[T] {
 	return &simpleListCmp[T]{
-		fallbackMsg:     fallbackMsg,
-		items:           items,
-		maxVisibleItems: maxVisibleItems,
-		selectedIdx:     0,
+		fallbackMsg:         fallbackMsg,
+		items:               items,
+		maxVisibleItems:     maxVisibleItems,
+		useAlphaNumericKeys: useAlphaNumericKeys,
+		selectedIdx:         0,
 	}
 }

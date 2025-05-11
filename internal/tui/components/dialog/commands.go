@@ -172,6 +172,7 @@ func NewCommandDialogCmp() CommandDialog {
 		[]Command{},
 		10,
 		"No commands available",
+		true,
 	)
 	return &commandDialogCmp{
 		listView: listView,

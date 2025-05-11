@@ -282,6 +282,7 @@ func NewCompletionDialogCmp(completionProvider CompletionProvider) CompletionDia
 		items,
 		7,
 		"No file matches found",
+		false,
 	)
 
 	return &completionDialogCmp{
