@@ -12,6 +12,7 @@ import (
 
 	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/opencode-ai/opencode/internal/fileutil"
+	"github.com/opencode-ai/opencode/internal/logging"
 )
 
 const (
@@ -33,7 +34,7 @@ GLOB PATTERN SYNTAX:
 - '**' matches any sequence of characters, including separators
 - '?' matches any single non-separator character
 - '[...]' matches any character in the brackets
-- '[!...] matches any character not in the brackets
+- '[!...]' matches any character not in the brackets
 
 COMMON PATTERN EXAMPLES:
 - '*.js' - Find all JavaScript files in the current directory
@@ -128,13 +129,12 @@ func (g *globTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error)
 func globFiles(pattern, searchPath string, limit int) ([]string, bool, error) {
 	cmdRg := fileutil.GetRgCmd(pattern)
 	if cmdRg != nil {
-		cmdRg.Dir = searchPath // Ensure rg runs in the correct directory
+		cmdRg.Dir = searchPath
 		matches, err := runRipgrep(cmdRg, searchPath, limit)
 		if err == nil {
 			return matches, len(matches) >= limit && limit > 0, nil
 		}
-		// If rg failed, log it but fall through to doublestar
-		// logging.Warn(fmt.Sprintf("Ripgrep execution failed: %v. Falling back to doublestar.", err))
+		logging.Warn(fmt.Sprintf("Ripgrep execution failed: %v. Falling back to doublestar.", err))
 	}
 
 	return fileutil.GlobWithDoublestar(pattern, searchPath, limit)
@@ -144,9 +144,9 @@ func runRipgrep(cmd *exec.Cmd, searchRoot string, limit int) ([]string, error) {
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		if ee, ok := err.(*exec.ExitError); ok && ee.ExitCode() == 1 {
-			return nil, nil // No matches found is not an error for rg
+			return nil, nil
 		}
-		return nil, fmt.Errorf("ripgrep execution failed: %w. Output: %s", err, string(out))
+		return nil, fmt.Errorf("ripgrep: %w\n%s", err, out)
 	}
 
 	var matches []string
@@ -165,7 +165,7 @@ func runRipgrep(cmd *exec.Cmd, searchRoot string, limit int) ([]string, error) {
 	}
 
 	sort.SliceStable(matches, func(i, j int) bool {
-		return len(matches[i]) < len(matches[j]) // Shorter paths first
+		return len(matches[i]) < len(matches[j])
 	})
 
 	if limit > 0 && len(matches) > limit {

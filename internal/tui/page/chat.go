@@ -19,25 +19,25 @@ import (
 var ChatPage PageID = "chat"
 
 type chatPage struct {
-	app               *app.App
-	editor            layout.Container
-	messages          layout.Container
-	layout            layout.SplitPaneLayout
-	session           session.Session
-	contextDialog     dialog.CompletionDialog
-	showContextDialog bool
+	app                  *app.App
+	editor               layout.Container
+	messages             layout.Container
+	layout               layout.SplitPaneLayout
+	session              session.Session
+	completionDialog     dialog.CompletionDialog
+	showCompletionDialog bool
 }
 
 type ChatKeyMap struct {
-	ShowContextDialog key.Binding
-	NewSession        key.Binding
-	Cancel            key.Binding
+	ShowCompletionDialog key.Binding
+	NewSession           key.Binding
+	Cancel               key.Binding
 }
 
 var keyMap = ChatKeyMap{
-	ShowContextDialog: key.NewBinding(
+	ShowCompletionDialog: key.NewBinding(
 		key.WithKeys("@"),
-		key.WithHelp("@", "context"),
+		key.WithHelp("@", "Complete"),
 	),
 	NewSession: key.NewBinding(
 		key.WithKeys("ctrl+n"),
@@ -52,7 +52,7 @@ var keyMap = ChatKeyMap{
 func (p *chatPage) Init() tea.Cmd {
 	cmds := []tea.Cmd{
 		p.layout.Init(),
-		p.contextDialog.Init(),
+		p.completionDialog.Init(),
 	}
 	return tea.Batch(cmds...)
 }
@@ -64,7 +64,7 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd := p.layout.SetSize(msg.Width, msg.Height)
 		cmds = append(cmds, cmd)
 	case dialog.CompletionDialogCloseMsg:
-		p.showContextDialog = false
+		p.showCompletionDialog = false
 	case chat.SendMsg:
 		cmd := p.sendMessage(msg.Text, msg.Attachments)
 		if cmd != nil {
@@ -90,8 +90,8 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		p.session = msg
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, keyMap.ShowContextDialog):
-			p.showContextDialog = true
+		case key.Matches(msg, keyMap.ShowCompletionDialog):
+			p.showCompletionDialog = true
 			// Continue sending keys to layout->chat
 		case key.Matches(msg, keyMap.NewSession):
 			p.session = session.Session{}
@@ -108,9 +108,9 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	}
-	if p.showContextDialog {
-		context, contextCmd := p.contextDialog.Update(msg)
-		p.contextDialog = context.(dialog.CompletionDialog)
+	if p.showCompletionDialog {
+		context, contextCmd := p.completionDialog.Update(msg)
+		p.completionDialog = context.(dialog.CompletionDialog)
 		cmds = append(cmds, contextCmd)
 
 		// Doesn't forward event if enter key is pressed
@@ -174,12 +174,12 @@ func (p *chatPage) GetSize() (int, int) {
 func (p *chatPage) View() string {
 	layoutView := p.layout.View()
 
-	if p.showContextDialog {
+	if p.showCompletionDialog {
 		_, layoutHeight := p.layout.GetSize()
 		editorWidth, editorHeight := p.editor.GetSize()
 
-		p.contextDialog.SetWidth(editorWidth)
-		overlay := p.contextDialog.View()
+		p.completionDialog.SetWidth(editorWidth)
+		overlay := p.completionDialog.View()
 
 		layoutView = layout.PlaceOverlay(
 			0,
@@ -202,7 +202,7 @@ func (p *chatPage) BindingKeys() []key.Binding {
 
 func NewChatPage(app *app.App) tea.Model {
 	cg := completions.NewFileAndFolderContextGroup()
-	contextDialog := dialog.NewCompletionDialogCmp(cg)
+	completionDialog := dialog.NewCompletionDialogCmp(cg)
 
 	messagesContainer := layout.NewContainer(
 		chat.NewMessagesCmp(app),
@@ -213,10 +213,10 @@ func NewChatPage(app *app.App) tea.Model {
 		layout.WithBorder(true, false, false, false),
 	)
 	return &chatPage{
-		app:           app,
-		editor:        editorContainer,
-		messages:      messagesContainer,
-		contextDialog: contextDialog,
+		app:              app,
+		editor:           editorContainer,
+		messages:         messagesContainer,
+		completionDialog: completionDialog,
 		layout: layout.NewSplitPane(
 			layout.WithLeftPanel(messagesContainer),
 			layout.WithBottomPanel(editorContainer),

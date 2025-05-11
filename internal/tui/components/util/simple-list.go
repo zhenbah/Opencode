@@ -38,7 +38,6 @@ type simpleListKeyMap struct {
 	Down      key.Binding
 	UpAlpha   key.Binding
 	DownAlpha key.Binding
-	Enter     key.Binding
 }
 
 var simpleListKeys = simpleListKeyMap{
@@ -52,15 +51,11 @@ var simpleListKeys = simpleListKeyMap{
 	),
 	UpAlpha: key.NewBinding(
 		key.WithKeys("k"),
-		key.WithHelp("↑", "previous list item"),
+		key.WithHelp("k", "previous list item"),
 	),
 	DownAlpha: key.NewBinding(
 		key.WithKeys("j"),
-		key.WithHelp("↓", "next list item"),
-	),
-	Enter: key.NewBinding(
-		key.WithKeys("enter"),
-		key.WithHelp("enter", "select item"),
+		key.WithHelp("j", "next list item"),
 	),
 }
 

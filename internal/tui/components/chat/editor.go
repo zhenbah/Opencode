@@ -198,6 +198,7 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.deleteMode = false
 			return m, nil
 		}
+		// Hanlde Enter key
 		if m.textarea.Focused() && key.Matches(msg, editorMaps.Send) {
 			value := m.textarea.Value()
 			if len(value) > 0 && value[len(value)-1] == '\\' {
@@ -205,9 +206,8 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textarea.SetValue(value[:len(value)-1] + "\n")
 				return m, nil
 			} else {
-				logging.Info("Interrupt failed")
 				// Otherwise, send the message
-				// return m, m.send()
+				return m, m.send()
 			}
 		}
 

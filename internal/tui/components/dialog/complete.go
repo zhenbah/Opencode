@@ -76,10 +76,6 @@ type CompletionDialogCompleteItemMsg struct {
 
 type CompletionDialogCloseMsg struct{}
 
-type CompletionDialogInterruptUpdateMsg struct {
-	InterrupCmd tea.Cmd
-}
-
 type CompletionDialog interface {
 	tea.Model
 	layout.Bindings
