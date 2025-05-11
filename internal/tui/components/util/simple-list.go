@@ -16,16 +16,20 @@ type SimpleListItem interface {
 type SimpleList[T SimpleListItem] interface {
 	tea.Model
 	layout.Bindings
+	SetMaxWidth(maxWidth int)
 	GetSelectedItem() (item T, idx int)
 	SetItems(items []T)
+	GetItems() []T
 }
 
 type simpleListCmp[T SimpleListItem] struct {
-	fallbackMsg string
-	items       []T
-	selectedIdx int
-	width       int
-	height      int
+	fallbackMsg     string
+	items           []T
+	selectedIdx     int
+	maxWidth        int
+	maxVisibleItems int
+	width           int
+	height          int
 }
 
 type simpleListKeyMap struct {
@@ -91,13 +95,21 @@ func (c *simpleListCmp[T]) SetItems(items []T) {
 	c.items = items
 }
 
+func (c *simpleListCmp[T]) GetItems() []T {
+	return c.items
+}
+
+func (c *simpleListCmp[T]) SetMaxWidth(width int) {
+	c.maxWidth = width
+}
+
 func (c *simpleListCmp[T]) View() string {
 	t := theme.CurrentTheme()
 	baseStyle := styles.BaseStyle()
 
 	items := c.items
-	maxWidth := 80
-	maxVisibleItems := 7
+	maxWidth := c.maxWidth
+	maxVisibleItems := min(c.maxVisibleItems, len(items))
 	startIdx := 0
 
 	if len(items) <= 0 {
@@ -127,23 +139,14 @@ func (c *simpleListCmp[T]) View() string {
 		listItems = append(listItems, title)
 	}
 
-	return lipgloss.JoinVertical(
-		lipgloss.Left,
-		baseStyle.
-			Background(t.Background()).
-			Width(maxWidth).
-			Padding(0, 1).
-			Render(
-				lipgloss.
-					JoinVertical(lipgloss.Left, listItems...),
-			),
-	)
+	return lipgloss.JoinVertical(lipgloss.Left, listItems...)
 }
 
-func NewSimpleList[T SimpleListItem](items []T, fallbackMsg string) SimpleList[T] {
+func NewSimpleList[T SimpleListItem](items []T, maxVisibleItems int, fallbackMsg string) SimpleList[T] {
 	return &simpleListCmp[T]{
-		fallbackMsg: fallbackMsg,
-		items:       items,
-		selectedIdx: 0,
+		fallbackMsg:     fallbackMsg,
+		items:           items,
+		maxVisibleItems: maxVisibleItems,
+		selectedIdx:     0,
 	}
 }

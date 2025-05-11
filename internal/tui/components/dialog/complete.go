@@ -29,11 +29,12 @@ func (ci *CompletionItem) Render(selected bool, width int) string {
 	t := theme.CurrentTheme()
 	baseStyle := styles.BaseStyle()
 
-	itemStyle := baseStyle
+	itemStyle := baseStyle.
+		Width(width).
+		Padding(0, 1)
 
 	if selected {
 		itemStyle = itemStyle.
-			Width(width).
 			Background(t.Background()).
 			Foreground(t.Primary()).
 			Bold(true)
@@ -237,6 +238,19 @@ func (c *completionDialogCmp) View() string {
 	t := theme.CurrentTheme()
 	baseStyle := styles.BaseStyle()
 
+	maxWidth := 40
+
+	commands := c.listView.GetItems()
+
+	for _, cmd := range commands {
+		title := cmd.DisplayValue()
+		if len(title) > maxWidth-4 {
+			maxWidth = len(title) + 4
+		}
+	}
+
+	c.listView.SetMaxWidth(maxWidth)
+
 	return baseStyle.Padding(0, 0).
 		Border(lipgloss.NormalBorder()).
 		BorderBottom(false).
@@ -266,6 +280,7 @@ func NewCompletionDialogCmp(completionProvider CompletionProvider) CompletionDia
 
 	li := utilComponents.NewSimpleList(
 		items,
+		7,
 		"No file matches found",
 	)
 
