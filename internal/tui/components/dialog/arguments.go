@@ -297,31 +297,36 @@ func (m MultiArgumentsDialogCmp) View() string {
 	// Calculate width needed for content
 	maxWidth := 60 // Width for explanation text
 
-	title := baseStyle.
+	title := lipgloss.NewStyle().
 		Foreground(t.Primary()).
 		Bold(true).
 		Width(maxWidth).
 		Padding(0, 1).
+		Background(t.Background()).
 		Render("Command Arguments")
 
-	explanation := baseStyle.
+	explanation := lipgloss.NewStyle().
 		Foreground(t.Text()).
 		Width(maxWidth).
 		Padding(0, 1).
+		Background(t.Background()).
 		Render("This command requires multiple arguments. Please enter values for each:")
 
 	// Create input fields for each argument
 	inputFields := make([]string, len(m.inputs))
 	for i, input := range m.inputs {
-		label := baseStyle.
+		label := lipgloss.NewStyle().
 			Foreground(t.TextMuted()).
+			Width(maxWidth).
 			Padding(1, 1, 0, 1).
+			Background(t.Background()).
 			Render(m.argNames[i] + ":")
 
-		field := baseStyle.
+		field := lipgloss.NewStyle().
 			Foreground(t.Text()).
 			Width(maxWidth).
 			Padding(0, 1).
+			Background(t.Background()).
 			Render(input.View())
 
 		inputFields[i] = lipgloss.JoinVertical(lipgloss.Left, label, field)
