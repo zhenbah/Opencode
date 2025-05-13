@@ -135,6 +135,9 @@ type appModel struct {
 
 	showArgumentsDialog bool
 	argumentsDialog     dialog.ArgumentsDialogCmp
+	
+	showMultiArgumentsDialog bool
+	multiArgumentsDialog     dialog.MultiArgumentsDialogCmp
 
 	isCompacting      bool
 	compactingMessage string
@@ -219,6 +222,13 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			args, argsCmd := a.argumentsDialog.Update(msg)
 			a.argumentsDialog = args.(dialog.ArgumentsDialogCmp)
 			cmds = append(cmds, argsCmd, a.argumentsDialog.Init())
+		}
+		
+		if a.showMultiArgumentsDialog {
+			a.multiArgumentsDialog.SetSize(msg.Width, msg.Height)
+			args, argsCmd := a.multiArgumentsDialog.Update(msg)
+			a.multiArgumentsDialog = args.(dialog.MultiArgumentsDialogCmp)
+			cmds = append(cmds, argsCmd, a.multiArgumentsDialog.Init())
 		}
 
 		return a, tea.Batch(cmds...)
@@ -443,6 +453,12 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.argumentsDialog = dialog.NewArgumentsDialogCmp(msg.CommandID, msg.Content)
 		a.showArgumentsDialog = true
 		return a, a.argumentsDialog.Init()
+		
+	case dialog.ShowMultiArgumentsDialogMsg:
+		// Show multi-arguments dialog
+		a.multiArgumentsDialog = dialog.NewMultiArgumentsDialogCmp(msg.CommandID, msg.Content, msg.ArgNames)
+		a.showMultiArgumentsDialog = true
+		return a, a.multiArgumentsDialog.Init()
 
 	case dialog.CloseArgumentsDialogMsg:
 		// Close arguments dialog
@@ -459,12 +475,41 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			})
 		}
 		return a, nil
+		
+	case dialog.CloseMultiArgumentsDialogMsg:
+		// Close multi-arguments dialog
+		a.showMultiArgumentsDialog = false
+
+		// If submitted, replace all named arguments and run the command
+		if msg.Submit {
+			content := msg.Content
+			
+			// Replace each named argument with its value
+			for name, value := range msg.Args {
+				placeholder := "$" + name
+				content = strings.ReplaceAll(content, placeholder, value)
+			}
+
+			// Execute the command with arguments
+			return a, util.CmdHandler(dialog.CommandRunCustomMsg{
+				Content: content,
+				Args:    msg.Args,
+			})
+		}
+		return a, nil
 
 	case tea.KeyMsg:
 		// If arguments dialog is open, let it handle the key press first
 		if a.showArgumentsDialog {
 			args, cmd := a.argumentsDialog.Update(msg)
 			a.argumentsDialog = args.(dialog.ArgumentsDialogCmp)
+			return a, cmd
+		}
+		
+		// If multi-arguments dialog is open, let it handle the key press first
+		if a.showMultiArgumentsDialog {
+			args, cmd := a.multiArgumentsDialog.Update(msg)
+			a.multiArgumentsDialog = args.(dialog.MultiArgumentsDialogCmp)
 			return a, cmd
 		}
 
@@ -900,6 +945,21 @@ func (a appModel) View() string {
 
 	if a.showArgumentsDialog {
 		overlay := a.argumentsDialog.View()
+		row := lipgloss.Height(appView) / 2
+		row -= lipgloss.Height(overlay) / 2
+		col := lipgloss.Width(appView) / 2
+		col -= lipgloss.Width(overlay) / 2
+		appView = layout.PlaceOverlay(
+			col,
+			row,
+			overlay,
+			appView,
+			true,
+		)
+	}
+	
+	if a.showMultiArgumentsDialog {
+		overlay := a.multiArgumentsDialog.View()
 		row := lipgloss.Height(appView) / 2
 		row -= lipgloss.Height(overlay) / 2
 		col := lipgloss.Width(appView) / 2
