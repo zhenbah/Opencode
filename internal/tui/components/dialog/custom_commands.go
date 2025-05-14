@@ -152,15 +152,7 @@ func loadCommandsFromDir(commandsDir string, prefix string) ([]Command, error) {
 						}
 					}
 
-					// Special case for backward compatibility
-					if len(argNames) == 1 && argNames[0] == "ARGUMENTS" {
-						return util.CmdHandler(ShowArgumentsDialogMsg{
-							CommandID: cmd.ID,
-							Content:   commandContent,
-						})
-					}
-
-					// Show multi-arguments dialog for named arguments
+					// Show multi-arguments dialog for all named arguments
 					return util.CmdHandler(ShowMultiArgumentsDialogMsg{
 						CommandID: cmd.ID,
 						Content:   commandContent,
