@@ -19,6 +19,7 @@ OpenCode is a Go-based CLI application that brings AI assistance to your termina
 - **LSP Integration**: Language Server Protocol support for code intelligence
 - **File Change Tracking**: Track and visualize file changes during sessions
 - **External Editor Support**: Open your preferred editor for composing messages
+- **Named Arguments for Custom Commands**: Create powerful custom commands with multiple named placeholders
 
 ## Installation
 
@@ -26,10 +27,10 @@ OpenCode is a Go-based CLI application that brings AI assistance to your termina
 
 ```bash
 # Install the latest version
-curl -fsSL https://opencode.ai/install | bash
+curl -fsSL https://raw.githubusercontent.com/opencode-ai/opencode/refs/heads/main/install | bash
 
 # Install a specific version
-curl -fsSL https://opencode.ai/install | VERSION=0.1.0 bash
+curl -fsSL https://raw.githubusercontent.com/opencode-ai/opencode/refs/heads/main/install | VERSION=0.1.0 bash
 ```
 
 ### Using Homebrew (macOS and Linux)
@@ -42,10 +43,10 @@ brew install opencode-ai/tap/opencode
 
 ```bash
 # Using yay
-yay -S opencode-bin
+yay -S opencode-ai-bin
 
 # Using paru
-paru -S opencode-bin
+paru -S opencode-ai-bin
 ```
 
 ### Using Go
@@ -62,12 +63,29 @@ OpenCode looks for configuration in the following locations:
 - `$XDG_CONFIG_HOME/opencode/.opencode.json`
 - `./.opencode.json` (local directory)
 
+### Auto Compact Feature
+
+OpenCode includes an auto compact feature that automatically summarizes your conversation when it approaches the model's context window limit. When enabled (default setting), this feature:
+
+- Monitors token usage during your conversation
+- Automatically triggers summarization when usage reaches 95% of the model's context window
+- Creates a new session with the summary, allowing you to continue your work without losing context
+- Helps prevent "out of context" errors that can occur with long conversations
+
+You can enable or disable this feature in your configuration file:
+
+```json
+{
+  "autoCompact": true // default is true
+}
+```
+
 ### Environment Variables
 
 You can configure OpenCode using environment variables:
 
 | Environment Variable       | Purpose                                                |
-|----------------------------|--------------------------------------------------------|
+| -------------------------- | ------------------------------------------------------ |
 | `ANTHROPIC_API_KEY`        | For Claude models                                      |
 | `OPENAI_API_KEY`           | For OpenAI models                                      |
 | `GEMINI_API_KEY`           | For Google Gemini models                               |
@@ -80,7 +98,24 @@ You can configure OpenCode using environment variables:
 | `AZURE_OPENAI_ENDPOINT`    | For Azure OpenAI models                                |
 | `AZURE_OPENAI_API_KEY`     | For Azure OpenAI models (optional when using Entra ID) |
 | `AZURE_OPENAI_API_VERSION` | For Azure OpenAI models                                |
+| `SHELL`                    | Default shell to use (if not specified in config)      |
 
+### Shell Configuration
+
+OpenCode allows you to configure the shell used by the bash tool. By default, it uses the shell specified in the `SHELL` environment variable, or falls back to `/bin/bash` if not set.
+
+You can override this in your configuration file:
+
+```json
+{
+  "shell": {
+    "path": "/bin/zsh",
+    "args": ["-l"]
+  }
+}
+```
+
+This is useful if you want to use a different shell than your default system shell, or if you need to pass specific arguments to the shell.
 
 ### Configuration File Structure
 
@@ -121,6 +156,10 @@ You can configure OpenCode using environment variables:
       "maxTokens": 80
     }
   },
+  "shell": {
+    "path": "/bin/bash",
+    "args": ["-l"]
+  },
   "mcpServers": {
     "example": {
       "type": "stdio",
@@ -136,7 +175,8 @@ You can configure OpenCode using environment variables:
     }
   },
   "debug": false,
-  "debugLSP": false
+  "debugLSP": false,
+  "autoCompact": true
 }
 ```
 
@@ -334,9 +374,11 @@ OpenCode supports custom commands that can be created by users to quickly send p
 Custom commands are predefined prompts stored as Markdown files in one of three locations:
 
 1. **User Commands** (prefixed with `user:`):
+
    ```
    $XDG_CONFIG_HOME/opencode/commands/
    ```
+
    (typically `~/.config/opencode/commands/` on Linux/macOS)
 
    or
@@ -363,13 +405,22 @@ This creates a command called `user:prime-context`.
 
 ### Command Arguments
 
-You can create commands that accept arguments by including the `$ARGUMENTS` placeholder in your command file:
+OpenCode supports named arguments in custom commands using placeholders in the format `$NAME` (where NAME consists of uppercase letters, numbers, and underscores, and must start with a letter).
+
+For example:
 
 ```markdown
-RUN git show $ARGUMENTS
+# Fetch Context for Issue $ISSUE_NUMBER
+
+RUN gh issue view $ISSUE_NUMBER --json title,body,comments
+RUN git grep --author="$AUTHOR_NAME" -n .
+RUN grep -R "$SEARCH_PATTERN" $DIRECTORY
 ```
 
-When you run this command, OpenCode will prompt you to enter the text that should replace `$ARGUMENTS`.
+When you run a command with arguments, OpenCode will prompt you to enter values for each unique placeholder. Named arguments provide several benefits:
+- Clear identification of what each argument represents
+- Ability to use the same argument multiple times
+- Better organization for commands with multiple inputs
 
 ### Organizing Commands
 
@@ -388,6 +439,15 @@ This creates a command with ID `user:git:commit`.
 3. Press Enter to execute the command
 
 The content of the command file will be sent as a message to the AI assistant.
+
+### Built-in Commands
+
+OpenCode includes several built-in commands:
+
+| Command            | Description                                                                                         |
+| ------------------ | --------------------------------------------------------------------------------------------------- |
+| Initialize Project | Creates or updates the OpenCode.md memory file with project-specific information                    |
+| Compact Session    | Manually triggers the summarization of the current session, creating a new session with the summary |
 
 ## MCP (Model Context Protocol)
 

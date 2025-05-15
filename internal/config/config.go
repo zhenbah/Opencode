@@ -36,9 +36,10 @@ type MCPServer struct {
 type AgentName string
 
 const (
-	AgentCoder AgentName = "coder"
-	AgentTask  AgentName = "task"
-	AgentTitle AgentName = "title"
+	AgentCoder      AgentName = "coder"
+	AgentSummarizer AgentName = "summarizer"
+	AgentTask       AgentName = "task"
+	AgentTitle      AgentName = "title"
 )
 
 // Agent defines configuration for different LLM models and their token limits.
@@ -56,7 +57,7 @@ type Provider struct {
 
 // Data defines storage configuration.
 type Data struct {
-	Directory string `json:"directory"`
+	Directory string `json:"directory,omitempty"`
 }
 
 // LSPConfig defines configuration for Language Server Protocol integration.
@@ -72,6 +73,12 @@ type TUIConfig struct {
 	Theme string `json:"theme,omitempty"`
 }
 
+// ShellConfig defines the configuration for the shell used by the bash tool.
+type ShellConfig struct {
+	Path string   `json:"path,omitempty"`
+	Args []string `json:"args,omitempty"`
+}
+
 // Config is the main configuration structure for the application.
 type Config struct {
 	Data         Data                              `json:"data"`
@@ -79,11 +86,13 @@ type Config struct {
 	MCPServers   map[string]MCPServer              `json:"mcpServers,omitempty"`
 	Providers    map[models.ModelProvider]Provider `json:"providers,omitempty"`
 	LSP          map[string]LSPConfig              `json:"lsp,omitempty"`
-	Agents       map[AgentName]Agent               `json:"agents"`
+	Agents       map[AgentName]Agent               `json:"agents,omitempty"`
 	Debug        bool                              `json:"debug,omitempty"`
 	DebugLSP     bool                              `json:"debugLSP,omitempty"`
 	ContextPaths []string                          `json:"contextPaths,omitempty"`
 	TUI          TUIConfig                         `json:"tui"`
+	Shell        ShellConfig                       `json:"shell,omitempty"`
+	AutoCompact  bool                              `json:"autoCompact,omitempty"`
 }
 
 // Application constants
@@ -213,6 +222,15 @@ func setDefaults(debug bool) {
 	viper.SetDefault("data.directory", defaultDataDirectory)
 	viper.SetDefault("contextPaths", defaultContextPaths)
 	viper.SetDefault("tui.theme", "opencode")
+	viper.SetDefault("autoCompact", true)
+
+	// Set default shell from environment or fallback to /bin/bash
+	shellPath := os.Getenv("SHELL")
+	if shellPath == "" {
+		shellPath = "/bin/bash"
+	}
+	viper.SetDefault("shell.path", shellPath)
+	viper.SetDefault("shell.args", []string{"-l"})
 
 	if debug {
 		viper.SetDefault("debug", true)
@@ -263,6 +281,7 @@ func setProviderDefaults() {
 	// Anthropic configuration
 	if key := viper.GetString("providers.anthropic.apiKey"); strings.TrimSpace(key) != "" {
 		viper.SetDefault("agents.coder.model", models.Claude37Sonnet)
+		viper.SetDefault("agents.summarizer.model", models.Claude37Sonnet)
 		viper.SetDefault("agents.task.model", models.Claude37Sonnet)
 		viper.SetDefault("agents.title.model", models.Claude37Sonnet)
 		return
@@ -271,6 +290,7 @@ func setProviderDefaults() {
 	// OpenAI configuration
 	if key := viper.GetString("providers.openai.apiKey"); strings.TrimSpace(key) != "" {
 		viper.SetDefault("agents.coder.model", models.GPT41)
+		viper.SetDefault("agents.summarizer.model", models.GPT41)
 		viper.SetDefault("agents.task.model", models.GPT41Mini)
 		viper.SetDefault("agents.title.model", models.GPT41Mini)
 		return
@@ -279,6 +299,7 @@ func setProviderDefaults() {
 	// Google Gemini configuration
 	if key := viper.GetString("providers.gemini.apiKey"); strings.TrimSpace(key) != "" {
 		viper.SetDefault("agents.coder.model", models.Gemini25)
+		viper.SetDefault("agents.summarizer.model", models.Gemini25)
 		viper.SetDefault("agents.task.model", models.Gemini25Flash)
 		viper.SetDefault("agents.title.model", models.Gemini25Flash)
 		return
@@ -287,6 +308,7 @@ func setProviderDefaults() {
 	// Groq configuration
 	if key := viper.GetString("providers.groq.apiKey"); strings.TrimSpace(key) != "" {
 		viper.SetDefault("agents.coder.model", models.QWENQwq)
+		viper.SetDefault("agents.summarizer.model", models.QWENQwq)
 		viper.SetDefault("agents.task.model", models.QWENQwq)
 		viper.SetDefault("agents.title.model", models.QWENQwq)
 		return
@@ -295,6 +317,7 @@ func setProviderDefaults() {
 	// OpenRouter configuration
 	if key := viper.GetString("providers.openrouter.apiKey"); strings.TrimSpace(key) != "" {
 		viper.SetDefault("agents.coder.model", models.OpenRouterClaude37Sonnet)
+		viper.SetDefault("agents.summarizer.model", models.OpenRouterClaude37Sonnet)
 		viper.SetDefault("agents.task.model", models.OpenRouterClaude37Sonnet)
 		viper.SetDefault("agents.title.model", models.OpenRouterClaude35Haiku)
 		return
@@ -303,6 +326,7 @@ func setProviderDefaults() {
 	// XAI configuration
 	if key := viper.GetString("providers.xai.apiKey"); strings.TrimSpace(key) != "" {
 		viper.SetDefault("agents.coder.model", models.XAIGrok3Beta)
+		viper.SetDefault("agents.summarizer.model", models.XAIGrok3Beta)
 		viper.SetDefault("agents.task.model", models.XAIGrok3Beta)
 		viper.SetDefault("agents.title.model", models.XAiGrok3MiniFastBeta)
 		return
@@ -311,6 +335,7 @@ func setProviderDefaults() {
 	// AWS Bedrock configuration
 	if hasAWSCredentials() {
 		viper.SetDefault("agents.coder.model", models.BedrockClaude37Sonnet)
+		viper.SetDefault("agents.summarizer.model", models.BedrockClaude37Sonnet)
 		viper.SetDefault("agents.task.model", models.BedrockClaude37Sonnet)
 		viper.SetDefault("agents.title.model", models.BedrockClaude37Sonnet)
 		return
@@ -319,6 +344,7 @@ func setProviderDefaults() {
 	// Azure OpenAI configuration
 	if os.Getenv("AZURE_OPENAI_ENDPOINT") != "" {
 		viper.SetDefault("agents.coder.model", models.AzureGPT41)
+		viper.SetDefault("agents.summarizer.model", models.AzureGPT41)
 		viper.SetDefault("agents.task.model", models.AzureGPT41Mini)
 		viper.SetDefault("agents.title.model", models.AzureGPT41Mini)
 		return
@@ -739,6 +765,52 @@ func setDefaultModelForAgent(agent AgentName) bool {
 	return false
 }
 
+func updateCfgFile(updateCfg func(config *Config)) error {
+	if cfg == nil {
+		return fmt.Errorf("config not loaded")
+	}
+
+	// Get the config file path
+	configFile := viper.ConfigFileUsed()
+	var configData []byte
+	if configFile == "" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return fmt.Errorf("failed to get home directory: %w", err)
+		}
+		configFile = filepath.Join(homeDir, fmt.Sprintf(".%s.json", appName))
+		logging.Info("config file not found, creating new one", "path", configFile)
+		configData = []byte(`{}`)
+	} else {
+		// Read the existing config file
+		data, err := os.ReadFile(configFile)
+		if err != nil {
+			return fmt.Errorf("failed to read config file: %w", err)
+		}
+		configData = data
+	}
+
+	// Parse the JSON
+	var userCfg *Config
+	if err := json.Unmarshal(configData, &userCfg); err != nil {
+		return fmt.Errorf("failed to parse config file: %w", err)
+	}
+
+	updateCfg(userCfg)
+
+	// Write the updated config back to file
+	updatedData, err := json.MarshalIndent(userCfg, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	if err := os.WriteFile(configFile, updatedData, 0o644); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	return nil
+}
+
 // Get returns the current configuration.
 // It's safe to call this function multiple times.
 func Get() *Config {
@@ -783,7 +855,12 @@ func UpdateAgentModel(agentName AgentName, modelID models.ModelID) error {
 		return fmt.Errorf("failed to update agent model: %w", err)
 	}
 
-	return nil
+	return updateCfgFile(func(config *Config) {
+		if config.Agents == nil {
+			config.Agents = make(map[AgentName]Agent)
+		}
+		config.Agents[agentName] = newAgentCfg
+	})
 }
 
 // UpdateTheme updates the theme in the configuration and writes it to the config file.
@@ -795,52 +872,8 @@ func UpdateTheme(themeName string) error {
 	// Update the in-memory config
 	cfg.TUI.Theme = themeName
 
-	// Get the config file path
-	configFile := viper.ConfigFileUsed()
-	var configData []byte
-	if configFile == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return fmt.Errorf("failed to get home directory: %w", err)
-		}
-		configFile = filepath.Join(homeDir, fmt.Sprintf(".%s.json", appName))
-		logging.Info("config file not found, creating new one", "path", configFile)
-		configData = []byte(`{}`)
-	} else {
-		// Read the existing config file
-		data, err := os.ReadFile(configFile)
-		if err != nil {
-			return fmt.Errorf("failed to read config file: %w", err)
-		}
-		configData = data
-	}
-
-	// Parse the JSON
-	var configMap map[string]interface{}
-	if err := json.Unmarshal(configData, &configMap); err != nil {
-		return fmt.Errorf("failed to parse config file: %w", err)
-	}
-
-	// Update just the theme value
-	tuiConfig, ok := configMap["tui"].(map[string]interface{})
-	if !ok {
-		// TUI config doesn't exist yet, create it
-		configMap["tui"] = map[string]interface{}{"theme": themeName}
-	} else {
-		// Update existing TUI config
-		tuiConfig["theme"] = themeName
-		configMap["tui"] = tuiConfig
-	}
-
-	// Write the updated config back to file
-	updatedData, err := json.MarshalIndent(configMap, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal config: %w", err)
-	}
-
-	if err := os.WriteFile(configFile, updatedData, 0o644); err != nil {
-		return fmt.Errorf("failed to write config file: %w", err)
-	}
-
-	return nil
+	// Update the file config
+	return updateCfgFile(func(config *Config) {
+		config.TUI.Theme = themeName
+	})
 }

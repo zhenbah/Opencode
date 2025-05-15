@@ -10,14 +10,17 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/opencode-ai/opencode/internal/app"
 	"github.com/opencode-ai/opencode/internal/config"
+	"github.com/opencode-ai/opencode/internal/llm/agent"
 	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/permission"
 	"github.com/opencode-ai/opencode/internal/pubsub"
+	"github.com/opencode-ai/opencode/internal/session"
 	"github.com/opencode-ai/opencode/internal/tui/components/chat"
 	"github.com/opencode-ai/opencode/internal/tui/components/core"
 	"github.com/opencode-ai/opencode/internal/tui/components/dialog"
 	"github.com/opencode-ai/opencode/internal/tui/layout"
 	"github.com/opencode-ai/opencode/internal/tui/page"
+	"github.com/opencode-ai/opencode/internal/tui/theme"
 	"github.com/opencode-ai/opencode/internal/tui/util"
 )
 
@@ -31,6 +34,8 @@ type keyMap struct {
 	Models        key.Binding
 	SwitchTheme   key.Binding
 }
+
+type startCompactSessionMsg struct{}
 
 const (
 	quitKey = "q"
@@ -91,13 +96,14 @@ var logsKeyReturnKey = key.NewBinding(
 )
 
 type appModel struct {
-	width, height int
-	currentPage   page.PageID
-	previousPage  page.PageID
-	pages         map[page.PageID]tea.Model
-	loadedPages   map[page.PageID]bool
-	status        core.StatusCmp
-	app           *app.App
+	width, height   int
+	currentPage     page.PageID
+	previousPage    page.PageID
+	pages           map[page.PageID]tea.Model
+	loadedPages     map[page.PageID]bool
+	status          core.StatusCmp
+	app             *app.App
+	selectedSession session.Session
 
 	showPermissions bool
 	permissions     dialog.PermissionDialogCmp
@@ -126,9 +132,12 @@ type appModel struct {
 
 	showThemeDialog bool
 	themeDialog     dialog.ThemeDialog
-	
-	showArgumentsDialog bool
-	argumentsDialog     dialog.ArgumentsDialogCmp
+
+	showMultiArgumentsDialog bool
+	multiArgumentsDialog     dialog.MultiArgumentsDialogCmp
+
+	isCompacting      bool
+	compactingMessage string
 }
 
 func (a appModel) Init() tea.Cmd {
@@ -151,6 +160,7 @@ func (a appModel) Init() tea.Cmd {
 	cmd = a.initDialog.Init()
 	cmds = append(cmds, cmd)
 	cmd = a.filepicker.Init()
+	cmds = append(cmds, cmd)
 	cmd = a.themeDialog.Init()
 	cmds = append(cmds, cmd)
 
@@ -203,12 +213,12 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, filepickerCmd)
 
 		a.initDialog.SetSize(msg.Width, msg.Height)
-		
-		if a.showArgumentsDialog {
-			a.argumentsDialog.SetSize(msg.Width, msg.Height)
-			args, argsCmd := a.argumentsDialog.Update(msg)
-			a.argumentsDialog = args.(dialog.ArgumentsDialogCmp)
-			cmds = append(cmds, argsCmd, a.argumentsDialog.Init())
+
+		if a.showMultiArgumentsDialog {
+			a.multiArgumentsDialog.SetSize(msg.Width, msg.Height)
+			args, argsCmd := a.multiArgumentsDialog.Update(msg)
+			a.multiArgumentsDialog = args.(dialog.MultiArgumentsDialogCmp)
+			cmds = append(cmds, argsCmd, a.multiArgumentsDialog.Init())
 		}
 
 		return a, tea.Batch(cmds...)
@@ -293,6 +303,46 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.showCommandDialog = false
 		return a, nil
 
+	case startCompactSessionMsg:
+		// Start compacting the current session
+		a.isCompacting = true
+		a.compactingMessage = "Starting summarization..."
+
+		if a.selectedSession.ID == "" {
+			a.isCompacting = false
+			return a, util.ReportWarn("No active session to summarize")
+		}
+
+		// Start the summarization process
+		return a, func() tea.Msg {
+			ctx := context.Background()
+			a.app.CoderAgent.Summarize(ctx, a.selectedSession.ID)
+			return nil
+		}
+
+	case pubsub.Event[agent.AgentEvent]:
+		payload := msg.Payload
+		if payload.Error != nil {
+			a.isCompacting = false
+			return a, util.ReportError(payload.Error)
+		}
+
+		a.compactingMessage = payload.Progress
+
+		if payload.Done && payload.Type == agent.AgentEventTypeSummarize {
+			a.isCompacting = false
+			return a, util.ReportInfo("Session summarization complete")
+		} else if payload.Done && payload.Type == agent.AgentEventTypeResponse && a.selectedSession.ID != "" {
+			model := a.app.CoderAgent.Model()
+			contextWindow := model.ContextWindow
+			tokens := a.selectedSession.CompletionTokens + a.selectedSession.PromptTokens
+			if (tokens >= int64(float64(contextWindow)*0.95)) && config.Get().AutoCompact {
+				return a, util.CmdHandler(startCompactSessionMsg{})
+			}
+		}
+		// Continue listening for events
+		return a, nil
+
 	case dialog.CloseThemeDialogMsg:
 		a.showThemeDialog = false
 		return a, nil
@@ -342,7 +392,13 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, nil
 
 	case chat.SessionSelectedMsg:
+		a.selectedSession = msg
 		a.sessionDialog.SetSelectedSession(msg.ID)
+
+	case pubsub.Event[session.Session]:
+		if msg.Type == pubsub.UpdatedEvent && msg.Payload.ID == a.selectedSession.ID {
+			a.selectedSession = msg.Payload
+		}
 	case dialog.SessionSelectedMsg:
 		a.showSessionDialog = false
 		if a.currentPage == page.ChatPage {
@@ -357,37 +413,43 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, msg.Command.Handler(msg.Command)
 		}
 		return a, util.ReportInfo("Command selected: " + msg.Command.Title)
-		
-	case dialog.ShowArgumentsDialogMsg:
-		// Show arguments dialog
-		a.argumentsDialog = dialog.NewArgumentsDialogCmp(msg.CommandID, msg.Content)
-		a.showArgumentsDialog = true
-		return a, a.argumentsDialog.Init()
-		
-	case dialog.CloseArgumentsDialogMsg:
-		// Close arguments dialog
-		a.showArgumentsDialog = false
-		
-		// If submitted, replace $ARGUMENTS and run the command
+
+	case dialog.ShowMultiArgumentsDialogMsg:
+		// Show multi-arguments dialog
+		a.multiArgumentsDialog = dialog.NewMultiArgumentsDialogCmp(msg.CommandID, msg.Content, msg.ArgNames)
+		a.showMultiArgumentsDialog = true
+		return a, a.multiArgumentsDialog.Init()
+
+	case dialog.CloseMultiArgumentsDialogMsg:
+		// Close multi-arguments dialog
+		a.showMultiArgumentsDialog = false
+
+		// If submitted, replace all named arguments and run the command
 		if msg.Submit {
-			// Replace $ARGUMENTS with the provided arguments
-			content := strings.ReplaceAll(msg.Content, "$ARGUMENTS", msg.Arguments)
+			content := msg.Content
 			
+			// Replace each named argument with its value
+			for name, value := range msg.Args {
+				placeholder := "$" + name
+				content = strings.ReplaceAll(content, placeholder, value)
+			}
+
 			// Execute the command with arguments
 			return a, util.CmdHandler(dialog.CommandRunCustomMsg{
 				Content: content,
+				Args:    msg.Args,
 			})
 		}
 		return a, nil
 
 	case tea.KeyMsg:
-		// If arguments dialog is open, let it handle the key press first
-		if a.showArgumentsDialog {
-			args, cmd := a.argumentsDialog.Update(msg)
-			a.argumentsDialog = args.(dialog.ArgumentsDialogCmp)
+		// If multi-arguments dialog is open, let it handle the key press first
+		if a.showMultiArgumentsDialog {
+			args, cmd := a.multiArgumentsDialog.Update(msg)
+			a.multiArgumentsDialog = args.(dialog.MultiArgumentsDialogCmp)
 			return a, cmd
 		}
-		
+
 		switch {
 
 		case key.Matches(msg, keys.Quit):
@@ -408,8 +470,8 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if a.showModelDialog {
 				a.showModelDialog = false
 			}
-			if a.showArgumentsDialog {
-				a.showArgumentsDialog = false
+			if a.showMultiArgumentsDialog {
+				a.showMultiArgumentsDialog = false
 			}
 			return a, nil
 		case key.Matches(msg, keys.SwitchSession):
@@ -606,6 +668,15 @@ func (a *appModel) RegisterCommand(cmd dialog.Command) {
 	a.commands = append(a.commands, cmd)
 }
 
+func (a *appModel) findCommand(id string) (dialog.Command, bool) {
+	for _, cmd := range a.commands {
+		if cmd.ID == id {
+			return cmd, true
+		}
+	}
+	return dialog.Command{}, false
+}
+
 func (a *appModel) moveToPage(pageID page.PageID) tea.Cmd {
 	if a.app.CoderAgent.IsBusy() {
 		// For now we don't move to any page if the agent is busy
@@ -668,10 +739,29 @@ func (a appModel) View() string {
 
 	}
 
-	if !a.app.CoderAgent.IsBusy() {
-		a.status.SetHelpWidgetMsg("ctrl+? help")
-	} else {
-		a.status.SetHelpWidgetMsg("? help")
+	// Show compacting status overlay
+	if a.isCompacting {
+		t := theme.CurrentTheme()
+		style := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(t.BorderFocused()).
+			BorderBackground(t.Background()).
+			Padding(1, 2).
+			Background(t.Background()).
+			Foreground(t.Text())
+
+		overlay := style.Render("Summarizing\n" + a.compactingMessage)
+		row := lipgloss.Height(appView) / 2
+		row -= lipgloss.Height(overlay) / 2
+		col := lipgloss.Width(appView) / 2
+		col -= lipgloss.Width(overlay) / 2
+		appView = layout.PlaceOverlay(
+			col,
+			row,
+			overlay,
+			appView,
+			true,
+		)
 	}
 
 	if a.showHelp {
@@ -789,9 +879,9 @@ func (a appModel) View() string {
 			true,
 		)
 	}
-	
-	if a.showArgumentsDialog {
-		overlay := a.argumentsDialog.View()
+
+	if a.showMultiArgumentsDialog {
+		overlay := a.multiArgumentsDialog.View()
 		row := lipgloss.Height(appView) / 2
 		row -= lipgloss.Height(overlay) / 2
 		col := lipgloss.Width(appView) / 2
@@ -850,7 +940,17 @@ If there are Cursor rules (in .cursor/rules/ or .cursorrules) or Copilot rules (
 			)
 		},
 	})
-	
+
+	model.RegisterCommand(dialog.Command{
+		ID:          "compact",
+		Title:       "Compact Session",
+		Description: "Summarize the current session and create a new one with the summary",
+		Handler: func(cmd dialog.Command) tea.Cmd {
+			return func() tea.Msg {
+				return startCompactSessionMsg{}
+			}
+		},
+	})
 	// Load custom commands
 	customCommands, err := dialog.LoadCustomCommands()
 	if err != nil {
@@ -860,6 +960,6 @@ If there are Cursor rules (in .cursor/rules/ or .cursorrules) or Copilot rules (
 			model.RegisterCommand(cmd)
 		}
 	}
-	
+
 	return model
 }
