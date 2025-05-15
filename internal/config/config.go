@@ -353,6 +353,7 @@ func setProviderDefaults() {
 	// Google Cloud VertexAI configuration
 	if hasVertexAICredentials() {
 		viper.SetDefault("agents.coder.model", models.VertexAIGemini25)
+		viper.SetDefault("agents.summarizer.model", models.VertexAIGemini25)
 		viper.SetDefault("agents.task.model", models.VertexAIGemini25Flash)
 		viper.SetDefault("agents.title.model", models.VertexAIGemini25Flash)
 		return
