@@ -1,5 +1,7 @@
 # ⌬ OpenCode
 
+<p align="center"><img src="https://github.com/user-attachments/assets/9ae61ef6-70e5-4876-bc45-5bcb4e52c714" width="800"></p>
+
 > **⚠️ Early Development Notice:** This project is in early development and is not yet ready for production use. Features may change, break, or be incomplete. Use at your own risk.
 
 A powerful terminal-based AI assistant for developers, providing intelligent coding assistance directly in your terminal.
@@ -19,6 +21,7 @@ OpenCode is a Go-based CLI application that brings AI assistance to your termina
 - **LSP Integration**: Language Server Protocol support for code intelligence
 - **File Change Tracking**: Track and visualize file changes during sessions
 - **External Editor Support**: Open your preferred editor for composing messages
+- **Named Arguments for Custom Commands**: Create powerful custom commands with multiple named placeholders
 
 ## Installation
 
@@ -26,10 +29,10 @@ OpenCode is a Go-based CLI application that brings AI assistance to your termina
 
 ```bash
 # Install the latest version
-curl -fsSL https://opencode.ai/install | bash
+curl -fsSL https://raw.githubusercontent.com/opencode-ai/opencode/refs/heads/main/install | bash
 
 # Install a specific version
-curl -fsSL https://opencode.ai/install | VERSION=0.1.0 bash
+curl -fsSL https://raw.githubusercontent.com/opencode-ai/opencode/refs/heads/main/install | VERSION=0.1.0 bash
 ```
 
 ### Using Homebrew (macOS and Linux)
@@ -42,10 +45,10 @@ brew install opencode-ai/tap/opencode
 
 ```bash
 # Using yay
-yay -S opencode-bin
+yay -S opencode-ai-bin
 
 # Using paru
-paru -S opencode-bin
+paru -S opencode-ai-bin
 ```
 
 ### Using Go
@@ -88,6 +91,8 @@ You can configure OpenCode using environment variables:
 | `ANTHROPIC_API_KEY`        | For Claude models                                      |
 | `OPENAI_API_KEY`           | For OpenAI models                                      |
 | `GEMINI_API_KEY`           | For Google Gemini models                               |
+| `VERTEXAI_PROJECT`         | For Google Cloud VertexAI (Gemini)                     |
+| `VERTEXAI_LOCATION`        | For Google Cloud VertexAI (Gemini)                     |
 | `GROQ_API_KEY`             | For Groq models                                        |
 | `AWS_ACCESS_KEY_ID`        | For AWS Bedrock (Claude)                               |
 | `AWS_SECRET_ACCESS_KEY`    | For AWS Bedrock (Claude)                               |
@@ -95,6 +100,24 @@ You can configure OpenCode using environment variables:
 | `AZURE_OPENAI_ENDPOINT`    | For Azure OpenAI models                                |
 | `AZURE_OPENAI_API_KEY`     | For Azure OpenAI models (optional when using Entra ID) |
 | `AZURE_OPENAI_API_VERSION` | For Azure OpenAI models                                |
+| `SHELL`                    | Default shell to use (if not specified in config)      |
+
+### Shell Configuration
+
+OpenCode allows you to configure the shell used by the bash tool. By default, it uses the shell specified in the `SHELL` environment variable, or falls back to `/bin/bash` if not set.
+
+You can override this in your configuration file:
+
+```json
+{
+  "shell": {
+    "path": "/bin/zsh",
+    "args": ["-l"]
+  }
+}
+```
+
+This is useful if you want to use a different shell than your default system shell, or if you need to pass specific arguments to the shell.
 
 ### Configuration File Structure
 
@@ -134,6 +157,10 @@ You can configure OpenCode using environment variables:
       "model": "claude-3.7-sonnet",
       "maxTokens": 80
     }
+  },
+  "shell": {
+    "path": "/bin/bash",
+    "args": ["-l"]
   },
   "mcpServers": {
     "example": {
@@ -204,6 +231,11 @@ OpenCode supports a variety of AI models from different providers:
 - O3 family (o3, o3-mini)
 - O4 Mini
 
+### Google Cloud VertexAI
+
+- Gemini 2.5
+- Gemini 2.5 Flash
+
 ## Usage
 
 ```bash
@@ -217,13 +249,46 @@ opencode -d
 opencode -c /path/to/project
 ```
 
+## Non-interactive Prompt Mode
+
+You can run OpenCode in non-interactive mode by passing a prompt directly as a command-line argument. This is useful for scripting, automation, or when you want a quick answer without launching the full TUI.
+
+```bash
+# Run a single prompt and print the AI's response to the terminal
+opencode -p "Explain the use of context in Go"
+
+# Get response in JSON format
+opencode -p "Explain the use of context in Go" -f json
+
+# Run without showing the spinner (useful for scripts)
+opencode -p "Explain the use of context in Go" -q
+```
+
+In this mode, OpenCode will process your prompt, print the result to standard output, and then exit. All permissions are auto-approved for the session.
+
+By default, a spinner animation is displayed while the model is processing your query. You can disable this spinner with the `-q` or `--quiet` flag, which is particularly useful when running OpenCode from scripts or automated workflows.
+
+### Output Formats
+
+OpenCode supports the following output formats in non-interactive mode:
+
+| Format | Description                            |
+| ------ | -------------------------------------- |
+| `text` | Plain text output (default)            |
+| `json` | Output wrapped in a JSON object        |
+
+The output format is implemented as a strongly-typed `OutputFormat` in the codebase, ensuring type safety and validation when processing outputs.
+
 ## Command-line Flags
 
-| Flag      | Short | Description                   |
-| --------- | ----- | ----------------------------- |
-| `--help`  | `-h`  | Display help information      |
-| `--debug` | `-d`  | Enable debug mode             |
-| `--cwd`   | `-c`  | Set current working directory |
+| Flag              | Short | Description                                            |
+| ----------------- | ----- | ------------------------------------------------------ |
+| `--help`          | `-h`  | Display help information                               |
+| `--debug`         | `-d`  | Enable debug mode                                      |
+| `--cwd`           | `-c`  | Set current working directory                          |
+| `--prompt`        | `-p`  | Run a single prompt in non-interactive mode            |
+| `--output-format` | `-f`  | Output format for non-interactive mode (text, json)    |
+| `--quiet`         | `-q`  | Hide spinner in non-interactive mode                   |
 
 ## Keyboard Shortcuts
 
@@ -358,6 +423,7 @@ Custom commands are predefined prompts stored as Markdown files in one of three 
    ```
 
 2. **Project Commands** (prefixed with `project:`):
+
    ```
    <PROJECT DIR>/.opencode/commands/
    ```
@@ -375,13 +441,23 @@ This creates a command called `user:prime-context`.
 
 ### Command Arguments
 
-You can create commands that accept arguments by including the `$ARGUMENTS` placeholder in your command file:
+OpenCode supports named arguments in custom commands using placeholders in the format `$NAME` (where NAME consists of uppercase letters, numbers, and underscores, and must start with a letter).
+
+For example:
 
 ```markdown
-RUN git show $ARGUMENTS
+# Fetch Context for Issue $ISSUE_NUMBER
+
+RUN gh issue view $ISSUE_NUMBER --json title,body,comments
+RUN git grep --author="$AUTHOR_NAME" -n .
+RUN grep -R "$SEARCH_PATTERN" $DIRECTORY
 ```
 
-When you run this command, OpenCode will prompt you to enter the text that should replace `$ARGUMENTS`.
+When you run a command with arguments, OpenCode will prompt you to enter values for each unique placeholder. Named arguments provide several benefits:
+
+- Clear identification of what each argument represents
+- Ability to use the same argument multiple times
+- Better organization for commands with multiple inputs
 
 ### Organizing Commands
 

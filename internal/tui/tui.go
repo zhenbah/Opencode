@@ -133,8 +133,8 @@ type appModel struct {
 	showThemeDialog bool
 	themeDialog     dialog.ThemeDialog
 
-	showArgumentsDialog bool
-	argumentsDialog     dialog.ArgumentsDialogCmp
+	showMultiArgumentsDialog bool
+	multiArgumentsDialog     dialog.MultiArgumentsDialogCmp
 
 	isCompacting      bool
 	compactingMessage string
@@ -214,11 +214,11 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		a.initDialog.SetSize(msg.Width, msg.Height)
 
-		if a.showArgumentsDialog {
-			a.argumentsDialog.SetSize(msg.Width, msg.Height)
-			args, argsCmd := a.argumentsDialog.Update(msg)
-			a.argumentsDialog = args.(dialog.ArgumentsDialogCmp)
-			cmds = append(cmds, argsCmd, a.argumentsDialog.Init())
+		if a.showMultiArgumentsDialog {
+			a.multiArgumentsDialog.SetSize(msg.Width, msg.Height)
+			args, argsCmd := a.multiArgumentsDialog.Update(msg)
+			a.multiArgumentsDialog = args.(dialog.MultiArgumentsDialogCmp)
+			cmds = append(cmds, argsCmd, a.multiArgumentsDialog.Init())
 		}
 
 		return a, tea.Batch(cmds...)
@@ -331,30 +331,6 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if payload.Done && payload.Type == agent.AgentEventTypeSummarize {
 			a.isCompacting = false
-
-			if payload.SessionID != "" {
-				// Switch to the new session
-				return a, func() tea.Msg {
-					sessions, err := a.app.Sessions.List(context.Background())
-					if err != nil {
-						return util.InfoMsg{
-							Type: util.InfoTypeError,
-							Msg:  "Failed to list sessions: " + err.Error(),
-						}
-					}
-
-					for _, s := range sessions {
-						if s.ID == payload.SessionID {
-							return dialog.SessionSelectedMsg{Session: s}
-						}
-					}
-
-					return util.InfoMsg{
-						Type: util.InfoTypeError,
-						Msg:  "Failed to find new session",
-					}
-				}
-			}
 			return a, util.ReportInfo("Session summarization complete")
 		} else if payload.Done && payload.Type == agent.AgentEventTypeResponse && a.selectedSession.ID != "" {
 			model := a.app.CoderAgent.Model()
@@ -438,33 +414,39 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return a, util.ReportInfo("Command selected: " + msg.Command.Title)
 
-	case dialog.ShowArgumentsDialogMsg:
-		// Show arguments dialog
-		a.argumentsDialog = dialog.NewArgumentsDialogCmp(msg.CommandID, msg.Content)
-		a.showArgumentsDialog = true
-		return a, a.argumentsDialog.Init()
+	case dialog.ShowMultiArgumentsDialogMsg:
+		// Show multi-arguments dialog
+		a.multiArgumentsDialog = dialog.NewMultiArgumentsDialogCmp(msg.CommandID, msg.Content, msg.ArgNames)
+		a.showMultiArgumentsDialog = true
+		return a, a.multiArgumentsDialog.Init()
 
-	case dialog.CloseArgumentsDialogMsg:
-		// Close arguments dialog
-		a.showArgumentsDialog = false
+	case dialog.CloseMultiArgumentsDialogMsg:
+		// Close multi-arguments dialog
+		a.showMultiArgumentsDialog = false
 
-		// If submitted, replace $ARGUMENTS and run the command
+		// If submitted, replace all named arguments and run the command
 		if msg.Submit {
-			// Replace $ARGUMENTS with the provided arguments
-			content := strings.ReplaceAll(msg.Content, "$ARGUMENTS", msg.Arguments)
+			content := msg.Content
+			
+			// Replace each named argument with its value
+			for name, value := range msg.Args {
+				placeholder := "$" + name
+				content = strings.ReplaceAll(content, placeholder, value)
+			}
 
 			// Execute the command with arguments
 			return a, util.CmdHandler(dialog.CommandRunCustomMsg{
 				Content: content,
+				Args:    msg.Args,
 			})
 		}
 		return a, nil
 
 	case tea.KeyMsg:
-		// If arguments dialog is open, let it handle the key press first
-		if a.showArgumentsDialog {
-			args, cmd := a.argumentsDialog.Update(msg)
-			a.argumentsDialog = args.(dialog.ArgumentsDialogCmp)
+		// If multi-arguments dialog is open, let it handle the key press first
+		if a.showMultiArgumentsDialog {
+			args, cmd := a.multiArgumentsDialog.Update(msg)
+			a.multiArgumentsDialog = args.(dialog.MultiArgumentsDialogCmp)
 			return a, cmd
 		}
 
@@ -488,8 +470,8 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if a.showModelDialog {
 				a.showModelDialog = false
 			}
-			if a.showArgumentsDialog {
-				a.showArgumentsDialog = false
+			if a.showMultiArgumentsDialog {
+				a.showMultiArgumentsDialog = false
 			}
 			return a, nil
 		case key.Matches(msg, keys.SwitchSession):
@@ -898,8 +880,8 @@ func (a appModel) View() string {
 		)
 	}
 
-	if a.showArgumentsDialog {
-		overlay := a.argumentsDialog.View()
+	if a.showMultiArgumentsDialog {
+		overlay := a.multiArgumentsDialog.View()
 		row := lipgloss.Height(appView) / 2
 		row -= lipgloss.Height(overlay) / 2
 		col := lipgloss.Width(appView) / 2
