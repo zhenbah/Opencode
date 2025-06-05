@@ -28,7 +28,7 @@ var GeminiModels = map[ModelID]Model{
 		ID:                  Gemini25,
 		Name:                "Gemini 2.5 Pro",
 		Provider:            ProviderGemini,
-		APIModel:            "gemini-2.5-pro-preview-05-06",
+		APIModel:            "gemini-2.5-pro-preview-06-05",
 		CostPer1MIn:         1.25,
 		CostPer1MInCached:   0.31,
 		CostPer1MOutCached:  0,
