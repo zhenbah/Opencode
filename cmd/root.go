@@ -67,7 +67,7 @@ to assist developers in writing, debugging, and understanding code directly from
 			return fmt.Errorf("failed to load initial configuration: %w", err)
 		}
 		if cmd.Flags().Changed("always-allow-permissions") {
-			return config.UpdateAlwaysAllowPermissions(alwaysAllowPermissions)
+			config.Get().AlwaysAllowPermissions = alwaysAllowPermissions
 		}
 		return nil
 	},
