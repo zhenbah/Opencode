@@ -1,0 +1,16 @@
+{
+  "debug": true,
+  "providers": {
+    "openai": {
+      "apiKey": "sk-YOUR_REAL_OPENAI_API_KEY_HERE"
+    }
+  },
+  "agents": {
+    "coder": {
+      "model": "gpt-3.5-turbo"
+    }
+  },
+  "shell": {
+    "path": "/bin/sh"
+  }
+}
