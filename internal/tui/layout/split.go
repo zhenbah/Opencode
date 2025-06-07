@@ -56,6 +56,18 @@ func (s *splitPaneLayout) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		return s, s.SetSize(msg.Width, msg.Height)
+	default:
+		// Check if the message is a ToggleSidebarMsg and forward it to the right panel
+		if s.rightPanel != nil {
+			if _, ok := msg.(interface{ ToggleSidebar() }); ok {
+				u, cmd := s.rightPanel.Update(msg)
+				s.rightPanel = u.(Container)
+				if cmd != nil {
+					cmds = append(cmds, cmd)
+				}
+				return s, tea.Batch(cmds...)
+			}
+		}
 	}
 
 	if s.rightPanel != nil {

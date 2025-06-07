@@ -33,6 +33,7 @@ type ChatKeyMap struct {
 	ShowCompletionDialog key.Binding
 	NewSession           key.Binding
 	Cancel               key.Binding
+	ToggleSidebar        key.Binding
 }
 
 var keyMap = ChatKeyMap{
@@ -47,6 +48,10 @@ var keyMap = ChatKeyMap{
 	Cancel: key.NewBinding(
 		key.WithKeys("esc"),
 		key.WithHelp("esc", "cancel"),
+	),
+	ToggleSidebar: key.NewBinding(
+		key.WithKeys("ctrl+b"),
+		key.WithHelp("ctrl+b", "toggle sidebar"),
 	),
 }
 
@@ -118,6 +123,8 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				p.app.CoderAgent.Cancel(p.session.ID)
 				return p, nil
 			}
+		case key.Matches(msg, keyMap.ToggleSidebar):
+			return p, util.CmdHandler(chat.ToggleSidebarMsg{})
 		}
 	}
 	if p.showCompletionDialog {
