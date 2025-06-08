@@ -83,16 +83,17 @@ type ShellConfig struct {
 type Config struct {
 	Data         Data                              `json:"data"`
 	WorkingDir   string                            `json:"wd,omitempty"`
-	MCPServers   map[string]MCPServer              `json:"mcpServers,omitempty"`
+	MCPServers map[string]MCPServer `json:"mcpServers,omitempty"`
 	Providers    map[models.ModelProvider]Provider `json:"providers,omitempty"`
 	LSP          map[string]LSPConfig              `json:"lsp,omitempty"`
 	Agents       map[AgentName]Agent               `json:"agents,omitempty"`
 	Debug        bool                              `json:"debug,omitempty"`
 	DebugLSP     bool                              `json:"debugLSP,omitempty"`
 	ContextPaths []string                          `json:"contextPaths,omitempty"`
-	TUI          TUIConfig                         `json:"tui"`
-	Shell        ShellConfig                       `json:"shell,omitempty"`
-	AutoCompact  bool                              `json:"autoCompact,omitempty"`
+	TUI TUIConfig `json:"tui"`
+	Shell ShellConfig `json:"shell,omitempty"`
+	AutoCompact           bool `json:"autoCompact,omitempty"`
+	AlwaysAllowPermissions bool `json:"alwaysAllowPermissions,omitempty"` // New field
 }
 
 // Application constants
@@ -221,8 +222,9 @@ func configureViper() {
 func setDefaults(debug bool) {
 	viper.SetDefault("data.directory", defaultDataDirectory)
 	viper.SetDefault("contextPaths", defaultContextPaths)
-	viper.SetDefault("tui.theme", "opencode")
+	viper.SetDefault("tui.theme", "opencode") 
 	viper.SetDefault("autoCompact", true)
+	viper.SetDefault("alwaysAllowPermissions", false) // New default
 
 	// Set default shell from environment or fallback to /bin/bash
 	shellPath := os.Getenv("SHELL")
@@ -874,7 +876,22 @@ func UpdateTheme(themeName string) error {
 	cfg.TUI.Theme = themeName
 
 	// Update the file config
-	return updateCfgFile(func(config *Config) {
-		config.TUI.Theme = themeName
+	return updateCfgFile(func(userCfg *Config) {
+		userCfg.TUI.Theme = themeName
+	})
+}
+
+// UpdateAlwaysAllowPermissions updates the alwaysAllowPermissions setting in the configuration and writes it to the config file.
+func UpdateAlwaysAllowPermissions(value bool) error {
+	if cfg == nil {
+		return fmt.Errorf("config not loaded")
+	}
+
+	// Update the in-memory config
+	cfg.AlwaysAllowPermissions = value
+
+	// Update the file config
+	return updateCfgFile(func(userCfg *Config) { // Match existing pattern in updateCfgFile
+		userCfg.AlwaysAllowPermissions = value
 	})
 }
