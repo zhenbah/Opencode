@@ -629,6 +629,44 @@ func getProviderAPIKey(provider models.ModelProvider) string {
 	return ""
 }
 
+
+// GetOpenAIBaseURL gets the base URL override for OpenAI-compatible providers
+func GetOpenAIBaseURL() string {
+    return os.Getenv("OPENAI_BASE_URL")
+}
+
+// GetOpenAIModelOverride gets the model name override for OpenAI-compatible providers
+func GetOpenAIModelOverride() string {
+    return os.Getenv("OPENAI_MODEL_OVERRIDE")
+}
+
+// GetOpenAIReasoningEffort gets the reasoning effort level
+func GetOpenAIReasoningEffort() string {
+    effort := os.Getenv("OPENAI_REASONING_EFFORT")
+    if effort == "" {
+        return "medium" // default
+    }
+    return effort
+}
+
+// GetOpenAIExtraHeaders parses extra headers from environment
+func GetOpenAIExtraHeaders() map[string]string {
+    headersStr := os.Getenv("OPENAI_EXTRA_HEADERS")
+    if headersStr == "" {
+        return nil
+    }
+
+    headers := make(map[string]string)
+    pairs := strings.Split(headersStr, ",")
+    for _, pair := range pairs {
+        kv := strings.SplitN(strings.TrimSpace(pair), "=", 2)
+        if len(kv) == 2 {
+            headers[kv[0]] = kv[1]
+        }
+    }
+    return headers
+}
+
 // setDefaultModelForAgent sets a default model for an agent based on available providers
 func setDefaultModelForAgent(agent AgentName) bool {
 	// Check providers in order of preference
