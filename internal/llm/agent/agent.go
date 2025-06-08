@@ -717,31 +717,12 @@ func createAgentProvider(agentName config.AgentName) (provider.Provider, error) 
 
     // Handle OpenAI and OpenAI-compatible providers
     if model.Provider == models.ProviderOpenAI || model.Provider == models.ProviderLocal && model.CanReason {
-        openAIOptions := []provider.OpenAIOption{
-            provider.WithReasoningEffort(agentConfig.ReasoningEffort),
-        }
-
-        // Add environment variable overrides for OpenAI-compatible providers
-        if baseURL := config.GetOpenAIBaseURL(); baseURL != "" {
-            openAIOptions = append(openAIOptions, provider.WithOpenAIBaseURL(baseURL))
-        }
-
-        if modelOverride := config.GetOpenAIModelOverride(); modelOverride != "" {
-            openAIOptions = append(openAIOptions, provider.WithOpenAIModelOverride(modelOverride))
-        }
-
-        if headers := config.GetOpenAIExtraHeaders(); headers != nil {
-            openAIOptions = append(openAIOptions, provider.WithOpenAIExtraHeaders(headers))
-        }
-
-        // Override reasoning effort from env var if provided
-        if envEffort := config.GetOpenAIReasoningEffort(); envEffort != "medium" {
-            // Replace the reasoning effort with env var value
-            openAIOptions[0] = provider.WithReasoningEffort(envEffort)
-        }
-
-        opts = append(opts, provider.WithOpenAIOptions(openAIOptions...))
-
+        opts = append(
+            opts,
+            provider.WithOpenAIOptions(
+                provider.WithReasoningEffort(agentConfig.ReasoningEffort),
+            ),
+        )
     } else if model.Provider == models.ProviderAnthropic && model.CanReason && agentName == config.AgentCoder {
         opts = append(
             opts,
@@ -750,7 +731,7 @@ func createAgentProvider(agentName config.AgentName) (provider.Provider, error) 
             ),
         )
     }
-
+	
     agentProvider, err := provider.NewProvider(
         model.Provider,
         opts...,
@@ -758,5 +739,6 @@ func createAgentProvider(agentName config.AgentName) (provider.Provider, error) 
     if err != nil {
         return nil, fmt.Errorf("could not create provider: %v", err)
     }
+
     return agentProvider, nil
 }
