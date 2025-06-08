@@ -52,8 +52,8 @@ var keys = keyMap{
 		key.WithHelp("ctrl+c", "quit"),
 	),
 	Help: key.NewBinding(
-		key.WithKeys("ctrl+?"),
-		key.WithHelp("ctrl+?", "toggle help"),
+		key.WithKeys("ctrl+?", "ctrl+/", "ctrl+_", "ctrl+h", "delete", "backspace"),
+		key.WithHelp("ctrl+? or ctrl+h", "toggle help"),
 	),
 
 	SwitchSession: key.NewBinding(
