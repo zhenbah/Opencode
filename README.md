@@ -308,7 +308,7 @@ The output format is implemented as a strongly-typed `OutputFormat` in the codeb
 | `Ctrl+?` | Toggle help dialog                                      |
 | `?`      | Toggle help dialog (when not in editing mode)           |
 | `Ctrl+L` | View logs                                               |
-| `Ctrl+A` | Switch session                                          |
+| `Ctrl+S` | Switch session                                          |
 | `Ctrl+K` | Command dialog                                          |
 | `Ctrl+O` | Toggle model selection dialog                           |
 | `Esc`    | Close current overlay/dialog or return to previous mode |

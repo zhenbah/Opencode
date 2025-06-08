@@ -52,7 +52,7 @@ var keys = keyMap{
 		key.WithHelp("ctrl+c", "quit"),
 	),
 	Help: key.NewBinding(
-		key.WithKeys("ctrl+_", "ctrl+h"),
+		key.WithKeys("ctrl+?"),
 		key.WithHelp("ctrl+?", "toggle help"),
 	),
 
