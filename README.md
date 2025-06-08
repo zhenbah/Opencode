@@ -305,7 +305,7 @@ The output format is implemented as a strongly-typed `OutputFormat` in the codeb
 | Shortcut | Action                                                  |
 | -------- | ------------------------------------------------------- |
 | `Ctrl+C` | Quit application                                        |
-| `Ctrl+H` | Toggle help dialog                                      |
+| `Ctrl+?` / `Ctrl+H` | Toggle help dialog                                      |
 | `?`      | Toggle help dialog (when not in editing mode)           |
 | `Ctrl+L` | View logs                                               |
 | `Ctrl+S` | Switch session                                          |
