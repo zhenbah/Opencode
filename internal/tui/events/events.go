@@ -1,4 +1,3 @@
-
 package events
 
 type ToggleSidebarMsg struct{}
