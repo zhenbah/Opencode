@@ -13,6 +13,7 @@ import (
 	"github.com/opencode-ai/opencode/internal/session"
 	"github.com/opencode-ai/opencode/internal/tui/components/chat"
 	"github.com/opencode-ai/opencode/internal/tui/components/dialog"
+	"github.com/opencode-ai/opencode/internal/tui/events"
 	"github.com/opencode-ai/opencode/internal/tui/layout"
 	"github.com/opencode-ai/opencode/internal/tui/util"
 )
@@ -124,7 +125,7 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return p, nil
 			}
 		case key.Matches(msg, keyMap.ToggleSidebar):
-			return p, util.CmdHandler(chat.ToggleSidebarMsg{})
+			return p, util.CmdHandler(events.ToggleSidebarMsg{})
 		}
 	}
 	if p.showCompletionDialog {

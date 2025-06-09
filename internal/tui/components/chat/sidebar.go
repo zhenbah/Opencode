@@ -15,12 +15,8 @@ import (
 	"github.com/opencode-ai/opencode/internal/session"
 	"github.com/opencode-ai/opencode/internal/tui/styles"
 	"github.com/opencode-ai/opencode/internal/tui/theme"
+	"github.com/opencode-ai/opencode/internal/tui/events"
 )
-
-type ToggleSidebarMsg struct{}
-
-func (t ToggleSidebarMsg) ToggleSidebar() {}
-
 
 type sidebarCmp struct {
 	width, height int
@@ -64,7 +60,7 @@ func (m *sidebarCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			ctx := context.Background()
 			m.loadModifiedFiles(ctx)
 		}
-	case ToggleSidebarMsg:
+	case events.ToggleSidebarMsg:
 		m.hidden = !m.hidden
 	case pubsub.Event[session.Session]:
 		if msg.Type == pubsub.UpdatedEvent {
