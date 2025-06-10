@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 
+	"time"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -28,7 +30,10 @@ type chatPage struct {
 	session              session.Session
 	completionDialog     dialog.CompletionDialog
 	showCompletionDialog bool
+	firstEsc             time.Time
 }
+
+type firstEscTimedOutMsg struct{}
 
 type ChatKeyMap struct {
 	ShowCompletionDialog key.Binding
@@ -110,7 +115,7 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, keyMap.ShowCompletionDialog):
 			p.showCompletionDialog = true
-			// Continue sending keys to layout->chat
+		// Continue sending keys to layout->chat
 		case key.Matches(msg, keyMap.NewSession):
 			p.session = session.Session{}
 			return p, tea.Batch(
@@ -118,15 +123,22 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				util.CmdHandler(chat.SessionClearedMsg{}),
 			)
 		case key.Matches(msg, keyMap.Cancel):
-			if p.session.ID != "" {
-				// Cancel the current session's generation process
-				// This allows users to interrupt long-running operations
-				p.app.CoderAgent.Cancel(p.session.ID)
-				return p, nil
+			if p.app.CoderAgent.IsBusy() {
+				if p.firstEsc.IsZero() {
+					p.firstEsc = time.Now()
+					cmds = append(cmds, tea.Tick(2*time.Second, func(t time.Time) tea.Msg {
+						return firstEscTimedOutMsg{}
+					}))
+				} else {
+					p.firstEsc = time.Time{}
+					p.app.CoderAgent.Cancel(p.session.ID)
+				}
 			}
 		case key.Matches(msg, keyMap.ToggleSidebar):
 			return p, util.CmdHandler(events.ToggleSidebarMsg{})
 		}
+	case firstEscTimedOutMsg:
+		p.firstEsc = time.Time{}
 	}
 	if p.showCompletionDialog {
 		context, contextCmd := p.completionDialog.Update(msg)
@@ -138,6 +150,11 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if keyMsg.String() == "enter" {
 				return p, tea.Batch(cmds...)
 			}
+		}
+	}
+	if p.messages.Model() != nil {
+		if messagesCmp, ok := p.messages.Model().(*chat.MessagesCmp); ok {
+			messagesCmp.SetFirstEsc(p.firstEsc)
 		}
 	}
 
