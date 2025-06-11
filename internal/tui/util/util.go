@@ -48,6 +48,9 @@ type (
 		TTL  time.Duration
 	}
 	ClearStatusMsg struct{}
+	TmuxFocusMsg   struct {
+		Focused bool
+	}
 )
 
 func Clamp(v, low, high int) int {

@@ -17,6 +17,7 @@ import (
 	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/pubsub"
 	"github.com/opencode-ai/opencode/internal/tui"
+	"github.com/opencode-ai/opencode/internal/tui/util"
 	"github.com/opencode-ai/opencode/internal/version"
 	"github.com/spf13/cobra"
 )
@@ -124,6 +125,45 @@ to assist developers in writing, debugging, and understanding code directly from
 
 		// Setup the subscriptions, this will send services events to the TUI
 		ch, cancelSubs := setupSubscriptions(app, ctx)
+
+		// Start tmux focus monitoring if in tmux
+		tmuxPane := util.GetTmuxPane()
+		if tmuxPane == "" {
+			logging.Info("Not in tmux session - skipping focus monitoring")
+		} else {
+			logging.Info("Starting tmux focus monitoring", "tmuxPane", tmuxPane)
+			go func() {
+				defer logging.RecoverPanic("tmux-focus-monitor", nil)
+
+				ticker := time.NewTicker(500 * time.Millisecond)
+				defer ticker.Stop()
+
+				lastFocused := util.IsProcessFocused(tmuxPane)
+				logging.Info("Initial tmux focus state", "focused", lastFocused)
+
+				for {
+					select {
+					case <-ctx.Done():
+						logging.Info("Tmux focus monitoring shutting down")
+						return
+					case <-ticker.C:
+						focused := util.IsProcessFocused(tmuxPane)
+						if focused != lastFocused {
+							logging.Info("Tmux focus changed", "focused", focused)
+							lastFocused = focused
+							select {
+							case ch <- util.TmuxFocusMsg{Focused: focused}:
+								logging.Info("Sent tmux focus message", "focused", focused)
+							case <-time.After(100 * time.Millisecond):
+								logging.Warn("Tmux focus message dropped - channel full")
+							case <-ctx.Done():
+								return
+							}
+						}
+					}
+				}
+			}()
+		}
 
 		// Create a context for the TUI message handler
 		tuiCtx, tuiCancel := context.WithCancel(ctx)
