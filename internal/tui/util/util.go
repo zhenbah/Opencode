@@ -48,7 +48,7 @@ type (
 		TTL  time.Duration
 	}
 	ClearStatusMsg struct{}
-	TmuxFocusMsg   struct {
+	FocusMsg       struct {
 		Focused bool
 	}
 )

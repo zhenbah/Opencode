@@ -157,7 +157,7 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.session = msg
 		}
 		return m, nil
-	case util.TmuxFocusMsg:
+	case util.FocusMsg:
 		if msg.Focused {
 			// Show blinking cursor when pane is focused
 			cmd = m.textarea.Cursor.SetMode(cursor.CursorBlink)
@@ -317,12 +317,8 @@ func CreateTextArea(existing *textarea.Model) textarea.Model {
 
 	ta.Focus()
 
-	// Set initial cursor mode based on tmux focus
-	if util.IsProcessFocused(util.GetTmuxPane()) {
-		ta.Cursor.SetMode(cursor.CursorBlink)
-	} else {
-		ta.Cursor.SetMode(cursor.CursorHide)
-	}
+	// Set initial cursor mode to blinking (default to focused)
+	ta.Cursor.SetMode(cursor.CursorBlink)
 
 	return ta
 }
