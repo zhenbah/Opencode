@@ -63,6 +63,12 @@ to assist developers in writing, debugging, and understanding code directly from
 		prompt, _ := cmd.Flags().GetString("prompt")
 		outputFormat, _ := cmd.Flags().GetString("output-format")
 		quiet, _ := cmd.Flags().GetBool("quiet")
+		// Worker mode flags
+		workerMode, _ := cmd.Flags().GetBool("worker-mode")
+		taskFile, _ := cmd.Flags().GetString("task-file")
+		agentID, _ := cmd.Flags().GetString("agent-id")
+		orchestratorAPI, _ := cmd.Flags().GetString("orchestrator-api")
+		taskID, _ := cmd.Flags().GetString("task-id") // Read the new task-id flag
 
 		// Validate format option
 		if !format.IsValid(outputFormat) {
@@ -97,100 +103,59 @@ to assist developers in writing, debugging, and understanding code directly from
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		app, err := app.New(ctx, conn)
+		// Pass workerMode to app.New
+		appInstance, err := app.New(ctx, conn, workerMode)
 		if err != nil {
 			logging.Error("Failed to create app: %v", err)
 			return err
 		}
-		// Defer shutdown here so it runs for both interactive and non-interactive modes
-		defer app.Shutdown()
+		// Defer shutdown here so it runs for all modes
+		defer appInstance.Shutdown()
 
-		// Initialize MCP tools early for both modes
-		initMCPTools(ctx, app)
+		// Initialize MCP tools early for all modes, if not in worker mode
+		// Workers might not need MCP tools, or might have a different initialization.
+		// For now, let's assume they don't initialize MCP tools the same way.
+		if !workerMode {
+			initMCPTools(ctx, appInstance)
+		}
 
-		// Non-interactive mode
+		// Worker mode execution
+		if workerMode {
+			logging.Info("Starting in Worker Mode", "agentID", agentID, "taskFile", taskFile)
+			// Ensure worker mode does not fall through to interactive or non-interactive prompt mode
+			if prompt != "" {
+				logging.Warn("Prompt flag (-p) is ignored when --worker-mode is active.")
+			}
+			// Pass taskID to RunWorkerMode
+			return appInstance.RunWorkerMode(ctx, taskFile, agentID, orchestratorAPI, taskID)
+		}
+
+		// Non-interactive prompt mode (if not worker mode)
 		if prompt != "" {
 			// Run non-interactive flow using the App method
-			return app.RunNonInteractive(ctx, prompt, outputFormat, quiet)
+			return appInstance.RunNonInteractive(ctx, prompt, outputFormat, quiet)
 		}
 
-		// Interactive mode
-		// Set up the TUI
-		zone.NewGlobal()
-		program := tea.NewProgram(
-			tui.New(app),
-			tea.WithAltScreen(),
-		)
-
-		// Setup the subscriptions, this will send services events to the TUI
-		ch, cancelSubs := setupSubscriptions(app, ctx)
-
-		// Create a context for the TUI message handler
-		tuiCtx, tuiCancel := context.WithCancel(ctx)
-		var tuiWg sync.WaitGroup
-		tuiWg.Add(1)
-
-		// Set up message handling for the TUI
-		go func() {
-			defer tuiWg.Done()
-			defer logging.RecoverPanic("TUI-message-handler", func() {
-				attemptTUIRecovery(program)
-			})
-
-			for {
-				select {
-				case <-tuiCtx.Done():
-					logging.Info("TUI message handler shutting down")
-					return
-				case msg, ok := <-ch:
-					if !ok {
-						logging.Info("TUI message channel closed")
-						return
-					}
-					program.Send(msg)
-				}
-			}
-		}()
-
-		// Cleanup function for when the program exits
-		cleanup := func() {
-			// Shutdown the app
-			app.Shutdown()
-
-			// Cancel subscriptions first
-			cancelSubs()
-
-			// Then cancel TUI message handler
-			tuiCancel()
-
-			// Wait for TUI message handler to finish
-			tuiWg.Wait()
-
-			logging.Info("All goroutines cleaned up")
-		}
-
-		// Run the TUI
-		result, err := program.Run()
-		cleanup()
-
+		// Orchestrator CLI mode (default if no other mode is specified)
+		logging.Info("Starting in Orchestrator CLI mode")
+		// The setupSubscriptions function and its TUI specific logic are removed.
+		// If general event logging or handling is needed, it should be done directly.
+		// For example, logging events can be directly handled by the logging package subscribers if any.
+		err = appInstance.RunOrchestratorCLI(ctx)
 		if err != nil {
-			logging.Error("TUI error: %v", err)
-			return fmt.Errorf("TUI error: %v", err)
+			logging.Error("Orchestrator CLI error", "error", err)
+			return err
 		}
-
-		logging.Info("TUI exited with result: %v", result)
+		logging.Info("Orchestrator CLI exited")
 		return nil
 	},
 }
 
-// attemptTUIRecovery tries to recover the TUI after a panic
-func attemptTUIRecovery(program *tea.Program) {
-	logging.Info("Attempting to recover TUI after panic")
-
-	// We could try to restart the TUI or gracefully exit
-	// For now, we'll just quit the program to avoid further issues
-	program.Quit()
-}
+// attemptTUIRecovery is no longer needed as TUI is removed for orchestrator.
+// func attemptTUIRecovery(program *tea.Program) {
+// 	logging.Info("Attempting to recover TUI after panic")
+// 	program.Quit()
+// }
 
 func initMCPTools(ctx context.Context, app *app.App) {
 	go func() {
@@ -246,40 +211,15 @@ func setupSubscriber[T any](
 	}()
 }
 
+// setupSubscriptions was TUI specific and is removed.
+// If any of these subscriptions are critical for non-TUI operation (e.g. logging specific events),
+// they would need to be re-implemented to directly call handlers or log.
+// For now, removing it as per the goal to eliminate TUI dependencies for orchestrator CLI.
+/*
 func setupSubscriptions(app *app.App, parentCtx context.Context) (chan tea.Msg, func()) {
-	ch := make(chan tea.Msg, 100)
-
-	wg := sync.WaitGroup{}
-	ctx, cancel := context.WithCancel(parentCtx) // Inherit from parent context
-
-	setupSubscriber(ctx, &wg, "logging", logging.Subscribe, ch)
-	setupSubscriber(ctx, &wg, "sessions", app.Sessions.Subscribe, ch)
-	setupSubscriber(ctx, &wg, "messages", app.Messages.Subscribe, ch)
-	setupSubscriber(ctx, &wg, "permissions", app.Permissions.Subscribe, ch)
-	setupSubscriber(ctx, &wg, "coderAgent", app.CoderAgent.Subscribe, ch)
-
-	cleanupFunc := func() {
-		logging.Info("Cancelling all subscriptions")
-		cancel() // Signal all goroutines to stop
-
-		waitCh := make(chan struct{})
-		go func() {
-			defer logging.RecoverPanic("subscription-cleanup", nil)
-			wg.Wait()
-			close(waitCh)
-		}()
-
-		select {
-		case <-waitCh:
-			logging.Info("All subscription goroutines completed successfully")
-			close(ch) // Only close after all writers are confirmed done
-		case <-time.After(5 * time.Second):
-			logging.Warn("Timed out waiting for some subscription goroutines to complete")
-			close(ch)
-		}
-	}
-	return ch, cleanupFunc
+	// ... implementation ...
 }
+*/
 
 func Execute() {
 	err := rootCmd.Execute()
@@ -301,6 +241,13 @@ func init() {
 
 	// Add quiet flag to hide spinner in non-interactive mode
 	rootCmd.Flags().BoolP("quiet", "q", false, "Hide spinner in non-interactive mode")
+
+	// Worker mode flags
+	rootCmd.Flags().BoolP("worker-mode", "w", false, "Run in worker agent mode")
+	rootCmd.Flags().String("task-file", "", "Path to JSON file defining the task for the worker")
+	rootCmd.Flags().String("agent-id", "", "Unique ID for this worker agent")
+	rootCmd.Flags().String("orchestrator-api", "", "API endpoint of the orchestrator for reporting")
+	rootCmd.Flags().String("task-id", "", "Unique ID for the task assigned to the worker") // New task-id flag
 
 	// Register custom validation for the format flag
 	rootCmd.RegisterFlagCompletionFunc("output-format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
