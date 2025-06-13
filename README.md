@@ -8,7 +8,7 @@ A powerful terminal-based AI assistant for developers, providing intelligent cod
 
 ## Overview
 
-OpenCode is a Go-based CLI application that brings AI assistance to your terminal. It provides a TUI (Terminal User Interface) for interacting with various AI models to help with coding tasks, debugging, and more.
+OpenCode is a Go-based CLI application that brings AI assistance to your terminal. It primarily operates as an **Orchestrator** via a command-line interface (CLI), allowing you to interact with its AI capabilities and manage other AI worker agents. It also supports running in a headless **Worker Mode** for distributed task execution.
 
 <p>For a quick video overview, check out
 <a href="https://www.youtube.com/watch?v=P8luPmEa1QI"><img width="25" src="https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg"> OpenCode + Gemini 2.5 Pro: BYE Claude Code! I'm SWITCHING To the FASTEST AI Coder!</a></p>
@@ -17,15 +17,14 @@ OpenCode is a Go-based CLI application that brings AI assistance to your termina
 
 ## Features
 
-- **Interactive TUI**: Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) for a smooth terminal experience
+- **Interactive Orchestrator CLI**: A command-line interface for direct interaction and agent management.
+- **Multi-Agent Architecture**: Foundation for an Orchestrator to manage multiple worker agents (experimental).
 - **Multiple AI Providers**: Support for OpenAI, Anthropic Claude, Google Gemini, AWS Bedrock, Groq, Azure OpenAI, and OpenRouter
-- **Session Management**: Save and manage multiple conversation sessions
+- **Session Management**: Save and manage multiple conversation sessions (Note: CLI interaction context is simpler than TUI sessions).
 - **Tool Integration**: AI can execute commands, search files, and modify code
-- **Vim-like Editor**: Integrated editor with text input capabilities
 - **Persistent Storage**: SQLite database for storing conversations and sessions
-- **LSP Integration**: Language Server Protocol support for code intelligence
-- **File Change Tracking**: Track and visualize file changes during sessions
-- **External Editor Support**: Open your preferred editor for composing messages
+- **LSP Integration**: Language Server Protocol support for code intelligence (primarily for worker agents or if used by Orchestrator's agent).
+- **File Change Tracking**: Track and visualize file changes during sessions (may be less relevant for CLI).
 - **Named Arguments for Custom Commands**: Create powerful custom commands with multiple named placeholders
 
 ## Installation
@@ -125,6 +124,81 @@ You can override this in your configuration file:
 
 This is useful if you want to use a different shell than your default system shell, or if you need to pass specific arguments to the shell.
 
+### Configuring LLM Providers
+
+OpenCode allows you to connect to various LLM providers. You configure these providers in your `.opencode.json` file, primarily by providing an API key and then selecting models for different agents (like `coder`, `task`, etc.) in the `agents` section of the configuration.
+
+API keys can often be set via environment variables (see "Environment Variables" section) or directly in the `.opencode.json` file under the `providers` object. If an API key is set in both an environment variable and the config file, the environment variable usually takes precedence.
+
+Here are a few examples:
+
+#### Example: Configuring OpenRouter
+1.  **Set your API Key:** Add your OpenRouter API key to the `providers.openrouter` object in your `.opencode.json`:
+    ```json
+    {
+      // ... other configurations ...
+      "providers": {
+        // ... other providers ...
+        "openrouter": {
+          "apiKey": "sk-or-v1-YOUR_OPENROUTER_API_KEY", // Replace with your actual key
+          "disabled": false
+        }
+      },
+      // ... rest of the configuration ...
+    }
+    ```
+2.  **Select an OpenRouter Model:** In the `agents` section, specify the OpenRouter model you wish to use. Model names are typically prefixed with `openrouter/`. For example, to use Deepseek's `deepseek-r1-0528` (a free model at the time of writing):
+    ```json
+    {
+      // ... other configurations ...
+      "agents": {
+        "coder": { // Or any other agent like 'task', 'title'
+          "model": "openrouter/deepseek/deepseek-r1-0528:free",
+          "maxTokens": 4000 // Adjust as needed
+        }
+        // ... other agents ...
+      },
+      // ... rest of the configuration ...
+    }
+    ```
+    You can find available models on the OpenRouter website.
+
+#### Example: Configuring Google Gemini
+1.  **Set your API Key:** The recommended way for Gemini is often via the `GEMINI_API_KEY` environment variable.
+    ```bash
+    export GEMINI_API_KEY="AIzaSyYOUR_GEMINI_API_KEY"
+    ```
+    Alternatively, if supported by your OpenCode version for direct config entry (check if `providers.gemini.apiKey` exists in the schema):
+    ```json
+    {
+      // ... other configurations ...
+      "providers": {
+        // ... other providers ...
+        "gemini": {
+          "apiKey": "AIzaSyYOUR_GEMINI_API_KEY", // Replace with your actual key
+          "disabled": false
+        }
+      },
+      // ... rest of the configuration ...
+    }
+    ```
+2.  **Select a Gemini Model:** In the `agents` section, specify the Gemini model:
+    ```json
+    {
+      // ... other configurations ...
+      "agents": {
+        "coder": {
+          "model": "gemini-1.5-flash", // Or other models like gemini-pro, etc.
+          "maxTokens": 4000
+        }
+        // ... other agents ...
+      },
+      // ... rest of the configuration ...
+    }
+    ```
+
+After configuring your chosen provider and model, OpenCode's AI agents (both the Orchestrator's main agent and any worker agents, depending on which agent configuration you modify) will use that LLM for their operations. You interact with OpenCode as usual via its CLI, and it handles the communication with the configured LLM provider in the background.
+
 ### Configuration File Structure
 
 ```json
@@ -147,6 +221,10 @@ This is useful if you want to use a different shell than your default system she
     },
     "openrouter": {
       "apiKey": "your-api-key",
+      "disabled": false
+    },
+    "gemini": { // Added Gemini example
+      "apiKey": "your-gemini-key-if-not-using-env-var",
       "disabled": false
     }
   },
@@ -244,10 +322,10 @@ OpenCode supports a variety of AI models from different providers:
 - Gemini 2.5
 - Gemini 2.5 Flash
 
-## Usage
+## General Usage
 
 ```bash
-# Start OpenCode
+# Start OpenCode in Orchestrator CLI mode
 opencode
 
 # Start with debug logging
@@ -256,6 +334,23 @@ opencode -d
 # Start with a specific working directory
 opencode -c /path/to/project
 ```
+
+## Orchestrator CLI Mode
+
+When you run `opencode` without special flags (like `-p` for non-interactive or `--worker-mode`), it starts in Orchestrator CLI mode. This mode allows you to interact directly with OpenCode's primary AI agent and manage worker agents.
+
+**Commands:**
+
+The Orchestrator CLI accepts the following commands:
+
+*   `<prompt>`: Any text not starting with `/` is treated as a prompt for the Orchestrator's own AI agent.
+*   `/quit`: Exits the OpenCode application.
+*   `/spawn <task_prompt>`: Spawns a new worker agent with the given `<task_prompt>`. The Orchestrator will output a Worker ID upon successful spawning. This feature is currently basic and under development.
+*   `/result <workerID>`: Retrieves and displays the result from a worker agent that has completed its task and reported back.
+
+**Inter-Agent Communication (Internal):**
+
+Worker agents communicate their results back to the Orchestrator via an internal HTTP API (typically on endpoint `/report_result`). This API is for internal system use and is not a user-facing LLM API. Notifications from workers (e.g., task completion) will appear asynchronously in the Orchestrator's CLI.
 
 ## Non-interactive Prompt Mode
 
@@ -287,6 +382,27 @@ OpenCode supports the following output formats in non-interactive mode:
 
 The output format is implemented as a strongly-typed `OutputFormat` in the codebase, ensuring type safety and validation when processing outputs.
 
+## Worker Mode
+
+OpenCode can be launched in a headless "Worker Mode" to perform tasks autonomously as directed by an Orchestrator instance. In this mode, OpenCode does not present an interactive CLI but instead executes a task defined in a specified file and reports its results back to the Orchestrator.
+
+To run OpenCode in worker mode, use the `--worker-mode` (or `-w`) flag. Additional flags are required to configure the worker:
+
+*   `--agent-id <ID>`: (Required) A unique identifier assigned to this worker agent by the Orchestrator.
+*   `--task-id <ID>`: (Required) A unique identifier for the task this worker is to perform. This ID is used for correlating tasks and results.
+*   `--task-file <path>`: (Required) Path to a JSON file containing the task definition (e.g., `{"task_prompt": "your task description here...", "task_id": "actual_task_id_should_match_flag"}`). The worker reads its instructions from this file.
+*   `--orchestrator-api <url>`: (Required) The URL of the Orchestrator's API endpoint (e.g., `http://localhost:12345/report_result`) to which the worker will send its results.
+
+**Example Usage (typically launched by an Orchestrator):**
+```bash
+opencode --worker-mode \
+          --agent-id "worker-007" \
+          --task-id "task-123" \
+          --task-file "/tmp/task-123.json" \
+          --orchestrator-api "http://localhost:12345/report_result"
+```
+In worker mode, all necessary tool permissions are automatically approved to ensure autonomous operation. LSP and MCP services are typically not initialized to keep workers lightweight.
+
 ## Command-line Flags
 
 | Flag              | Short | Description                                         |
@@ -295,77 +411,13 @@ The output format is implemented as a strongly-typed `OutputFormat` in the codeb
 | `--debug`         | `-d`  | Enable debug mode                                   |
 | `--cwd`           | `-c`  | Set current working directory                       |
 | `--prompt`        | `-p`  | Run a single prompt in non-interactive mode         |
-| `--output-format` | `-f`  | Output format for non-interactive mode (text, json) |
-| `--quiet`         | `-q`  | Hide spinner in non-interactive mode                |
-
-## Keyboard Shortcuts
-
-### Global Shortcuts
-
-| Shortcut | Action                                                  |
-| -------- | ------------------------------------------------------- |
-| `Ctrl+C` | Quit application                                        |
-| `Ctrl+?` | Toggle help dialog                                      |
-| `?`      | Toggle help dialog (when not in editing mode)           |
-| `Ctrl+L` | View logs                                               |
-| `Ctrl+A` | Switch session                                          |
-| `Ctrl+K` | Command dialog                                          |
-| `Ctrl+O` | Toggle model selection dialog                           |
-| `Esc`    | Close current overlay/dialog or return to previous mode |
-
-### Chat Page Shortcuts
-
-| Shortcut | Action                                  |
-| -------- | --------------------------------------- |
-| `Ctrl+N` | Create new session                      |
-| `Ctrl+X` | Cancel current operation/generation     |
-| `i`      | Focus editor (when not in writing mode) |
-| `Esc`    | Exit writing mode and focus messages    |
-
-### Editor Shortcuts
-
-| Shortcut            | Action                                    |
-| ------------------- | ----------------------------------------- |
-| `Ctrl+S`            | Send message (when editor is focused)     |
-| `Enter` or `Ctrl+S` | Send message (when editor is not focused) |
-| `Ctrl+E`            | Open external editor                      |
-| `Esc`               | Blur editor and focus messages            |
-
-### Session Dialog Shortcuts
-
-| Shortcut   | Action           |
-| ---------- | ---------------- |
-| `↑` or `k` | Previous session |
-| `↓` or `j` | Next session     |
-| `Enter`    | Select session   |
-| `Esc`      | Close dialog     |
-
-### Model Dialog Shortcuts
-
-| Shortcut   | Action            |
-| ---------- | ----------------- |
-| `↑` or `k` | Move up           |
-| `↓` or `j` | Move down         |
-| `←` or `h` | Previous provider |
-| `→` or `l` | Next provider     |
-| `Esc`      | Close dialog      |
-
-### Permission Dialog Shortcuts
-
-| Shortcut                | Action                       |
-| ----------------------- | ---------------------------- |
-| `←` or `left`           | Switch options left          |
-| `→` or `right` or `tab` | Switch options right         |
-| `Enter` or `space`      | Confirm selection            |
-| `a`                     | Allow permission             |
-| `A`                     | Allow permission for session |
-| `d`                     | Deny permission              |
-
-### Logs Page Shortcuts
-
-| Shortcut           | Action              |
-| ------------------ | ------------------- |
-| `Backspace` or `q` | Return to chat page |
+| `--output-format` | `-f`  | Output format for non-interactive mode (text, json)                 |
+| `--quiet`         | `-q`  | Hide spinner in non-interactive mode                                |
+| `--worker-mode`      | `-w`  | Run in worker agent mode.                                                   |
+| `--agent-id`         |       | Unique ID for the worker agent (used with `--worker-mode`).                 |
+| `--task-id`          |       | Unique ID for the task assigned to the worker (used with `--worker-mode`).    |
+| `--task-file`        |       | Path to JSON file defining the task for the worker (used with `--worker-mode`). |
+| `--orchestrator-api` |       | API endpoint of the orchestrator for reporting (used with `--worker-mode`).  |
 
 ## AI Assistant Tools
 
@@ -402,7 +454,9 @@ OpenCode is built with a modular architecture:
 - **internal/config**: Configuration management
 - **internal/db**: Database operations and migrations
 - **internal/llm**: LLM providers and tools integration
-- **internal/tui**: Terminal UI components and layouts
+- **internal/tui**: (Legacy) Terminal UI components and layouts. No longer primary interaction for Orchestrator.
+- **internal/orchestrator**: Manages worker agents and their communication.
+- **internal/app/cli.go**: Implements the Orchestrator CLI.
 - **internal/logging**: Logging infrastructure
 - **internal/message**: Message handling
 - **internal/session**: Session management
