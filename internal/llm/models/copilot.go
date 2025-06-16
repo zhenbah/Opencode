@@ -20,6 +20,13 @@ const (
 	CopilotClaude37Thought ModelID = "copilot.claude-3.7-sonnet-thought"
 )
 
+var CopilotAnthropicModels = []ModelID{
+	CopilotClaude35,
+	CopilotClaude37,
+	CopilotClaude37Thought,
+	CopilotClaude4,
+}
+
 // GitHub Copilot models available through GitHub's API
 var CopilotModels = map[ModelID]Model{
 	CopilotGTP35Turbo: {

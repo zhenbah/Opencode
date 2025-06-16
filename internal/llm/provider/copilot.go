@@ -15,7 +15,7 @@ import (
 	"github.com/openai/openai-go/shared"
 	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/opencode-ai/opencode/internal/llm/models"
-	"github.com/opencode-ai/opencode/internal/llm/tools"
+	toolsPkg "github.com/opencode-ai/opencode/internal/llm/tools"
 	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/message"
 )
@@ -41,6 +41,15 @@ type CopilotClient ProviderClient
 type CopilotTokenResponse struct {
 	Token     string `json:"token"`
 	ExpiresAt int64  `json:"expires_at"`
+}
+
+func (c *copilotClient) isAnthropicModel() bool {
+	for _, modelId := range models.CopilotAnthropicModels {
+		if c.providerOptions.model.ID == modelId {
+			return true
+		}
+	}
+	return false
 }
 
 // loadGitHubToken loads the GitHub OAuth token from the standard GitHub CLI/Copilot locations
@@ -168,6 +177,7 @@ func newCopilotClient(opts providerClientOptions) CopilotClient {
 	}
 
 	client := openai.NewClient(openaiClientOptions...)
+	// logging.Debug("Copilot client created", "opts", opts, "copilotOpts", copilotOpts, "model", opts.model)
 	return &copilotClient{
 		providerOptions: opts,
 		options:         copilotOpts,
@@ -236,7 +246,7 @@ func (c *copilotClient) convertMessages(messages []message.Message) (copilotMess
 	return
 }
 
-func (c *copilotClient) convertTools(tools []tools.BaseTool) []openai.ChatCompletionToolParam {
+func (c *copilotClient) convertTools(tools []toolsPkg.BaseTool) []openai.ChatCompletionToolParam {
 	copilotTools := make([]openai.ChatCompletionToolParam, len(tools))
 
 	for i, tool := range tools {
@@ -296,12 +306,24 @@ func (c *copilotClient) preparedParams(messages []openai.ChatCompletionMessagePa
 	return params
 }
 
-func (c *copilotClient) send(ctx context.Context, messages []message.Message, tools []tools.BaseTool) (response *ProviderResponse, err error) {
+func (c *copilotClient) send(ctx context.Context, messages []message.Message, tools []toolsPkg.BaseTool) (response *ProviderResponse, err error) {
 	params := c.preparedParams(c.convertMessages(messages), c.convertTools(tools))
 	cfg := config.Get()
+	var sessionId string
+	requestSeqId := (len(messages) + 1) / 2
 	if cfg.Debug {
+		// jsonData, _ := json.Marshal(params)
+		// logging.Debug("Prepared messages", "messages", string(jsonData))
+		if sid, ok := ctx.Value(toolsPkg.SessionIDContextKey).(string); ok {
+			sessionId = sid
+		}
 		jsonData, _ := json.Marshal(params)
-		logging.Debug("Prepared messages", "messages", string(jsonData))
+		if sessionId != "" {
+			filepath := logging.WriteRequestMessageJson(sessionId, requestSeqId, params)
+			logging.Debug("Prepared messages", "filepath", filepath)
+		} else {
+			logging.Debug("Prepared messages", "messages", string(jsonData))
+		}
 	}
 
 	attempts := 0
@@ -351,16 +373,27 @@ func (c *copilotClient) send(ctx context.Context, messages []message.Message, to
 	}
 }
 
-func (c *copilotClient) stream(ctx context.Context, messages []message.Message, tools []tools.BaseTool) <-chan ProviderEvent {
+func (c *copilotClient) stream(ctx context.Context, messages []message.Message, tools []toolsPkg.BaseTool) <-chan ProviderEvent {
 	params := c.preparedParams(c.convertMessages(messages), c.convertTools(tools))
 	params.StreamOptions = openai.ChatCompletionStreamOptionsParam{
 		IncludeUsage: openai.Bool(true),
 	}
 
 	cfg := config.Get()
+	var sessionId string
+	requestSeqId := (len(messages) + 1) / 2
 	if cfg.Debug {
+		if sid, ok := ctx.Value(toolsPkg.SessionIDContextKey).(string); ok {
+			sessionId = sid
+		}
 		jsonData, _ := json.Marshal(params)
-		logging.Debug("Prepared messages", "messages", string(jsonData))
+		if sessionId != "" {
+			filepath := logging.WriteRequestMessageJson(sessionId, requestSeqId, params)
+			logging.Debug("Prepared messages", "filepath", filepath)
+		} else {
+			logging.Debug("Prepared messages", "messages", string(jsonData))
+		}
+
 	}
 
 	attempts := 0
@@ -378,9 +411,16 @@ func (c *copilotClient) stream(ctx context.Context, messages []message.Message, 
 			currentContent := ""
 			toolCalls := make([]message.ToolCall, 0)
 
+			var currentToolCallId string
+			var currentToolCall openai.ChatCompletionMessageToolCall
+			var msgToolCalls []openai.ChatCompletionMessageToolCall
 			for copilotStream.Next() {
 				chunk := copilotStream.Current()
 				acc.AddChunk(chunk)
+
+				if cfg.Debug {
+					logging.AppendToStreamSessionLogJson(sessionId, requestSeqId, chunk)
+				}
 
 				for _, choice := range chunk.Choices {
 					if choice.Delta.Content != "" {
@@ -391,10 +431,60 @@ func (c *copilotClient) stream(ctx context.Context, messages []message.Message, 
 						currentContent += choice.Delta.Content
 					}
 				}
+
+				if c.isAnthropicModel() {
+					// Monkeypatch adapter for Sonnet-4 multi-tool use
+					for _, choice := range chunk.Choices {
+						if choice.Delta.ToolCalls != nil && len(choice.Delta.ToolCalls) > 0 {
+							toolCall := choice.Delta.ToolCalls[0]
+							// Detect tool use start
+							if currentToolCallId == "" {
+								if toolCall.ID != "" {
+									currentToolCallId = toolCall.ID
+									currentToolCall = openai.ChatCompletionMessageToolCall{
+										ID:   toolCall.ID,
+										Type: "function",
+										Function: openai.ChatCompletionMessageToolCallFunction{
+											Name:      toolCall.Function.Name,
+											Arguments: toolCall.Function.Arguments,
+										},
+									}
+								}
+							} else {
+								// Delta tool use
+								if toolCall.ID == "" {
+									currentToolCall.Function.Arguments += toolCall.Function.Arguments
+								} else {
+									// Detect new tool use
+									if toolCall.ID != currentToolCallId {
+										msgToolCalls = append(msgToolCalls, currentToolCall)
+										currentToolCallId = toolCall.ID
+										currentToolCall = openai.ChatCompletionMessageToolCall{
+											ID:   toolCall.ID,
+											Type: "function",
+											Function: openai.ChatCompletionMessageToolCallFunction{
+												Name:      toolCall.Function.Name,
+												Arguments: toolCall.Function.Arguments,
+											},
+										}
+									}
+								}
+							}
+						}
+						if choice.FinishReason == "tool_calls" {
+							msgToolCalls = append(msgToolCalls, currentToolCall)
+							acc.ChatCompletion.Choices[0].Message.ToolCalls = msgToolCalls
+						}
+					}
+				}
 			}
 
 			err := copilotStream.Err()
 			if err == nil || errors.Is(err, io.EOF) {
+				if cfg.Debug {
+					respFilepath := logging.WriteChatResponseJson(sessionId, requestSeqId, acc.ChatCompletion)
+					logging.Debug("Chat completion response", "filepath", respFilepath)
+				}
 				// Stream completed successfully
 				finishReason := c.finishReason(string(acc.ChatCompletion.Choices[0].FinishReason))
 				if len(acc.ChatCompletion.Choices[0].Message.ToolCalls) > 0 {
@@ -424,8 +514,14 @@ func (c *copilotClient) stream(ctx context.Context, messages []message.Message, 
 				close(eventChan)
 				return
 			}
+			// shouldRetry is not catching the max retries...
+			// TODO: Figure out why
+			if attempts > maxRetries {
+				logging.Warn("Maximum retry attempts reached for rate limit", "attempts", attempts, "max_retries", maxRetries)
+				retry = false
+			}
 			if retry {
-				logging.WarnPersist(fmt.Sprintf("Retrying due to rate limit... attempt %d of %d", attempts, maxRetries), logging.PersistTimeArg, time.Millisecond*time.Duration(after+100))
+				logging.WarnPersist(fmt.Sprintf("Retrying due to rate limit... attempt %d of %d (paused for %d ms)", attempts, maxRetries, after), logging.PersistTimeArg, time.Millisecond*time.Duration(after+100))
 				select {
 				case <-ctx.Done():
 					// context cancelled
@@ -489,9 +585,14 @@ func (c *copilotClient) shouldRetry(attempts int, err error) (bool, int64, error
 		}
 		return false, 0, fmt.Errorf("authentication failed: %w", err)
 	}
+	logging.Debug("Copilot API Error", "status", apierr.StatusCode, "headers", apierr.Response.Header, "body", apierr.RawJSON())
 
 	if apierr.StatusCode != 429 && apierr.StatusCode != 500 {
 		return false, 0, err
+	}
+
+	if apierr.StatusCode == 500 {
+		logging.Warn("Copilot API returned 500 error, retrying", "error", err)
 	}
 
 	if attempts > maxRetries {

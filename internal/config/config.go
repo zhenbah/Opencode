@@ -162,6 +162,7 @@ func Load(workingDir string, debug bool) (*Config, error) {
 	}
 	if os.Getenv("OPENCODE_DEV_DEBUG") == "true" {
 		loggingFile := fmt.Sprintf("%s/%s", cfg.Data.Directory, "debug.log")
+		messagesPath := fmt.Sprintf("%s/%s", cfg.Data.Directory, "messages")
 
 		// if file does not exist create it
 		if _, err := os.Stat(loggingFile); os.IsNotExist(err) {
@@ -172,6 +173,13 @@ func Load(workingDir string, debug bool) (*Config, error) {
 				return cfg, fmt.Errorf("failed to create log file: %w", err)
 			}
 		}
+
+		if _, err := os.Stat(messagesPath); os.IsNotExist(err) {
+			if err := os.MkdirAll(messagesPath, 0o756); err != nil {
+				return cfg, fmt.Errorf("failed to create directory: %w", err)
+			}
+		}
+		logging.MessageDir = messagesPath
 
 		sloggingFileWriter, err := os.OpenFile(loggingFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o666)
 		if err != nil {
