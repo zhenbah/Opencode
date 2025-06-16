@@ -3,6 +3,7 @@ package models
 import (
 	"cmp"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -21,7 +22,7 @@ const (
 	lmStudioBetaModelsPath = "api/v0/models"
 )
 
-func init() {
+func initLocalModels() {
 	if endpoint := os.Getenv("LOCAL_ENDPOINT"); endpoint != "" {
 		localEndpoint, err := url.Parse(endpoint)
 		if err != nil {
@@ -33,7 +34,8 @@ func init() {
 		}
 
 		load := func(url *url.URL, path string) []localModel {
-			url.Path = path
+			url = url.JoinPath(path)
+			logging.Debug(fmt.Sprintf("Trying to load models from %s", url))
 			return listLocalModels(url.String())
 		}
 
@@ -43,16 +45,22 @@ func init() {
 			models = load(localEndpoint, localModelsPath)
 		}
 
-		if len(models) == 0 {
+		if c := len(models); c == 0 {
 			logging.Debug("No local models found",
 				"endpoint", endpoint,
 			)
 			return
+		} else {
+			logging.Debug(fmt.Sprintf("%d local models found", c))
 		}
 
 		loadLocalModels(models)
 
-		viper.SetDefault("providers.local.apiKey", "dummy")
+		if token, ok := os.LookupEnv("LOCAL_ENDPOINT_API_KEY"); ok {
+			viper.SetDefault("providers.local.apiKey", token)
+		} else {
+			viper.SetDefault("providers.local.apiKey", "dummy")
+		}
 		ProviderPopularity[ProviderLocal] = 0
 	}
 }
@@ -75,7 +83,25 @@ type localModel struct {
 }
 
 func listLocalModels(modelsEndpoint string) []localModel {
-	res, err := http.Get(modelsEndpoint)
+	token := os.Getenv("LOCAL_ENDPOINT_API_KEY")
+	var (
+		res *http.Response
+		err error
+	)
+	if token != "" {
+		req, reqErr := http.NewRequest("GET", modelsEndpoint, nil)
+		if reqErr != nil {
+			logging.Debug("Failed to create local models request",
+				"error", reqErr,
+				"endpoint", modelsEndpoint,
+			)
+			return nil
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+		res, err = http.DefaultClient.Do(req)
+	} else {
+		res, err = http.Get(modelsEndpoint)
+	}
 	if err != nil {
 		logging.Debug("Failed to list local models",
 			"error", err,
@@ -122,7 +148,8 @@ func listLocalModels(modelsEndpoint string) []localModel {
 
 func loadLocalModels(models []localModel) {
 	for i, m := range models {
-		model := convertLocalModel(m)
+		source := tryResolveSource(m.ID)
+		model := convertLocalModel(m, source)
 		SupportedModels[model.ID] = model
 
 		if i == 0 || m.State == "loaded" {
@@ -134,16 +161,38 @@ func loadLocalModels(models []localModel) {
 	}
 }
 
-func convertLocalModel(model localModel) Model {
-	return Model{
-		ID:                  ModelID("local." + model.ID),
-		Name:                friendlyModelName(model.ID),
-		Provider:            ProviderLocal,
-		APIModel:            model.ID,
-		ContextWindow:       cmp.Or(model.LoadedContextLength, 4096),
-		DefaultMaxTokens:    cmp.Or(model.LoadedContextLength, 4096),
-		CanReason:           true,
-		SupportsAttachments: true,
+func tryResolveSource(localID string) *Model {
+	for _, model := range SupportedModels {
+		if strings.Contains(localID, model.APIModel) {
+			return &model
+		}
+	}
+	return nil
+}
+
+func convertLocalModel(model localModel, source *Model) Model {
+	if source != nil {
+		return Model{
+			ID:                  ModelID("local." + model.ID),
+			Name:                source.Name,
+			Provider:            ProviderLocal,
+			APIModel:            model.ID,
+			ContextWindow:       cmp.Or(source.ContextWindow, 4096),
+			DefaultMaxTokens:    cmp.Or(source.DefaultMaxTokens, 4096),
+			CanReason:           source.CanReason,
+			SupportsAttachments: source.SupportsAttachments,
+		}
+	} else {
+		return Model{
+			ID:                  ModelID("local." + model.ID),
+			Name:                friendlyModelName(model.ID),
+			Provider:            ProviderLocal,
+			APIModel:            model.ID,
+			ContextWindow:       cmp.Or(model.LoadedContextLength, 4096),
+			DefaultMaxTokens:    cmp.Or(model.LoadedContextLength, 4096),
+			CanReason:           true,
+			SupportsAttachments: true,
+		}
 	}
 }
 
