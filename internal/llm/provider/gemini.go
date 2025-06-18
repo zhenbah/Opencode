@@ -183,6 +183,11 @@ func (g *geminiClient) send(ctx context.Context, messages []message.Message, too
 			Parts: []*genai.Part{{Text: g.providerOptions.systemMessage}},
 		},
 	}
+	if len(g.providerOptions.headers) != 0 {
+		config.HTTPOptions = &genai.HTTPOptions{
+			Headers: *g.providerOptions.asHeader(),
+		}
+	}
 	if len(tools) > 0 {
 		config.Tools = g.convertTools(tools)
 	}
@@ -281,6 +286,9 @@ func (g *geminiClient) stream(ctx context.Context, messages []message.Message, t
 
 	go func() {
 		defer close(eventChan)
+		defer logging.RecoverPanic("gemini-client", func() {
+			logging.ErrorPersist("gemini client has failed")
+		})
 
 		for {
 			attempts++

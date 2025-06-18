@@ -11,6 +11,7 @@ func init() {
 	maps.Copy(SupportedModels, OpenRouterModels)
 	maps.Copy(SupportedModels, XAIModels)
 	maps.Copy(SupportedModels, VertexAIGeminiModels)
+	maps.Copy(SupportedModels, VertexAIAnthropicModels)
 
 	initLocalModels()
 }

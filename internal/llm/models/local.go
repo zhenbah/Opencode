@@ -91,7 +91,7 @@ func listLocalModels(modelsEndpoint string) []localModel {
 	if token != "" {
 		req, reqErr := http.NewRequest("GET", modelsEndpoint, nil)
 		if reqErr != nil {
-			logging.Debug("Failed to create local models request",
+			logging.Warn("Failed to create local models request",
 				"error", reqErr,
 				"endpoint", modelsEndpoint,
 			)
@@ -102,27 +102,30 @@ func listLocalModels(modelsEndpoint string) []localModel {
 	} else {
 		res, err = http.Get(modelsEndpoint)
 	}
-	if err != nil {
-		logging.Debug("Failed to list local models",
+	if err != nil || res == nil {
+		logging.Warn("Failed to list local models",
 			"error", err,
 			"endpoint", modelsEndpoint,
 		)
+		return nil
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		logging.Debug("Failed to list local models",
+		logging.Warn("Failed to list local models",
 			"status", res.StatusCode,
 			"endpoint", modelsEndpoint,
 		)
+		return nil
 	}
 
 	var modelList localModelList
 	if err = json.NewDecoder(res.Body).Decode(&modelList); err != nil {
-		logging.Debug("Failed to list local models",
+		logging.Warn("Failed to list local models",
 			"error", err,
 			"endpoint", modelsEndpoint,
 		)
+		return nil
 	}
 
 	var supportedModels []localModel
@@ -172,16 +175,12 @@ func tryResolveSource(localID string) *Model {
 
 func convertLocalModel(model localModel, source *Model) Model {
 	if source != nil {
-		return Model{
-			ID:                  ModelID("local." + model.ID),
-			Name:                source.Name,
-			Provider:            ProviderLocal,
-			APIModel:            model.ID,
-			ContextWindow:       cmp.Or(source.ContextWindow, 4096),
-			DefaultMaxTokens:    cmp.Or(source.DefaultMaxTokens, 4096),
-			CanReason:           source.CanReason,
-			SupportsAttachments: source.SupportsAttachments,
-		}
+		m := *source
+		m.ID = ModelID("local." + model.ID)
+		m.Name = source.Name
+		m.APIModel = model.ID
+		m.Provider = ProviderLocal
+		return m
 	} else {
 		return Model{
 			ID:                  ModelID("local." + model.ID),
@@ -190,8 +189,8 @@ func convertLocalModel(model localModel, source *Model) Model {
 			APIModel:            model.ID,
 			ContextWindow:       cmp.Or(model.LoadedContextLength, 4096),
 			DefaultMaxTokens:    cmp.Or(model.LoadedContextLength, 4096),
-			CanReason:           true,
-			SupportsAttachments: true,
+			CanReason:           false,
+			SupportsAttachments: false,
 		}
 	}
 }

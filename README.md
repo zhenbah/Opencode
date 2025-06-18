@@ -243,6 +243,8 @@ OpenCode supports a variety of AI models from different providers:
 
 - Gemini 2.5
 - Gemini 2.5 Flash
+- Anthropic Sonnet 4
+- Anthropic Opus 4
 
 ## Usage
 
@@ -589,6 +591,23 @@ from predefined ones if possible.
 ```bash
 LOCAL_ENDPOINT=http://localhost:1235/v1
 LOCAL_ENDPOINT_API_KEY=secret
+```
+
+### Using LiteLLM Proxy
+It is possible to use LiteLLM as a passthrough proxy by providing `baseURL` and auth header to provider configuration:
+```json
+{
+  "providers": {
+    "vertexai": {
+      "apiKey": "",
+      "disabled": false,
+      "baseURL": "https://localhost/vertex_ai"
+      "headers": {
+        "x-litellm-api-key": "litellm-api-key"
+      }
+    }
+  }
+}
 ```
 
 ### Configuring a self-hosted model

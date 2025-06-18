@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/opencode-ai/opencode/internal/llm/models"
@@ -63,11 +64,24 @@ type providerClientOptions struct {
 	model         models.Model
 	maxTokens     int64
 	systemMessage string
+	baseURL       string
+	headers       map[string]string
 
 	anthropicOptions []AnthropicOption
 	openaiOptions    []OpenAIOption
 	geminiOptions    []GeminiOption
 	bedrockOptions   []BedrockOption
+}
+
+func (opts *providerClientOptions) asHeader() *http.Header {
+	header := http.Header{}
+	if opts.headers == nil {
+		return &header
+	}
+	for k, v := range opts.headers {
+		header.Add(k, v)
+	}
+	return &header
 }
 
 type ProviderClientOption func(*providerClientOptions)
@@ -109,9 +123,9 @@ func NewProvider(providerName models.ModelProvider, opts ...ProviderClientOption
 			client:  newBedrockClient(clientOptions),
 		}, nil
 	case models.ProviderGROQ:
-		clientOptions.openaiOptions = append(clientOptions.openaiOptions,
-			WithOpenAIBaseURL("https://api.groq.com/openai/v1"),
-		)
+		if clientOptions.baseURL == "" {
+			clientOptions.baseURL = "https://api.groq.com/openai/v1"
+		}
 		return &baseProvider[OpenAIClient]{
 			options: clientOptions,
 			client:  newOpenAIClient(clientOptions),
@@ -127,29 +141,27 @@ func NewProvider(providerName models.ModelProvider, opts ...ProviderClientOption
 			client:  newVertexAIClient(clientOptions),
 		}, nil
 	case models.ProviderOpenRouter:
-		clientOptions.openaiOptions = append(clientOptions.openaiOptions,
-			WithOpenAIBaseURL("https://openrouter.ai/api/v1"),
-			WithOpenAIExtraHeaders(map[string]string{
-				"HTTP-Referer": "opencode.ai",
-				"X-Title":      "OpenCode",
-			}),
-		)
+		if clientOptions.baseURL == "" {
+			clientOptions.baseURL = "https://openrouter.ai/api/v1"
+		}
+		clientOptions.headers["HTTP-Referer"] = "opencode.ai"
+		clientOptions.headers["X-Title"] = "OpenCode"
 		return &baseProvider[OpenAIClient]{
 			options: clientOptions,
 			client:  newOpenAIClient(clientOptions),
 		}, nil
 	case models.ProviderXAI:
-		clientOptions.openaiOptions = append(clientOptions.openaiOptions,
-			WithOpenAIBaseURL("https://api.x.ai/v1"),
-		)
+		if clientOptions.baseURL == "" {
+			clientOptions.baseURL = "https://api.x.ai/v1"
+		}
 		return &baseProvider[OpenAIClient]{
 			options: clientOptions,
 			client:  newOpenAIClient(clientOptions),
 		}, nil
 	case models.ProviderLocal:
-		clientOptions.openaiOptions = append(clientOptions.openaiOptions,
-			WithOpenAIBaseURL(os.Getenv("LOCAL_ENDPOINT")),
-		)
+		if clientOptions.baseURL == "" {
+			clientOptions.baseURL = os.Getenv("LOCAL_ENDPOINT")
+		}
 		return &baseProvider[OpenAIClient]{
 			options: clientOptions,
 			client:  newOpenAIClient(clientOptions),
@@ -184,6 +196,18 @@ func (p *baseProvider[C]) Model() models.Model {
 func (p *baseProvider[C]) StreamResponse(ctx context.Context, messages []message.Message, tools []tools.BaseTool) <-chan ProviderEvent {
 	messages = p.cleanMessages(messages)
 	return p.client.stream(ctx, messages, tools)
+}
+
+func WithBaseURL(baseURL string) ProviderClientOption {
+	return func(options *providerClientOptions) {
+		options.baseURL = baseURL
+	}
+}
+
+func WithHeaders(headers map[string]string) ProviderClientOption {
+	return func(options *providerClientOptions) {
+		options.headers = headers
+	}
 }
 
 func WithAPIKey(apiKey string) ProviderClientOption {
