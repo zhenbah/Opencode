@@ -60,12 +60,22 @@ func RecoverPanic(name string, cleanup func()) {
 		if err != nil {
 			ErrorPersist(fmt.Sprintf("Failed to create panic log: %v", err))
 		} else {
-			defer file.Close()
+			defer func() {
+				if closeErr := file.Close(); closeErr != nil {
+					ErrorPersist(fmt.Sprintf("Failed to close panic log file: %v", closeErr))
+				}
+			}()
 
 			// Write panic information and stack trace
-			fmt.Fprintf(file, "Panic in %s: %v\n\n", name, r)
-			fmt.Fprintf(file, "Time: %s\n\n", time.Now().Format(time.RFC3339))
-			fmt.Fprintf(file, "Stack Trace:\n%s\n", debug.Stack())
+			if _, writeErr := fmt.Fprintf(file, "Panic in %s: %v\n\n", name, r); writeErr != nil {
+				ErrorPersist(fmt.Sprintf("Failed to write panic info: %v", writeErr))
+			}
+			if _, writeErr := fmt.Fprintf(file, "Time: %s\n\n", time.Now().Format(time.RFC3339)); writeErr != nil {
+				ErrorPersist(fmt.Sprintf("Failed to write time info: %v", writeErr))
+			}
+			if _, writeErr := fmt.Fprintf(file, "Stack Trace:\n%s\n", debug.Stack()); writeErr != nil {
+				ErrorPersist(fmt.Sprintf("Failed to write stack trace: %v", writeErr))
+			}
 
 			InfoPersist(fmt.Sprintf("Panic details written to %s", filename))
 		}

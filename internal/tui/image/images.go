@@ -59,7 +59,12 @@ func ImagePreview(width int, filename string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer imageContent.Close()
+	defer func() {
+		if closeErr := imageContent.Close(); closeErr != nil {
+			// Log the error but don't fail the function since the main operation may have succeeded
+			fmt.Fprintf(os.Stderr, "Warning: failed to close image file: %v\n", closeErr)
+		}
+	}()
 
 	img, _, err := image.Decode(imageContent)
 	if err != nil {

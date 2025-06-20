@@ -248,8 +248,8 @@ func (a *anthropicClient) stream(ctx context.Context, messages []message.Message
 	preparedMessages := a.preparedMessages(a.convertMessages(messages), a.convertTools(tools))
 	cfg := config.Get()
 	if cfg.Debug {
-		// jsonData, _ := json.Marshal(preparedMessages)
-		// logging.Debug("Prepared messages", "messages", string(jsonData))
+		jsonData, _ := json.Marshal(preparedMessages)
+		logging.Debug("Prepared messages", "messages", string(jsonData))
 	}
 	attempts := 0
 	eventChan := make(chan ProviderEvent)
@@ -273,9 +273,10 @@ func (a *anthropicClient) stream(ctx context.Context, messages []message.Message
 
 				switch event := event.AsAny().(type) {
 				case anthropic.ContentBlockStartEvent:
-					if event.ContentBlock.Type == "text" {
+					switch event.ContentBlock.Type {
+					case "text":
 						eventChan <- ProviderEvent{Type: EventContentStart}
-					} else if event.ContentBlock.Type == "tool_use" {
+					case "tool_use":
 						currentToolCallID = event.ContentBlock.ID
 						eventChan <- ProviderEvent{
 							Type: EventToolUseStart,

@@ -10,6 +10,13 @@ import (
 	"github.com/opencode-ai/opencode/internal/lsp/watcher"
 )
 
+// contextKey is a custom type for context keys to avoid collisions
+type contextKey string
+
+const (
+	serverNameKey contextKey = "serverName"
+)
+
 func (app *App) initLSPClients(ctx context.Context) {
 	cfg := config.Get()
 
@@ -42,7 +49,9 @@ func (app *App) createAndStartLSPClient(ctx context.Context, name string, comman
 	if err != nil {
 		logging.Error("Initialize failed", "name", name, "error", err)
 		// Clean up the client to prevent resource leaks
-		lspClient.Close()
+		if closeErr := lspClient.Close(); closeErr != nil {
+			logging.Error("Failed to close LSP client after initialization failure", "name", name, "error", closeErr)
+		}
 		return
 	}
 
@@ -62,7 +71,7 @@ func (app *App) createAndStartLSPClient(ctx context.Context, name string, comman
 	watchCtx, cancelFunc := context.WithCancel(ctx)
 
 	// Create a context with the server name for better identification
-	watchCtx = context.WithValue(watchCtx, "serverName", name)
+	watchCtx = context.WithValue(watchCtx, serverNameKey, name)
 
 	// Create the workspace watcher
 	workspaceWatcher := watcher.NewWorkspaceWatcher(lspClient)

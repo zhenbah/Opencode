@@ -416,13 +416,15 @@ func readConfig(err error) error {
 // mergeLocalConfig loads and merges configuration from the local directory.
 func mergeLocalConfig(workingDir string) {
 	local := viper.New()
-	local.SetConfigName(fmt.Sprintf(".%s", appName))
+	local.SetConfigName(".opencode")
 	local.SetConfigType("json")
 	local.AddConfigPath(workingDir)
 
 	// Merge local config if it exists
 	if err := local.ReadInConfig(); err == nil {
-		viper.MergeConfigMap(local.AllSettings())
+		if mergeErr := viper.MergeConfigMap(local.AllSettings()); mergeErr != nil {
+			logging.Warn("Failed to merge local config", "error", mergeErr)
+		}
 	}
 }
 

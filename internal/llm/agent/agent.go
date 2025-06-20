@@ -283,7 +283,9 @@ func (a *agent) processGeneration(ctx context.Context, sessionID, content string
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
 				agentMessage.AddFinish(message.FinishReasonCanceled)
-				a.messages.Update(context.Background(), agentMessage)
+				if updateErr := a.messages.Update(context.Background(), agentMessage); updateErr != nil {
+					logging.Warn("Failed to update agent message on cancellation", "error", updateErr)
+				}
 				return a.err(ErrRequestCancelled)
 			}
 			return a.err(fmt.Errorf("failed to process events: %w", err))

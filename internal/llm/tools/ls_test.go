@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,7 +28,11 @@ func TestLsTool_Run(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir, err := os.MkdirTemp("", "ls_tool_test")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		if rmErr := os.RemoveAll(tempDir); rmErr != nil {
+			t.Logf("Warning: failed to clean up temp directory: %v", rmErr)
+		}
+	}()
 
 	// Create a test directory structure
 	testDirs := []string{
@@ -120,8 +125,14 @@ func TestLsTool_Run(t *testing.T) {
 	})
 
 	t.Run("handles empty path parameter", func(t *testing.T) {
-		// For this test, we need to mock the config.WorkingDirectory function
-		// Since we can't easily do that, we'll just check that the response doesn't contain an error message
+		// Initialize config for this test to avoid panic
+		tmpConfigDir := t.TempDir()
+		_, err := config.Load(tmpConfigDir, false)
+		require.NoError(t, err)
+
+		// Set the working directory to our test directory
+		cfg := config.Get()
+		cfg.WorkingDir = tempDir
 
 		tool := NewLsTool()
 		params := LSParams{
@@ -139,9 +150,10 @@ func TestLsTool_Run(t *testing.T) {
 		response, err := tool.Run(context.Background(), call)
 		require.NoError(t, err)
 
-		// The response should either contain a valid directory listing or an error
-		// We'll just check that it's not empty
+		// The response should contain a valid directory listing
 		assert.NotEmpty(t, response.Content)
+		// Should list some of our test files/directories
+		assert.Contains(t, response.Content, "dir1")
 	})
 
 	t.Run("handles invalid parameters", func(t *testing.T) {
@@ -183,17 +195,28 @@ func TestLsTool_Run(t *testing.T) {
 	})
 
 	t.Run("handles relative path", func(t *testing.T) {
+		// Initialize config for this test
+		tmpConfigDir := t.TempDir()
+		_, err := config.Load(tmpConfigDir, false)
+		require.NoError(t, err)
+
 		// Save original working directory
 		origWd, err := os.Getwd()
 		require.NoError(t, err)
 		defer func() {
-			os.Chdir(origWd)
+			if chErr := os.Chdir(origWd); chErr != nil {
+				t.Logf("Warning: failed to restore working directory: %v", chErr)
+			}
 		}()
 
 		// Change to a directory above the temp directory
 		parentDir := filepath.Dir(tempDir)
 		err = os.Chdir(parentDir)
 		require.NoError(t, err)
+
+		// Set the working directory in config to match the current directory
+		cfg := config.Get()
+		cfg.WorkingDir = parentDir
 
 		tool := NewLsTool()
 		params := LSParams{
@@ -370,7 +393,11 @@ func TestListDirectory(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir, err := os.MkdirTemp("", "list_directory_test")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		if rmErr := os.RemoveAll(tempDir); rmErr != nil {
+			t.Logf("Warning: failed to clean up temp directory: %v", rmErr)
+		}
+	}()
 
 	// Create a test directory structure
 	testDirs := []string{

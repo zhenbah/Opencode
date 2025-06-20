@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/opencode-ai/opencode/internal/config"
+	"github.com/opencode-ai/opencode/internal/logging"
 )
 
 type PersistentShell struct {
@@ -120,7 +121,7 @@ func newPersistentShell(cwd string) *PersistentShell {
 	go func() {
 		err := cmd.Wait()
 		if err != nil {
-			// Log the error if needed
+			logging.Debug("Shell process ended", "error", err)
 		}
 		shell.isAlive = false
 		close(shell.commandQueue)
@@ -155,10 +156,11 @@ func (s *PersistentShell) execCommand(command string, timeout time.Duration, ctx
 	cwdFile := filepath.Join(tempDir, fmt.Sprintf("opencode-cwd-%d", time.Now().UnixNano()))
 
 	defer func() {
-		os.Remove(stdoutFile)
-		os.Remove(stderrFile)
-		os.Remove(statusFile)
-		os.Remove(cwdFile)
+		// Clean up temporary files, but don't fail if they can't be removed
+		_ = os.Remove(stdoutFile)
+		_ = os.Remove(stderrFile)
+		_ = os.Remove(statusFile)
+		_ = os.Remove(cwdFile)
 	}()
 
 	fullCommand := fmt.Sprintf(`
@@ -225,7 +227,10 @@ echo $EXEC_EXIT_CODE > %s
 
 	exitCode := 0
 	if exitCodeStr != "" {
-		fmt.Sscanf(exitCodeStr, "%d", &exitCode)
+		// Parse exit code, ignore error as we have a fallback
+		if _, err := fmt.Sscanf(exitCodeStr, "%d", &exitCode); err != nil {
+			exitCode = 1 // fallback to error code
+		}
 	} else if interrupted {
 		exitCode = 143
 		stderr += "\nCommand execution timed out or was interrupted"
@@ -254,14 +259,18 @@ func (s *PersistentShell) killChildren() {
 		return
 	}
 
-	for pidStr := range strings.SplitSeq(string(output), "\n") {
+	for _, pidStr := range strings.Split(string(output), "\n") {
 		if pidStr = strings.TrimSpace(pidStr); pidStr != "" {
 			var pid int
-			fmt.Sscanf(pidStr, "%d", &pid)
+			// Parse PID, ignore error as we have validation below
+			if _, err := fmt.Sscanf(pidStr, "%d", &pid); err != nil {
+				continue
+			}
 			if pid > 0 {
 				proc, err := os.FindProcess(pid)
 				if err == nil {
-					proc.Signal(syscall.SIGTERM)
+					// Send signal, ignore error as process may already be dead
+					_ = proc.Signal(syscall.SIGTERM)
 				}
 			}
 		}
@@ -295,9 +304,13 @@ func (s *PersistentShell) Close() {
 		return
 	}
 
-	s.stdin.Write([]byte("exit\n"))
+	// Try to gracefully exit first
+	_, _ = s.stdin.Write([]byte("exit\n"))
 
-	s.cmd.Process.Kill()
+	// Force kill if needed
+	if s.cmd != nil && s.cmd.Process != nil {
+		_ = s.cmd.Process.Kill()
+	}
 	s.isAlive = false
 }
 

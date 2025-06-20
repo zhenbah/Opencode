@@ -17,6 +17,14 @@ import (
 	"github.com/opencode-ai/opencode/internal/lsp/protocol"
 )
 
+// contextKey is a custom type for context keys to avoid collisions
+type contextKey string
+
+const (
+	workspaceWatcherKey contextKey = "workspaceWatcher"
+	serverNameKey       contextKey = "serverName"
+)
+
 // WorkspaceWatcher manages LSP file watching
 type WorkspaceWatcher struct {
 	client        *lsp.Client
@@ -309,12 +317,12 @@ func (w *WorkspaceWatcher) WatchWorkspace(ctx context.Context, workspacePath str
 	w.workspacePath = workspacePath
 
 	// Store the watcher in the context for later use
-	ctx = context.WithValue(ctx, "workspaceWatcher", w)
+	ctx = context.WithValue(ctx, workspaceWatcherKey, w)
 
 	// If the server name isn't already in the context, try to detect it
-	if _, ok := ctx.Value("serverName").(string); !ok {
+	if _, ok := ctx.Value(serverNameKey).(string); !ok {
 		serverName := getServerNameFromContext(ctx)
-		ctx = context.WithValue(ctx, "serverName", serverName)
+		ctx = context.WithValue(ctx, serverNameKey, serverName)
 	}
 
 	serverName := getServerNameFromContext(ctx)
@@ -328,8 +336,13 @@ func (w *WorkspaceWatcher) WatchWorkspace(ctx context.Context, workspacePath str
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		logging.Error("Error creating watcher", "error", err)
+		return
 	}
-	defer watcher.Close()
+	defer func() {
+		if closeErr := watcher.Close(); closeErr != nil {
+			logging.Error("Error closing file watcher", "error", closeErr)
+		}
+	}()
 
 	// Watch the workspace recursively
 	err = filepath.WalkDir(workspacePath, func(path string, d os.DirEntry, err error) error {
@@ -685,12 +698,12 @@ func (w *WorkspaceWatcher) notifyFileEvent(ctx context.Context, uri string, chan
 // This is a best-effort function that tries to identify which LSP server we're dealing with
 func getServerNameFromContext(ctx context.Context) string {
 	// First check if the server name is directly stored in the context
-	if serverName, ok := ctx.Value("serverName").(string); ok && serverName != "" {
+	if serverName, ok := ctx.Value(serverNameKey).(string); ok && serverName != "" {
 		return strings.ToLower(serverName)
 	}
 
 	// Otherwise, try to extract server name from the client command path
-	if w, ok := ctx.Value("workspaceWatcher").(*WorkspaceWatcher); ok && w != nil && w.client != nil && w.client.Cmd != nil {
+	if w, ok := ctx.Value(workspaceWatcherKey).(*WorkspaceWatcher); ok && w != nil && w.client != nil && w.client.Cmd != nil {
 		path := strings.ToLower(w.client.Cmd.Path)
 
 		// Extract server name from path

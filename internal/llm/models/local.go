@@ -1,7 +1,6 @@
 package models
 
 import (
-	"cmp"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -82,7 +81,11 @@ func listLocalModels(modelsEndpoint string) []localModel {
 			"endpoint", modelsEndpoint,
 		)
 	}
-	defer res.Body.Close()
+	defer func() {
+		if closeErr := res.Body.Close(); closeErr != nil {
+			logging.Debug("Failed to close response body", "error", closeErr)
+		}
+	}()
 
 	if res.StatusCode != http.StatusOK {
 		logging.Debug("Failed to list local models",
@@ -135,13 +138,17 @@ func loadLocalModels(models []localModel) {
 }
 
 func convertLocalModel(model localModel) Model {
+	contextWindow := model.LoadedContextLength
+	if contextWindow == 0 {
+		contextWindow = 4096
+	}
 	return Model{
 		ID:                  ModelID("local." + model.ID),
 		Name:                friendlyModelName(model.ID),
 		Provider:            ProviderLocal,
 		APIModel:            model.ID,
-		ContextWindow:       cmp.Or(model.LoadedContextLength, 4096),
-		DefaultMaxTokens:    cmp.Or(model.LoadedContextLength, 4096),
+		ContextWindow:       contextWindow,
+		DefaultMaxTokens:    contextWindow,
 		CanReason:           true,
 		SupportsAttachments: true,
 	}

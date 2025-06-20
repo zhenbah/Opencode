@@ -182,7 +182,10 @@ func (m MultiArgumentsDialogCmp) View() string {
 	baseStyle := styles.BaseStyle()
 
 	// Calculate width needed for content
-	maxWidth := 60 // Width for explanation text
+	maxWidth := 80
+	if m.width > 100 {
+		maxWidth = 120
+	}
 
 	title := lipgloss.NewStyle().
 		Foreground(t.Primary()).
@@ -225,8 +228,6 @@ func (m MultiArgumentsDialogCmp) View() string {
 
 		inputFields[i] = lipgloss.JoinVertical(lipgloss.Left, label, field)
 	}
-
-	maxWidth = min(maxWidth, m.width-10)
 
 	// Join all elements vertically
 	elements := []string{title, explanation}

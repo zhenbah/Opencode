@@ -32,7 +32,9 @@ func Connect() (*sql.DB, error) {
 
 	// Verify connection
 	if err = db.Ping(); err != nil {
-		db.Close()
+		if closeErr := db.Close(); closeErr != nil {
+			logging.Error("Failed to close database after ping failure", "error", closeErr)
+		}
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 

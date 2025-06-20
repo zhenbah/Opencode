@@ -166,7 +166,7 @@ func (o *openaiClient) preparedParams(messages []openai.ChatCompletionMessagePar
 		Tools:    tools,
 	}
 
-	if o.providerOptions.model.CanReason == true {
+	if o.providerOptions.model.CanReason {
 		params.MaxCompletionTokens = openai.Int(o.providerOptions.maxTokens)
 		switch o.options.reasoningEffort {
 		case "low":
@@ -283,8 +283,8 @@ func (o *openaiClient) stream(ctx context.Context, messages []message.Message, t
 			err := openaiStream.Err()
 			if err == nil || errors.Is(err, io.EOF) {
 				// Stream completed successfully
-				finishReason := o.finishReason(string(acc.ChatCompletion.Choices[0].FinishReason))
-				if len(acc.ChatCompletion.Choices[0].Message.ToolCalls) > 0 {
+				finishReason := o.finishReason(string(acc.Choices[0].FinishReason))
+				if len(acc.Choices[0].Message.ToolCalls) > 0 {
 					toolCalls = append(toolCalls, o.toolCalls(acc.ChatCompletion)...)
 				}
 				if len(toolCalls) > 0 {
