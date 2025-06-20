@@ -17,7 +17,6 @@ import (
 
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
-	"golang.org/x/oauth2"
 	"google.golang.org/genai"
 )
 
@@ -26,12 +25,6 @@ type VertexAIClient ProviderClient
 type vertexOptions struct {
 	projectID string
 	location  string
-}
-
-type mockTokenSoure struct{}
-
-func (s *mockTokenSoure) Token() (*oauth2.Token, error) {
-	return &oauth2.Token{}, nil
 }
 
 func newVertexAIClient(opts providerClientOptions) VertexAIClient {
@@ -55,13 +48,23 @@ func newVertexAIClient(opts providerClientOptions) VertexAIClient {
 		Backend:  genai.BackendVertexAI,
 	}
 
-	// HACK: assume litellm proxy, provide an excplicit way to define proxy-type
 	if opts.baseURL != "" {
-		genaiConfig.HTTPOptions = genai.HTTPOptions{
-			BaseURL: opts.baseURL,
-			Headers: *opts.asHeader(),
+		if opts.headers != nil {
+			header := opts.asHeader()
+			// HACK: assume litellm proxy, provide an excplicit way to define proxy-type
+			if h := header.Get("x-litellm-api-key"); h != "" {
+				// has to be empty to pass genai validation check with empty creds, auth handled by LiteLLM
+				genaiConfig.Credentials = &auth.Credentials{}
+			}
+			genaiConfig.HTTPOptions = genai.HTTPOptions{
+				BaseURL: opts.baseURL,
+				Headers: *header,
+			}
+		} else {
+			genaiConfig.HTTPOptions = genai.HTTPOptions{
+				BaseURL: opts.baseURL,
+			}
 		}
-		genaiConfig.Credentials = &auth.Credentials{}
 	}
 
 	client, err := genai.NewClient(context.Background(), genaiConfig)
@@ -78,7 +81,7 @@ func newVertexAIClient(opts providerClientOptions) VertexAIClient {
 	}
 }
 
-// NOTE: copied from (here)[github.com/anthropics/anthropic-sdk-go/vertex]
+// NOTE: copied from (here)[github.com/anthropics/anthropic-sdk-go/vertex] to make LiteLLM passthrough work
 func vertexMiddleware(region, projectID string) sdkoption.Middleware {
 	return func(r *http.Request, next sdkoption.MiddlewareNext) (*http.Response, error) {
 		if r.Body != nil {

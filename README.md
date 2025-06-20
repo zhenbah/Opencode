@@ -599,7 +599,7 @@ It is possible to use LiteLLM as a passthrough proxy by providing `baseURL` and 
 {
   "providers": {
     "vertexai": {
-      "apiKey": "",
+      "apiKey": "litellm-api-key",
       "disabled": false,
       "baseURL": "https://localhost/vertex_ai"
       "headers": {
