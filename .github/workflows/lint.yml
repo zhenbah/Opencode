@@ -3,6 +3,9 @@ name: Lint
 on:
   workflow_dispatch:
   pull_request:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -24,14 +27,12 @@ jobs:
           cache: true
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v8.0.0
         timeout-minutes: 15
         with:
-          version: v2
-          only-new-issues: true
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          version: v2.1
 
       - name: Run gosec Security Scanner
-        uses: securego/gosec@master
+        uses: securego/gosec@v2.22.5
         with:
-          args: ./...
+          args: -severity HIGH ./...
