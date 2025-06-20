@@ -1,0 +1,37 @@
+name: Lint
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required for merge_group events with only-new-issues
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        timeout-minutes: 15
+        with:
+          version: v2
+          only-new-issues: true
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Run gosec Security Scanner
+        uses: securego/gosec@master
+        with:
+          args: ./...
