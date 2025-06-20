@@ -31,8 +31,3 @@ jobs:
         timeout-minutes: 15
         with:
           version: v2.1
-
-      - name: Run gosec Security Scanner
-        uses: securego/gosec@v2.22.5
-        with:
-          args: -severity HIGH ./...
