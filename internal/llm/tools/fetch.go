@@ -12,6 +12,7 @@ import (
 	md "github.com/JohannesKaufmann/html-to-markdown"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/opencode-ai/opencode/internal/config"
+	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/permission"
 )
 
@@ -158,7 +159,11 @@ func (t *fetchTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error
 	if err != nil {
 		return ToolResponse{}, fmt.Errorf("failed to fetch URL: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			logging.Warn("Failed to close response body", "error", closeErr)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return NewTextErrorResponse(fmt.Sprintf("Request failed with status code: %d", resp.StatusCode)), nil

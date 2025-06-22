@@ -10,6 +10,13 @@ import (
 	"github.com/opencode-ai/opencode/internal/lsp/watcher"
 )
 
+// contextKey is a custom type for context keys to avoid collisions
+type contextKey string
+
+const (
+	serverNameKey contextKey = "serverName"
+)
+
 func (app *App) initLSPClients(ctx context.Context) {
 	cfg := config.Get()
 
@@ -25,7 +32,7 @@ func (app *App) initLSPClients(ctx context.Context) {
 func (app *App) createAndStartLSPClient(ctx context.Context, name string, command string, args ...string) {
 	// Create a specific context for initialization with a timeout
 	logging.Info("Creating LSP client", "name", name, "command", command, "args", args)
-	
+
 	// Create the LSP client
 	lspClient, err := lsp.NewClient(ctx, command, args...)
 	if err != nil {
@@ -36,13 +43,15 @@ func (app *App) createAndStartLSPClient(ctx context.Context, name string, comman
 	// Create a longer timeout for initialization (some servers take time to start)
 	initCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	
+
 	// Initialize with the initialization context
 	_, err = lspClient.InitializeLSPClient(initCtx, config.WorkingDirectory())
 	if err != nil {
 		logging.Error("Initialize failed", "name", name, "error", err)
 		// Clean up the client to prevent resource leaks
-		lspClient.Close()
+		if closeErr := lspClient.Close(); closeErr != nil {
+			logging.Error("Failed to close LSP client after initialization failure", "name", name, "error", closeErr)
+		}
 		return
 	}
 
@@ -57,13 +66,13 @@ func (app *App) createAndStartLSPClient(ctx context.Context, name string, comman
 	}
 
 	logging.Info("LSP client initialized", "name", name)
-	
+
 	// Create a child context that can be canceled when the app is shutting down
 	watchCtx, cancelFunc := context.WithCancel(ctx)
-	
+
 	// Create a context with the server name for better identification
-	watchCtx = context.WithValue(watchCtx, "serverName", name)
-	
+	watchCtx = context.WithValue(watchCtx, serverNameKey, name)
+
 	// Create the workspace watcher
 	workspaceWatcher := watcher.NewWorkspaceWatcher(lspClient)
 

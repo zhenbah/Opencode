@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/opencode-ai/opencode/internal/db"
+	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/pubsub"
 )
 
@@ -121,7 +122,9 @@ func (s *service) createWithVersion(ctx context.Context, sessionID, path, conten
 		})
 		if txErr != nil {
 			// Rollback the transaction
-			tx.Rollback()
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				logging.Warn("Failed to rollback transaction", "error", rollbackErr)
+			}
 
 			// Check if this is a uniqueness constraint violation
 			if strings.Contains(txErr.Error(), "UNIQUE constraint failed") {

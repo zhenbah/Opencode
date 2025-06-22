@@ -77,11 +77,9 @@ var filePickerKeyMap = FilePrickerKeyMap{
 }
 
 type filepickerCmp struct {
-	basePath       string
 	width          int
 	height         int
 	cursor         int
-	err            error
 	cursorChain    stack
 	viewport       viewport.Model
 	dirs           []os.DirEntry

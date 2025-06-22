@@ -563,18 +563,6 @@ func createStyles(t theme.Theme) (removedLineStyle, addedLineStyle, contextLineS
 // Rendering Functions
 // -------------------------------------------------------------------------
 
-func lipglossToHex(color lipgloss.Color) string {
-	r, g, b, a := color.RGBA()
-
-	// Scale uint32 values (0-65535) to uint8 (0-255).
-	r8 := uint8(r >> 8)
-	g8 := uint8(g >> 8)
-	b8 := uint8(b >> 8)
-	a8 := uint8(a >> 8)
-
-	return fmt.Sprintf("#%02x%02x%02x%02x", r8, g8, b8, a8)
-}
-
 // applyHighlighting applies intra-line highlighting to a piece of text
 func applyHighlighting(content string, segments []Segment, segmentType LineType, highlightBg lipgloss.AdaptiveColor) string {
 	// Find all ANSI sequences in the content

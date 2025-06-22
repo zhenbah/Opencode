@@ -316,7 +316,9 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Start the summarization process
 		return a, func() tea.Msg {
 			ctx := context.Background()
-			a.app.CoderAgent.Summarize(ctx, a.selectedSession.ID)
+			if err := a.app.CoderAgent.Summarize(ctx, a.selectedSession.ID); err != nil {
+				logging.Warn("Failed to summarize session", "error", err, "sessionID", a.selectedSession.ID)
+			}
 			return nil
 		}
 
@@ -666,15 +668,6 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // RegisterCommand adds a command to the command dialog
 func (a *appModel) RegisterCommand(cmd dialog.Command) {
 	a.commands = append(a.commands, cmd)
-}
-
-func (a *appModel) findCommand(id string) (dialog.Command, bool) {
-	for _, cmd := range a.commands {
-		if cmd.ID == id {
-			return cmd, true
-		}
-	}
-	return dialog.Command{}, false
 }
 
 func (a *appModel) moveToPage(pageID page.PageID) tea.Cmd {

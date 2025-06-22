@@ -73,7 +73,7 @@ func processContextPaths(workDir string, paths []string) string {
 			defer wg.Done()
 
 			if strings.HasSuffix(p, "/") {
-				filepath.WalkDir(filepath.Join(workDir, p), func(path string, d os.DirEntry, err error) error {
+				if walkErr := filepath.WalkDir(filepath.Join(workDir, p), func(path string, d os.DirEntry, err error) error {
 					if err != nil {
 						return err
 					}
@@ -93,7 +93,9 @@ func processContextPaths(workDir string, paths []string) string {
 						}
 					}
 					return nil
-				})
+				}); walkErr != nil {
+					logging.Warn("Failed to walk directory", "error", walkErr, "path", p)
+				}
 			} else {
 				fullPath := filepath.Join(workDir, p)
 

@@ -14,7 +14,6 @@ import (
 )
 
 type CompletionItem struct {
-	title string
 	Title string
 	Value string
 }

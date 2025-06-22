@@ -185,7 +185,7 @@ func renderAssistantMessage(
 		position++ // for the space
 	} else if thinking && thinkingContent != "" {
 		// Render the thinking content
-		content = renderMessage(thinkingContent, false, msg.ID == focusedUIMessageId, width)
+		renderMessage(thinkingContent, false, msg.ID == focusedUIMessageId, width)
 	}
 
 	for i, toolCall := range msg.ToolCalls() {
@@ -317,42 +317,41 @@ func renderParams(paramsWidth int, params ...string) string {
 
 func removeWorkingDirPrefix(path string) string {
 	wd := config.WorkingDirectory()
-	if strings.HasPrefix(path, wd) {
-		path = strings.TrimPrefix(path, wd)
-	}
-	if strings.HasPrefix(path, "/") {
-		path = strings.TrimPrefix(path, "/")
-	}
-	if strings.HasPrefix(path, "./") {
-		path = strings.TrimPrefix(path, "./")
-	}
-	if strings.HasPrefix(path, "../") {
-		path = strings.TrimPrefix(path, "../")
-	}
+	path = strings.TrimPrefix(path, wd)
+	path = strings.TrimPrefix(path, "/")
+	path = strings.TrimPrefix(path, "./")
+	path = strings.TrimPrefix(path, "../")
 	return path
 }
 
 func renderToolParams(paramWidth int, toolCall message.ToolCall) string {
-	params := ""
 	switch toolCall.Name {
 	case agent.AgentToolName:
 		var params agent.AgentParams
-		json.Unmarshal([]byte(toolCall.Input), &params)
+		if err := json.Unmarshal([]byte(toolCall.Input), &params); err != nil {
+			return renderParams(paramWidth, "invalid parameters")
+		}
 		prompt := strings.ReplaceAll(params.Prompt, "\n", " ")
 		return renderParams(paramWidth, prompt)
 	case tools.BashToolName:
 		var params tools.BashParams
-		json.Unmarshal([]byte(toolCall.Input), &params)
+		if err := json.Unmarshal([]byte(toolCall.Input), &params); err != nil {
+			return renderParams(paramWidth, "invalid parameters")
+		}
 		command := strings.ReplaceAll(params.Command, "\n", " ")
 		return renderParams(paramWidth, command)
 	case tools.EditToolName:
 		var params tools.EditParams
-		json.Unmarshal([]byte(toolCall.Input), &params)
+		if err := json.Unmarshal([]byte(toolCall.Input), &params); err != nil {
+			return renderParams(paramWidth, "invalid parameters")
+		}
 		filePath := removeWorkingDirPrefix(params.FilePath)
 		return renderParams(paramWidth, filePath)
 	case tools.FetchToolName:
 		var params tools.FetchParams
-		json.Unmarshal([]byte(toolCall.Input), &params)
+		if err := json.Unmarshal([]byte(toolCall.Input), &params); err != nil {
+			return renderParams(paramWidth, "invalid parameters")
+		}
 		url := params.URL
 		toolParams := []string{
 			url,
@@ -366,7 +365,9 @@ func renderToolParams(paramWidth int, toolCall message.ToolCall) string {
 		return renderParams(paramWidth, toolParams...)
 	case tools.GlobToolName:
 		var params tools.GlobParams
-		json.Unmarshal([]byte(toolCall.Input), &params)
+		if err := json.Unmarshal([]byte(toolCall.Input), &params); err != nil {
+			return renderParams(paramWidth, "invalid parameters")
+		}
 		pattern := params.Pattern
 		toolParams := []string{
 			pattern,
@@ -377,7 +378,9 @@ func renderToolParams(paramWidth int, toolCall message.ToolCall) string {
 		return renderParams(paramWidth, toolParams...)
 	case tools.GrepToolName:
 		var params tools.GrepParams
-		json.Unmarshal([]byte(toolCall.Input), &params)
+		if err := json.Unmarshal([]byte(toolCall.Input), &params); err != nil {
+			return renderParams(paramWidth, "invalid parameters")
+		}
 		pattern := params.Pattern
 		toolParams := []string{
 			pattern,
@@ -394,7 +397,9 @@ func renderToolParams(paramWidth int, toolCall message.ToolCall) string {
 		return renderParams(paramWidth, toolParams...)
 	case tools.LSToolName:
 		var params tools.LSParams
-		json.Unmarshal([]byte(toolCall.Input), &params)
+		if err := json.Unmarshal([]byte(toolCall.Input), &params); err != nil {
+			return renderParams(paramWidth, "invalid parameters")
+		}
 		path := params.Path
 		if path == "" {
 			path = "."
@@ -402,11 +407,15 @@ func renderToolParams(paramWidth int, toolCall message.ToolCall) string {
 		return renderParams(paramWidth, path)
 	case tools.SourcegraphToolName:
 		var params tools.SourcegraphParams
-		json.Unmarshal([]byte(toolCall.Input), &params)
+		if err := json.Unmarshal([]byte(toolCall.Input), &params); err != nil {
+			return renderParams(paramWidth, "invalid parameters")
+		}
 		return renderParams(paramWidth, params.Query)
 	case tools.ViewToolName:
 		var params tools.ViewParams
-		json.Unmarshal([]byte(toolCall.Input), &params)
+		if err := json.Unmarshal([]byte(toolCall.Input), &params); err != nil {
+			return renderParams(paramWidth, "invalid parameters")
+		}
 		filePath := removeWorkingDirPrefix(params.FilePath)
 		toolParams := []string{
 			filePath,
@@ -420,14 +429,15 @@ func renderToolParams(paramWidth int, toolCall message.ToolCall) string {
 		return renderParams(paramWidth, toolParams...)
 	case tools.WriteToolName:
 		var params tools.WriteParams
-		json.Unmarshal([]byte(toolCall.Input), &params)
+		if err := json.Unmarshal([]byte(toolCall.Input), &params); err != nil {
+			return renderParams(paramWidth, "invalid parameters")
+		}
 		filePath := removeWorkingDirPrefix(params.FilePath)
 		return renderParams(paramWidth, filePath)
 	default:
 		input := strings.ReplaceAll(toolCall.Input, "\n", " ")
-		params = renderParams(paramWidth, input)
+		return renderParams(paramWidth, input)
 	}
-	return params
 }
 
 func truncateHeight(content string, height int) string {
@@ -466,13 +476,17 @@ func renderToolResponse(toolCall message.ToolCall, response message.ToolResult, 
 		)
 	case tools.EditToolName:
 		metadata := tools.EditResponseMetadata{}
-		json.Unmarshal([]byte(response.Metadata), &metadata)
+		if err := json.Unmarshal([]byte(response.Metadata), &metadata); err != nil {
+			return baseStyle.Width(width).Foreground(t.Error()).Render("Error parsing metadata")
+		}
 		truncDiff := truncateHeight(metadata.Diff, maxResultHeight)
 		formattedDiff, _ := diff.FormatDiff(truncDiff, diff.WithTotalWidth(width))
 		return formattedDiff
 	case tools.FetchToolName:
 		var params tools.FetchParams
-		json.Unmarshal([]byte(toolCall.Input), &params)
+		if err := json.Unmarshal([]byte(toolCall.Input), &params); err != nil {
+			return baseStyle.Width(width).Foreground(t.Error()).Render("Error parsing parameters")
+		}
 		mdFormat := "markdown"
 		switch params.Format {
 		case "text":
@@ -495,7 +509,9 @@ func renderToolResponse(toolCall message.ToolCall, response message.ToolResult, 
 		return baseStyle.Width(width).Foreground(t.TextMuted()).Render(resultContent)
 	case tools.ViewToolName:
 		metadata := tools.ViewResponseMetadata{}
-		json.Unmarshal([]byte(response.Metadata), &metadata)
+		if err := json.Unmarshal([]byte(response.Metadata), &metadata); err != nil {
+			return baseStyle.Width(width).Foreground(t.Error()).Render("Error parsing metadata")
+		}
 		ext := filepath.Ext(metadata.FilePath)
 		if ext == "" {
 			ext = ""
@@ -509,9 +525,13 @@ func renderToolResponse(toolCall message.ToolCall, response message.ToolResult, 
 		)
 	case tools.WriteToolName:
 		params := tools.WriteParams{}
-		json.Unmarshal([]byte(toolCall.Input), &params)
+		if err := json.Unmarshal([]byte(toolCall.Input), &params); err != nil {
+			return baseStyle.Width(width).Foreground(t.Error()).Render("Error parsing parameters")
+		}
 		metadata := tools.WriteResponseMetadata{}
-		json.Unmarshal([]byte(response.Metadata), &metadata)
+		if err := json.Unmarshal([]byte(response.Metadata), &metadata); err != nil {
+			return baseStyle.Width(width).Foreground(t.Error()).Render("Error parsing metadata")
+		}
 		ext := filepath.Ext(params.FilePath)
 		if ext == "" {
 			ext = ""
@@ -566,7 +586,7 @@ func renderToolMessage(
 		progressText := baseStyle.
 			Width(width - 2 - lipgloss.Width(toolNameText)).
 			Foreground(t.TextMuted()).
-			Render(fmt.Sprintf("%s", toolAction))
+			Render(toolAction)
 
 		content := style.Render(lipgloss.JoinHorizontal(lipgloss.Left, toolNameText, progressText))
 		toolMsg := uiMessage{

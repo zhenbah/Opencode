@@ -16,6 +16,7 @@ import (
 
 	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/opencode-ai/opencode/internal/fileutil"
+	"github.com/opencode-ai/opencode/internal/logging"
 )
 
 type GrepParams struct {
@@ -329,7 +330,12 @@ func fileContainsPattern(filePath string, pattern *regexp.Regexp) (bool, int, st
 	if err != nil {
 		return false, 0, "", err
 	}
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			// Log at debug level since this is in a utility function
+			logging.Debug("Failed to close file", "error", closeErr, "path", filePath)
+		}
+	}()
 
 	scanner := bufio.NewScanner(file)
 	lineNum := 0

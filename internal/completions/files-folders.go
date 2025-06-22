@@ -66,7 +66,11 @@ func (cg *filesAndFoldersContextGroup) getFiles(query string) ([]string, error) 
 		if err != nil {
 			return nil, fmt.Errorf("failed to get rg stdout pipe: %w", err)
 		}
-		defer rgPipe.Close()
+		defer func() {
+			if closeErr := rgPipe.Close(); closeErr != nil {
+				logging.Warn("Failed to close rg pipe", "error", closeErr)
+			}
+		}()
 
 		cmdFzf.Stdin = rgPipe
 		var fzfOut bytes.Buffer
