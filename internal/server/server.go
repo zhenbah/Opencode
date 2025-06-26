@@ -2,6 +2,10 @@ package server
 
 import (
 	"context"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"google.golang.org/grpc/codes"
@@ -297,28 +301,144 @@ func (s *OpenCodeServer) ClearMessages(ctx context.Context, req *pb.ClearMessage
 
 // File methods
 func (s *OpenCodeServer) ListFiles(ctx context.Context, req *pb.ListFilesRequest) (*pb.ListFilesResponse, error) {
-	// TODO: Implement file listing
-	return nil, status.Errorf(codes.Unimplemented, "ListFiles not implemented")
+	basePath := req.Path
+	if basePath == "" {
+		basePath = "."
+	}
+
+	var files []*pb.FileInfo
+	walkFn := func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			return nil // Skip errors, don't fail the whole operation
+		}
+
+		// Skip hidden files and directories
+		if strings.HasPrefix(filepath.Base(path), ".") {
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		// Create relative path
+		relPath, err := filepath.Rel(basePath, path)
+		if err != nil {
+			relPath = path
+		}
+
+		files = append(files, &pb.FileInfo{
+			Path:        relPath,
+			IsDirectory: info.IsDir(),
+			Size:        info.Size(),
+			ModifiedAt:  timestamppb.New(info.ModTime()),
+			MimeType:    getMimeType(path),
+		})
+
+		// If not recursive and this is a directory (not the base), skip it
+		if !req.Recursive && info.IsDir() && path != basePath {
+			return filepath.SkipDir
+		}
+
+		return nil
+	}
+
+	err := filepath.WalkDir(basePath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		info, err := d.Info()
+		if err != nil {
+			return nil
+		}
+		return walkFn(path, info, err)
+	})
+
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list files: %v", err)
+	}
+
+	return &pb.ListFilesResponse{
+		Files: files,
+	}, nil
 }
 
 func (s *OpenCodeServer) ReadFile(ctx context.Context, req *pb.ReadFileRequest) (*pb.ReadFileResponse, error) {
-	// TODO: Implement file reading
-	return nil, status.Errorf(codes.Unimplemented, "ReadFile not implemented")
+	content, err := os.ReadFile(req.Path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, status.Errorf(codes.NotFound, "file not found: %s", req.Path)
+		}
+		return nil, status.Errorf(codes.Internal, "failed to read file: %v", err)
+	}
+
+	// Get file info
+	info, err := os.Stat(req.Path)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get file info: %v", err)
+	}
+
+	return &pb.ReadFileResponse{
+		Content: string(content),
+		FileInfo: &pb.FileInfo{
+			Path:        req.Path,
+			IsDirectory: info.IsDir(),
+			Size:        info.Size(),
+			ModifiedAt:  timestamppb.New(info.ModTime()),
+			MimeType:    getMimeType(req.Path),
+		},
+	}, nil
 }
 
 func (s *OpenCodeServer) WriteFile(ctx context.Context, req *pb.WriteFileRequest) (*pb.WriteFileResponse, error) {
-	// TODO: Implement file writing
-	return nil, status.Errorf(codes.Unimplemented, "WriteFile not implemented")
+	// Create parent directories if requested
+	if req.CreateDirs {
+		dir := filepath.Dir(req.Path)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to create directories: %v", err)
+		}
+	}
+
+	// Write the file
+	err := os.WriteFile(req.Path, []byte(req.Content), 0644)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to write file: %v", err)
+	}
+
+	// Get file info after writing
+	info, err := os.Stat(req.Path)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get file info: %v", err)
+	}
+
+	return &pb.WriteFileResponse{
+		FileInfo: &pb.FileInfo{
+			Path:        req.Path,
+			IsDirectory: info.IsDir(),
+			Size:        info.Size(),
+			ModifiedAt:  timestamppb.New(info.ModTime()),
+			MimeType:    getMimeType(req.Path),
+		},
+	}, nil
 }
 
 func (s *OpenCodeServer) DeleteFile(ctx context.Context, req *pb.DeleteFileRequest) (*emptypb.Empty, error) {
-	// TODO: Implement file deletion
+	err := os.Remove(req.Path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, status.Errorf(codes.NotFound, "file not found: %s", req.Path)
+		}
+		return nil, status.Errorf(codes.Internal, "failed to delete file: %v", err)
+	}
 	return &emptypb.Empty{}, nil
 }
 
 func (s *OpenCodeServer) GetFileChanges(ctx context.Context, req *pb.GetFileChangesRequest) (*pb.GetFileChangesResponse, error) {
-	// TODO: Implement file change tracking
-	return nil, status.Errorf(codes.Unimplemented, "GetFileChanges not implemented")
+	// TODO: Implement proper file change tracking
+	// For now, return empty changes
+	return &pb.GetFileChangesResponse{
+		Changes:        []*pb.FileChange{},
+		CurrentVersion: "1",
+	}, nil
 }
 
 // Agent methods
@@ -473,4 +593,43 @@ func getTextFromParts(parts []message.ContentPart) string {
 		}
 	}
 	return text
+}
+
+// Helper function to determine MIME type based on file extension
+func getMimeType(path string) string {
+	ext := strings.ToLower(filepath.Ext(path))
+	switch ext {
+	case ".js":
+		return "application/javascript"
+	case ".ts":
+		return "application/typescript"
+	case ".json":
+		return "application/json"
+	case ".html":
+		return "text/html"
+	case ".css":
+		return "text/css"
+	case ".md":
+		return "text/markdown"
+	case ".txt":
+		return "text/plain"
+	case ".go":
+		return "text/x-go"
+	case ".py":
+		return "text/x-python"
+	case ".java":
+		return "text/x-java"
+	case ".c":
+		return "text/x-c"
+	case ".cpp", ".cc", ".cxx":
+		return "text/x-c++"
+	case ".h":
+		return "text/x-c-header"
+	case ".xml":
+		return "application/xml"
+	case ".yaml", ".yml":
+		return "application/x-yaml"
+	default:
+		return "application/octet-stream"
+	}
 }
