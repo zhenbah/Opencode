@@ -16,8 +16,8 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the server
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o opencode-server ./cmd/server
+# Build the main OpenCode binary
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o opencode .
 
 # Runtime stage
 FROM alpine:latest
@@ -28,7 +28,7 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 
 # Copy the binary from builder stage
-COPY --from=builder /app/opencode-server .
+COPY --from=builder /app/opencode .
 
 # Expose ports
 EXPOSE 8080 8081
@@ -38,5 +38,5 @@ ENV GRPC_PORT=8080
 ENV HTTP_PORT=8081
 ENV OPENCODE_DEBUG=false
 
-# Run the server
-CMD ["./opencode-server"]
+# Run the server subcommand
+CMD ["./opencode", "server"]
