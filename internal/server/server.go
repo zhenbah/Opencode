@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/opencode-ai/opencode/internal/app"
+	"github.com/opencode-ai/opencode/internal/message"
 	pb "github.com/opencode-ai/opencode/internal/proto/v1"
 )
 
@@ -125,13 +126,152 @@ func (s *OpenCodeServer) GetSessionStats(ctx context.Context, req *pb.GetSession
 
 // Message methods
 func (s *OpenCodeServer) SendMessage(req *pb.SendMessageRequest, stream pb.OpenCodeService_SendMessageServer) error {
-	// TODO: Implement message sending with streaming response
-	return status.Errorf(codes.Unimplemented, "SendMessage not implemented")
+	// Ensure we have a session
+	sessionID, err := s.getCurrentSession(stream.Context())
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to get session: %v", err)
+	}
+
+	// Convert proto parts to internal message format
+	parts := make([]message.ContentPart, len(req.Parts))
+	for i, part := range req.Parts {
+		parts[i] = convertProtoContentPart(part)
+	}
+
+	// Create message request
+	msgReq := message.CreateMessageParams{
+		Role:  message.User,
+		Parts: parts,
+		Model: "gpt-4", // TODO: Get from request or config
+	}
+
+	// Create the user message
+	userMsg, err := s.app.Messages.Create(stream.Context(), sessionID, msgReq)
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to create message: %v", err)
+	}
+
+	// Send message started event
+	err = stream.Send(&pb.SendMessageResponse{
+		Response: &pb.SendMessageResponse_MessageStarted{
+			MessageStarted: &pb.MessageStarted{
+				MessageId: userMsg.ID,
+				Timestamp: timestamppb.New(time.Unix(userMsg.CreatedAt, 0)),
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	// TODO: Implement actual AI response generation
+	// For now, send a simple echo response
+	assistantParts := []message.ContentPart{
+		message.TextContent{Text: "Echo: " + getTextFromParts(parts)},
+	}
+
+	assistantMsg, err := s.app.Messages.Create(stream.Context(), sessionID, message.CreateMessageParams{
+		Role:  message.Assistant,
+		Parts: assistantParts,
+		Model: "gpt-4",
+	})
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to create assistant message: %v", err)
+	}
+
+	// Send content delta
+	err = stream.Send(&pb.SendMessageResponse{
+		Response: &pb.SendMessageResponse_ContentDelta{
+			ContentDelta: &pb.ContentDelta{
+				Text: getTextFromParts(assistantParts),
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	// Send completion message
+	return stream.Send(&pb.SendMessageResponse{
+		Response: &pb.SendMessageResponse_MessageCompleted{
+			MessageCompleted: &pb.MessageCompleted{
+				MessageId:    assistantMsg.ID,
+				FinishReason: pb.FinishReason_FINISH_REASON_END_TURN,
+				Timestamp:    timestamppb.New(time.Unix(assistantMsg.CreatedAt, 0)),
+				Usage: &pb.TokenUsage{
+					PromptTokens:     100, // TODO: Calculate actual usage
+					CompletionTokens: 50,
+					Cost:             0.001,
+				},
+			},
+		},
+	})
 }
 
 func (s *OpenCodeServer) ListMessages(ctx context.Context, req *pb.ListMessagesRequest) (*pb.ListMessagesResponse, error) {
-	// TODO: Implement message listing
-	return nil, status.Errorf(codes.Unimplemented, "ListMessages not implemented")
+	// Ensure we have a session
+	sessionID, err := s.getCurrentSession(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get session: %v", err)
+	}
+
+	// Get messages from the service
+	messages, err := s.app.Messages.List(ctx, sessionID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list messages: %v", err)
+	}
+
+	// Apply role filter if specified
+	if req.RoleFilter != pb.MessageRole_MESSAGE_ROLE_UNSPECIFIED {
+		filtered := make([]message.Message, 0)
+		targetRole := convertProtoMessageRole(req.RoleFilter)
+		for _, msg := range messages {
+			if msg.Role == targetRole {
+				filtered = append(filtered, msg)
+			}
+		}
+		messages = filtered
+	}
+
+	// Apply pagination
+	offset := int32(0)
+	limit := int32(50)
+	if req.Pagination != nil {
+		if req.Pagination.Offset > 0 {
+			offset = req.Pagination.Offset
+		}
+		if req.Pagination.Limit > 0 {
+			limit = req.Pagination.Limit
+		}
+	}
+
+	total := int32(len(messages))
+	start := offset
+	end := offset + limit
+	if start > total {
+		start = total
+	}
+	if end > total {
+		end = total
+	}
+
+	pagedMessages := messages[start:end]
+
+	// Convert messages to proto format
+	protoMessages := make([]*pb.Message, len(pagedMessages))
+	for i, msg := range pagedMessages {
+		protoMessages[i] = convertMessageToProto(msg)
+	}
+
+	return &pb.ListMessagesResponse{
+		Messages: protoMessages,
+		Pagination: &pb.PaginationResponse{
+			Total:    total,
+			Limit:    limit,
+			Offset:   offset,
+			HasMore:  end < total,
+		},
+	}, nil
 }
 
 func (s *OpenCodeServer) StreamMessages(req *pb.StreamMessagesRequest, stream pb.OpenCodeService_StreamMessagesServer) error {
@@ -140,7 +280,18 @@ func (s *OpenCodeServer) StreamMessages(req *pb.StreamMessagesRequest, stream pb
 }
 
 func (s *OpenCodeServer) ClearMessages(ctx context.Context, req *pb.ClearMessagesRequest) (*emptypb.Empty, error) {
-	// TODO: Implement message clearing
+	// Ensure we have a session
+	sessionID, err := s.getCurrentSession(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get session: %v", err)
+	}
+
+	// Clear all messages in the session
+	err = s.app.Messages.DeleteSessionMessages(ctx, sessionID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to clear messages: %v", err)
+	}
+
 	return &emptypb.Empty{}, nil
 }
 
@@ -202,4 +353,124 @@ func (s *OpenCodeServer) getCurrentSession(ctx context.Context) (string, error) 
 		s.currentSessionID = session.ID
 	}
 	return s.currentSessionID, nil
+}
+
+// Helper functions for proto conversion
+
+func convertProtoContentPart(part *pb.ContentPart) message.ContentPart {
+	switch content := part.Content.(type) {
+	case *pb.ContentPart_Text:
+		return message.TextContent{Text: content.Text.Text}
+	case *pb.ContentPart_Binary:
+		return message.BinaryContent{
+			Path:     content.Binary.Path,
+			MIMEType: content.Binary.MimeType,
+			Data:     content.Binary.Data,
+		}
+	default:
+		// Return empty text content for unsupported types
+		return message.TextContent{Text: ""}
+	}
+}
+
+func convertProtoMessageRole(role pb.MessageRole) message.MessageRole {
+	switch role {
+	case pb.MessageRole_MESSAGE_ROLE_USER:
+		return message.User
+	case pb.MessageRole_MESSAGE_ROLE_ASSISTANT:
+		return message.Assistant
+	case pb.MessageRole_MESSAGE_ROLE_TOOL:
+		return message.Tool
+	default:
+		return message.User
+	}
+}
+
+func convertMessageToProto(msg message.Message) *pb.Message {
+	protoRole := pb.MessageRole_MESSAGE_ROLE_USER
+	switch msg.Role {
+	case message.Assistant:
+		protoRole = pb.MessageRole_MESSAGE_ROLE_ASSISTANT
+	case message.Tool:
+		protoRole = pb.MessageRole_MESSAGE_ROLE_TOOL
+	case message.System:
+		protoRole = pb.MessageRole_MESSAGE_ROLE_USER // Map system to user for API
+	}
+
+	protoParts := make([]*pb.ContentPart, len(msg.Parts))
+	for i, part := range msg.Parts {
+		protoParts[i] = convertContentPartToProto(part)
+	}
+
+	return &pb.Message{
+		Id:        msg.ID,
+		Role:      protoRole,
+		Parts:     protoParts,
+		CreatedAt: timestamppb.New(time.Unix(msg.CreatedAt, 0)),
+		UpdatedAt: timestamppb.New(time.Unix(msg.UpdatedAt, 0)),
+		Model:     string(msg.Model),
+	}
+}
+
+func convertContentPartToProto(part message.ContentPart) *pb.ContentPart {
+	switch p := part.(type) {
+	case message.TextContent:
+		return &pb.ContentPart{
+			Content: &pb.ContentPart_Text{
+				Text: &pb.TextContent{
+					Text: p.Text,
+				},
+			},
+		}
+	case message.BinaryContent:
+		return &pb.ContentPart{
+			Content: &pb.ContentPart_Binary{
+				Binary: &pb.BinaryContent{
+					Path:     p.Path,
+					MimeType: p.MIMEType,
+					Data:     p.Data,
+				},
+			},
+		}
+	case message.ToolCall:
+		return &pb.ContentPart{
+			Content: &pb.ContentPart_ToolCall{
+				ToolCall: &pb.ToolCallContent{
+					Id:    p.ID,
+					Name:  p.Name,
+					Input: p.Input,
+				},
+			},
+		}
+	case message.ToolResult:
+		return &pb.ContentPart{
+			Content: &pb.ContentPart_ToolResult{
+				ToolResult: &pb.ToolResultContent{
+					ToolCallId: p.ToolCallID,
+					Content:    p.Content,
+					Metadata:   p.Metadata,
+					IsError:    p.IsError,
+				},
+			},
+		}
+	default:
+		// Return empty text content for unsupported types
+		return &pb.ContentPart{
+			Content: &pb.ContentPart_Text{
+				Text: &pb.TextContent{
+					Text: "",
+				},
+			},
+		}
+	}
+}
+
+func getTextFromParts(parts []message.ContentPart) string {
+	text := ""
+	for _, part := range parts {
+		if textPart, ok := part.(message.TextContent); ok {
+			text += textPart.Text + " "
+		}
+	}
+	return text
 }
