@@ -7,22 +7,62 @@ import (
 	orchestratorpb "github.com/opencode-ai/opencode/internal/proto/orchestrator/v1"
 )
 
-// Config holds the orchestrator configuration
-type Config struct {
-	Namespace  string
-	Kubeconfig string
-	Image      string
-	Resources  *ResourceConfig
-	SessionTTL time.Duration
+// Runtime defines the interface for different execution environments
+// This abstraction allows the orchestrator to work with different runtimes
+// like Kubernetes, Docker, Firecracker, etc.
+type Runtime interface {
+	// CreateSession creates a new session in the runtime environment
+	CreateSession(ctx context.Context, session *orchestratorpb.Session) error
+
+	// GetSessionStatus returns the current status of a session
+	GetSessionStatus(ctx context.Context, sessionID string) (*orchestratorpb.SessionStatus, error)
+
+	// DeleteSession removes a session from the runtime environment
+	DeleteSession(ctx context.Context, sessionID string) error
+
+	// WaitForSessionReady waits for a session to become ready
+	WaitForSessionReady(ctx context.Context, sessionID string) error
+
+	// GetSessionEndpoint returns the network endpoint for the session
+	GetSessionEndpoint(ctx context.Context, sessionID string) (string, error)
+
+	// ListSessions returns all sessions managed by this runtime
+	ListSessions(ctx context.Context) ([]*orchestratorpb.Session, error)
+
+	// HealthCheck performs a health check of the runtime
+	HealthCheck(ctx context.Context) error
+
+	// Close cleans up runtime resources
+	Close() error
 }
 
-// ResourceConfig defines resource limits for sessions
-type ResourceConfig struct {
+// RuntimeConfig is a marker interface for runtime-specific configurations
+type RuntimeConfig interface {
+	// GetType returns the runtime type (kubernetes, docker, firecracker, etc.)
+	GetType() string
+}
+
+// KubernetesConfig holds Kubernetes-specific configuration
+type KubernetesConfig struct {
+	Namespace     string
+	Kubeconfig    string
+	Image         string
 	CPURequest    string
 	CPULimit      string
 	MemoryRequest string
 	MemoryLimit   string
 	StorageSize   string
+}
+
+// GetType returns the runtime type
+func (k *KubernetesConfig) GetType() string {
+	return "kubernetes"
+}
+
+// Config holds the orchestrator configuration
+type Config struct {
+	RuntimeConfig RuntimeConfig
+	SessionTTL    time.Duration
 }
 
 // SessionManager defines the interface for session persistence
@@ -56,21 +96,6 @@ type SessionManager interface {
 
 	// Close closes the session store connection
 	Close() error
-}
-
-// PodManager handles Kubernetes pod operations
-type PodManager interface {
-	CreatePod(ctx context.Context, session *orchestratorpb.Session) error
-	DeletePod(ctx context.Context, sessionID string) error
-	WaitForPodReady(ctx context.Context, sessionID string) error
-	GetPodStatus(ctx context.Context, sessionID string) (*orchestratorpb.SessionStatus, error)
-}
-
-// StorageManager handles persistent storage
-type StorageManager interface {
-	CreatePVC(ctx context.Context, session *orchestratorpb.Session) error
-	DeletePVC(ctx context.Context, sessionID string) error
-	GetPVCStatus(ctx context.Context, sessionID string) (string, error)
 }
 
 // ProxyManager handles request proxying to sessions

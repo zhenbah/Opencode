@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/opencode-ai/opencode/internal/orchestrator/models"
+	"github.com/opencode-ai/opencode/internal/orchestrator/runtime/kubernetes"
 	"github.com/opencode-ai/opencode/internal/orchestrator/session"
 	orchestratorpb "github.com/opencode-ai/opencode/internal/proto/orchestrator/v1"
 )
@@ -22,6 +23,8 @@ type Service struct {
 
 	config         *models.Config
 	sessionManager models.SessionManager
+	runtime        models.Runtime
+	proxyManager   models.ProxyManager
 }
 
 // NewService creates a new orchestrator service
@@ -29,8 +32,29 @@ func NewService(ctx context.Context, config *models.Config) (*Service, error) {
 	// Create default session store (in-memory)
 	store := session.NewInMemorySessionStore()
 
-	// Create service with the store
-	service, err := NewServiceWithStore(config, store)
+	// Create runtime based on configuration
+	var rt models.Runtime
+	var err error
+
+	switch config.RuntimeConfig.GetType() {
+	case "kubernetes":
+		kubeConfig, ok := config.RuntimeConfig.(*models.KubernetesConfig)
+		if !ok {
+			return nil, fmt.Errorf("invalid kubernetes configuration")
+		}
+		rt, err = kubernetes.NewRuntime(kubeConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create kubernetes runtime: %w", err)
+		}
+	default:
+		return nil, fmt.Errorf("unsupported runtime type: %s", config.RuntimeConfig.GetType())
+	}
+
+	// Create proxy manager (we'll use a simple implementation for now)
+	proxyManager := &SimpleProxyManager{runtime: rt}
+
+	// Create service with the components
+	service, err := NewServiceWithComponents(config, store, rt, proxyManager)
 	if err != nil {
 		return nil, err
 	}
@@ -41,10 +65,12 @@ func NewService(ctx context.Context, config *models.Config) (*Service, error) {
 	return service, nil
 }
 
-func NewServiceWithStore(config *models.Config, sessionManager models.SessionManager) (*Service, error) {
+func NewServiceWithComponents(config *models.Config, sessionManager models.SessionManager, runtime models.Runtime, proxyManager models.ProxyManager) (*Service, error) {
 	return &Service{
 		config:         config,
 		sessionManager: sessionManager,
+		runtime:        runtime,
+		proxyManager:   proxyManager,
 	}, nil
 }
 
@@ -52,13 +78,25 @@ func NewServiceWithStore(config *models.Config, sessionManager models.SessionMan
 func (s *Service) Health(ctx context.Context, req *orchestratorpb.HealthRequest) (*orchestratorpb.HealthResponse, error) {
 	count, _ := s.sessionManager.CountSessions(ctx, "")
 
+	// Check runtime health
+	runtimeHealthy := true
+	if err := s.runtime.HealthCheck(ctx); err != nil {
+		runtimeHealthy = false
+	}
+
+	status := orchestratorpb.HealthResponse_SERVING
+	if !runtimeHealthy {
+		status = orchestratorpb.HealthResponse_NOT_SERVING
+	}
+
 	return &orchestratorpb.HealthResponse{
-		Status:    orchestratorpb.HealthResponse_SERVING,
+		Status:    status,
 		Version:   "1.0.0",
 		Timestamp: timestamppb.Now(),
 		Details: map[string]string{
-			"namespace":       s.config.Namespace,
+			"runtime_type":    s.config.RuntimeConfig.GetType(),
 			"active_sessions": fmt.Sprintf("%d", count),
+			"runtime_healthy": fmt.Sprintf("%t", runtimeHealthy),
 		},
 	}, nil
 }
@@ -74,40 +112,39 @@ func (s *Service) CreateSession(ctx context.Context, req *orchestratorpb.CreateS
 		return nil, status.Errorf(codes.Internal, "failed to create session: %v", err)
 	}
 
-	// Create PVC first
-	if err := s.storageManager.CreatePVC(ctx, session); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to create storage: %v", err)
-	}
-
-	// Create pod
-	if err := s.podManager.CreatePod(ctx, session); err != nil {
-		// Cleanup PVC on pod creation failure
-		_ = s.storageManager.DeletePVC(ctx, session.Id)
-		return nil, status.Errorf(codes.Internal, "failed to create pod: %v", err)
+	// Create session in runtime
+	if err := s.runtime.CreateSession(ctx, session); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to create session in runtime: %v", err)
 	}
 
 	// Update session state
 	session.State = orchestratorpb.SessionState_SESSION_STATE_CREATING
 	session.UpdatedAt = timestamppb.Now()
-	_ = s.sessionStore.UpdateSession(ctx, session)
+	_ = s.sessionManager.UpdateSession(ctx, session)
 
-	// Wait for pod to be ready (with timeout)
+	// Wait for session to be ready (with timeout)
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
 
-		if err := s.podManager.WaitForPodReady(ctx, session.Id); err != nil {
-			log.Printf("Pod failed to become ready for session %s: %v", session.Id, err)
+		if err := s.runtime.WaitForSessionReady(ctx, session.Id); err != nil {
+			log.Printf("Session failed to become ready for session %s: %v", session.Id, err)
 			session.State = orchestratorpb.SessionState_SESSION_STATE_ERROR
-			session.Status.Message = fmt.Sprintf("Pod failed to start: %v", err)
+			if session.Status == nil {
+				session.Status = &orchestratorpb.SessionStatus{}
+			}
+			session.Status.Message = fmt.Sprintf("Session failed to start: %v", err)
 		} else {
 			session.State = orchestratorpb.SessionState_SESSION_STATE_RUNNING
+			if session.Status == nil {
+				session.Status = &orchestratorpb.SessionStatus{}
+			}
 			session.Status.Ready = true
 			session.Status.ReadyAt = timestamppb.Now()
 			log.Printf("Session %s is ready", session.Id)
 		}
 		session.UpdatedAt = timestamppb.Now()
-		_ = s.sessionStore.UpdateSession(ctx, session)
+		_ = s.sessionManager.UpdateSession(ctx, session)
 	}()
 
 	return &orchestratorpb.CreateSessionResponse{
@@ -126,14 +163,14 @@ func (s *Service) GetSession(ctx context.Context, req *orchestratorpb.GetSession
 		return nil, status.Errorf(codes.NotFound, "session not found: %v", err)
 	}
 
-	// Update session status from pod
-	if podStatus, err := s.podManager.GetPodStatus(ctx, session.Id); err == nil {
-		session.Status = podStatus
-		_ = s.sessionStore.UpdateSession(ctx, session)
+	// Update session status from runtime
+	if sessionStatus, err := s.runtime.GetSessionStatus(ctx, session.Id); err == nil {
+		session.Status = sessionStatus
+		_ = s.sessionManager.UpdateSession(ctx, session)
 	}
 
 	// Update last accessed time
-	_ = s.sessionStore.UpdateLastAccessed(ctx, session.Id)
+	_ = s.sessionManager.UpdateLastAccessed(ctx, session.Id)
 
 	return &orchestratorpb.GetSessionResponse{
 		Session: session,
@@ -169,16 +206,11 @@ func (s *Service) DeleteSession(ctx context.Context, req *orchestratorpb.DeleteS
 	// Update state to stopping
 	session.State = orchestratorpb.SessionState_SESSION_STATE_STOPPING
 	session.UpdatedAt = timestamppb.Now()
-	_ = s.sessionStore.UpdateSession(ctx, session)
+	_ = s.sessionManager.UpdateSession(ctx, session)
 
-	// Delete pod
-	if err := s.podManager.DeletePod(ctx, session.Id); err != nil && !req.Force {
-		return nil, status.Errorf(codes.Internal, "failed to delete pod: %v", err)
-	}
-
-	// Delete PVC
-	if err := s.storageManager.DeletePVC(ctx, session.Id); err != nil && !req.Force {
-		return nil, status.Errorf(codes.Internal, "failed to delete storage: %v", err)
+	// Delete session from runtime
+	if err := s.runtime.DeleteSession(ctx, session.Id); err != nil && !req.Force {
+		return nil, status.Errorf(codes.Internal, "failed to delete session from runtime: %v", err)
 	}
 
 	// Remove from registry
@@ -207,7 +239,7 @@ func (s *Service) ProxyHTTP(ctx context.Context, req *orchestratorpb.ProxyHTTPRe
 	}
 
 	// Update last accessed time
-	_ = s.sessionStore.UpdateLastAccessed(ctx, session.Id)
+	_ = s.sessionManager.UpdateLastAccessed(ctx, session.Id)
 
 	// Proxy the request
 	return s.proxyManager.ProxyHTTP(ctx, req.SessionId, req.UserId, req)
@@ -230,7 +262,7 @@ func (s *Service) cleanupExpiredSessions(ctx context.Context) {
 			return
 		case <-ticker.C:
 			ttlSeconds := int64(s.config.SessionTTL.Seconds())
-			expiredSessions, err := s.sessionStore.ListExpiredSessions(ctx, ttlSeconds)
+			expiredSessions, err := s.sessionManager.ListExpiredSessions(ctx, ttlSeconds)
 			if err != nil {
 				log.Printf("Failed to get expired sessions: %v", err)
 				continue

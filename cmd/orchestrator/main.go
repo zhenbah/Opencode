@@ -51,19 +51,21 @@ func runOrchestrator(cmd *cobra.Command, args []string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Create orchestrator service
+	// Create Kubernetes runtime configuration
+	kubeConfig := &models.KubernetesConfig{
+		Namespace:     namespace,
+		Kubeconfig:    kubeconfig,
+		Image:         "ghcr.io/denysvitali/opencode:latest",
+		CPURequest:    "250m",
+		CPULimit:      "1000m",
+		MemoryRequest: "512Mi",
+		MemoryLimit:   "2Gi",
+		StorageSize:   "10Gi",
+	}
+
 	orchestratorSvc, err := orchestrator.NewService(ctx, &models.Config{
-		Namespace:  namespace,
-		Kubeconfig: kubeconfig,
-		Image:      "ghcr.io/denysvitali/opencode:latest",
-		Resources: &models.ResourceConfig{
-			CPURequest:    "250m",
-			CPULimit:      "1000m",
-			MemoryRequest: "512Mi",
-			MemoryLimit:   "2Gi",
-			StorageSize:   "10Gi",
-		},
-		SessionTTL: 24 * time.Hour,
+		RuntimeConfig: kubeConfig,
+		SessionTTL:    24 * time.Hour,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create orchestrator service: %w", err)
