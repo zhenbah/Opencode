@@ -62,14 +62,20 @@ func runOrchestrator(*cobra.Command, []string) error {
 
 	// Create Kubernetes runtime configuration
 	kubeConfig := &models.KubernetesConfig{
-		Namespace:     namespace,
-		Kubeconfig:    kubeconfig,
-		Image:         runtimeImage,
-		CPURequest:    cpuReq,
-		CPULimit:      cpuReq, // For now, use same value
-		MemoryRequest: memoryReq,
-		MemoryLimit:   memoryLimit,
-		StorageSize:   storageSize,
+		Namespace:  namespace,
+		Kubeconfig: kubeconfig,
+		Image:      runtimeImage,
+		Resources: models.ResourceRequirements{
+			Requests: models.ResourceList{
+				CPU:    cpuReq,
+				Memory: memoryReq,
+			},
+			Limits: models.ResourceList{
+				// We don't pass CPU limits on purpose - see https://home.robusta.dev/blog/stop-using-cpu-limits
+				Memory: memoryLimit,
+			},
+		},
+		StorageSize: storageSize,
 	}
 
 	orchestratorSvc, err := orchestrator.NewService(ctx, &models.Config{
