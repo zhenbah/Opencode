@@ -24,14 +24,12 @@ type Service struct {
 	config         *models.Config
 	sessionManager models.SessionManager
 	runtime        models.Runtime
-	proxyManager   models.ProxyManager
+	proxyManager   *ProxyManager
+	connectionPool *ConnectionPool
 }
 
 // NewService creates a new orchestrator service
 func NewService(ctx context.Context, config *models.Config) (*Service, error) {
-	// Create default session store (in-memory)
-	store := session.NewInMemorySessionStore()
-
 	// Create runtime based on configuration
 	var rt models.Runtime
 	var err error
@@ -50,27 +48,36 @@ func NewService(ctx context.Context, config *models.Config) (*Service, error) {
 		return nil, fmt.Errorf("unsupported runtime type: %s", config.RuntimeConfig.GetType())
 	}
 
-	// Create proxy manager (we'll use a simple implementation for now)
-	proxyManager := &SimpleProxyManager{runtime: rt}
+	// Create session manager (in-memory store)
+	store := session.NewInMemorySessionStore()
+
+	// Create connection pool for efficient HTTP handling
+	poolConfig := DefaultPoolConfig()
+	connectionPool := NewConnectionPool(rt, poolConfig)
+
+	// Create advanced proxy manager with connection pooling
+	proxyManager := NewProxyManager(rt, store)
 
 	// Create service with the components
-	service, err := NewServiceWithComponents(config, store, rt, proxyManager)
+	service, err := NewServiceWithComponents(config, store, rt, proxyManager, connectionPool)
 	if err != nil {
 		return nil, err
 	}
 
-	// Start cleanup goroutine
+	// Start background monitoring
 	go service.cleanupExpiredSessions(ctx)
+	go proxyManager.MonitorSessionHealth(ctx)
 
 	return service, nil
 }
 
-func NewServiceWithComponents(config *models.Config, sessionManager models.SessionManager, runtime models.Runtime, proxyManager models.ProxyManager) (*Service, error) {
+func NewServiceWithComponents(config *models.Config, sessionManager models.SessionManager, runtime models.Runtime, proxyManager *ProxyManager, connectionPool *ConnectionPool) (*Service, error) {
 	return &Service{
 		config:         config,
 		sessionManager: sessionManager,
 		runtime:        runtime,
 		proxyManager:   proxyManager,
+		connectionPool: connectionPool,
 	}, nil
 }
 
