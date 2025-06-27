@@ -23,10 +23,16 @@ import (
 )
 
 var (
-	grpcPort   = 9090
-	httpPort   = 9091
-	namespace  = "opencode-sessions"
-	kubeconfig = ""
+	grpcPort           int
+	httpPort           int
+	namespace          string
+	kubeconfig         string
+	kubernetesCPUReq   string
+	kubernetesCPULimit string
+	kubernetesMemReq   string
+	kubernetesMemLimit string
+	kubernetesStorage  string
+	kubernetesImage    string
 )
 
 func main() {
@@ -41,6 +47,12 @@ func main() {
 	rootCmd.Flags().IntVar(&httpPort, "http-port", 9091, "HTTP gateway port")
 	rootCmd.Flags().StringVar(&namespace, "namespace", "opencode-sessions", "Kubernetes namespace for sessions")
 	rootCmd.Flags().StringVar(&kubeconfig, "kubeconfig", "", "Path to kubeconfig file (empty for in-cluster)")
+	rootCmd.Flags().StringVar(&kubernetesCPUReq, "kubernetes.cpu-request", "250m", "CPU request for session pods")
+	rootCmd.Flags().StringVar(&kubernetesCPULimit, "kubernetes.cpu-limit", "1000m", "CPU limit for session pods")
+	rootCmd.Flags().StringVar(&kubernetesMemReq, "kubernetes.memory-request", "512Mi", "Memory request for session pods")
+	rootCmd.Flags().StringVar(&kubernetesMemLimit, "kubernetes.memory-limit", "2Gi", "Memory limit for session pods")
+	rootCmd.Flags().StringVar(&kubernetesStorage, "kubernetes.storage-size", "10Gi", "Storage size for session workspaces")
+	rootCmd.Flags().StringVar(&kubernetesImage, "kubernetes.image", "ghcr.io/denysvitali/opencode:latest", "Container image for session pods")
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
@@ -53,14 +65,20 @@ func runOrchestrator(cmd *cobra.Command, args []string) error {
 
 	// Create Kubernetes runtime configuration
 	kubeConfig := &models.KubernetesConfig{
-		Namespace:     namespace,
-		Kubeconfig:    kubeconfig,
-		Image:         "ghcr.io/denysvitali/opencode:latest",
-		CPURequest:    "250m",
-		CPULimit:      "1000m",
-		MemoryRequest: "512Mi",
-		MemoryLimit:   "2Gi",
-		StorageSize:   "10Gi",
+		Namespace:  namespace,
+		Kubeconfig: kubeconfig,
+		Image:      kubernetesImage,
+		Resources: models.ResourceRequirements{
+			Requests: models.ResourceList{
+				CPU:    kubernetesCPUReq,
+				Memory: kubernetesMemReq,
+			},
+			Limits: models.ResourceList{
+				CPU:    kubernetesCPULimit,
+				Memory: kubernetesMemLimit,
+			},
+		},
+		StorageSize: kubernetesStorage,
 	}
 
 	orchestratorSvc, err := orchestrator.NewService(ctx, &models.Config{
