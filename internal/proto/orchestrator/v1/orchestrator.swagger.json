@@ -590,20 +590,16 @@
         }
       }
     },
-    "v1ResourceLimits": {
+    "v1RepositoryConfig": {
       "type": "object",
       "properties": {
-        "cpuRequest": {
-          "type": "string"
+        "url": {
+          "type": "string",
+          "title": "Git repository URL"
         },
-        "cpuLimit": {
-          "type": "string"
-        },
-        "memoryRequest": {
-          "type": "string"
-        },
-        "memoryLimit": {
-          "type": "string"
+        "ref": {
+          "type": "string",
+          "title": "Branch, tag, or commit to checkout (optional, defaults to main/master)"
         }
       }
     },
@@ -652,23 +648,16 @@
     "v1SessionConfig": {
       "type": "object",
       "properties": {
-        "resources": {
-          "$ref": "#/definitions/v1ResourceLimits"
-        },
-        "storageSize": {
-          "type": "string"
-        },
-        "ttl": {
-          "type": "string"
+        "repository": {
+          "$ref": "#/definitions/v1RepositoryConfig",
+          "title": "Repository configuration"
         },
         "environment": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
-          }
-        },
-        "image": {
-          "type": "string"
+          },
+          "title": "Environment variables for the development session"
         }
       }
     },

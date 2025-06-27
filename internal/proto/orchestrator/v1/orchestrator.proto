@@ -178,14 +178,19 @@ enum SessionState {
 }
 
 message SessionConfig {
+  // Repository configuration
+  RepositoryConfig repository = 1;
   
+  // Environment variables for the development session
+  map<string, string> environment = 2;
 }
 
-message ResourceLimits {
-  string cpu_request = 1;
-  string cpu_limit = 2;
-  string memory_request = 3;
-  string memory_limit = 4;
+message RepositoryConfig {
+  // Git repository URL
+  string url = 1;
+  
+  // Branch, tag, or commit to checkout (optional, defaults to main/master)
+  string ref = 2;
 }
 
 message SessionStatus {

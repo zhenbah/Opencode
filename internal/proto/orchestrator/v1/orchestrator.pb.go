@@ -1076,12 +1076,11 @@ func (x *Session) GetLastAccessed() *timestamppb.Timestamp {
 }
 
 type SessionConfig struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Resources     *ResourceLimits        `protobuf:"bytes,1,opt,name=resources,proto3" json:"resources,omitempty"`
-	StorageSize   string                 `protobuf:"bytes,2,opt,name=storage_size,json=storageSize,proto3" json:"storage_size,omitempty"`
-	Ttl           string                 `protobuf:"bytes,3,opt,name=ttl,proto3" json:"ttl,omitempty"`
-	Environment   map[string]string      `protobuf:"bytes,4,rep,name=environment,proto3" json:"environment,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	Image         string                 `protobuf:"bytes,5,opt,name=image,proto3" json:"image,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Repository configuration
+	Repository *RepositoryConfig `protobuf:"bytes,1,opt,name=repository,proto3" json:"repository,omitempty"`
+	// Environment variables for the development session
+	Environment   map[string]string `protobuf:"bytes,2,rep,name=environment,proto3" json:"environment,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1116,25 +1115,11 @@ func (*SessionConfig) Descriptor() ([]byte, []int) {
 	return file_orchestrator_v1_orchestrator_proto_rawDescGZIP(), []int{14}
 }
 
-func (x *SessionConfig) GetResources() *ResourceLimits {
+func (x *SessionConfig) GetRepository() *RepositoryConfig {
 	if x != nil {
-		return x.Resources
+		return x.Repository
 	}
 	return nil
-}
-
-func (x *SessionConfig) GetStorageSize() string {
-	if x != nil {
-		return x.StorageSize
-	}
-	return ""
-}
-
-func (x *SessionConfig) GetTtl() string {
-	if x != nil {
-		return x.Ttl
-	}
-	return ""
 }
 
 func (x *SessionConfig) GetEnvironment() map[string]string {
@@ -1144,37 +1129,30 @@ func (x *SessionConfig) GetEnvironment() map[string]string {
 	return nil
 }
 
-func (x *SessionConfig) GetImage() string {
-	if x != nil {
-		return x.Image
-	}
-	return ""
-}
-
-type ResourceLimits struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	CpuRequest    string                 `protobuf:"bytes,1,opt,name=cpu_request,json=cpuRequest,proto3" json:"cpu_request,omitempty"`
-	CpuLimit      string                 `protobuf:"bytes,2,opt,name=cpu_limit,json=cpuLimit,proto3" json:"cpu_limit,omitempty"`
-	MemoryRequest string                 `protobuf:"bytes,3,opt,name=memory_request,json=memoryRequest,proto3" json:"memory_request,omitempty"`
-	MemoryLimit   string                 `protobuf:"bytes,4,opt,name=memory_limit,json=memoryLimit,proto3" json:"memory_limit,omitempty"`
+type RepositoryConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Git repository URL
+	Url string `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+	// Branch, tag, or commit to checkout (optional, defaults to main/master)
+	Ref           string `protobuf:"bytes,2,opt,name=ref,proto3" json:"ref,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ResourceLimits) Reset() {
-	*x = ResourceLimits{}
+func (x *RepositoryConfig) Reset() {
+	*x = RepositoryConfig{}
 	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ResourceLimits) String() string {
+func (x *RepositoryConfig) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ResourceLimits) ProtoMessage() {}
+func (*RepositoryConfig) ProtoMessage() {}
 
-func (x *ResourceLimits) ProtoReflect() protoreflect.Message {
+func (x *RepositoryConfig) ProtoReflect() protoreflect.Message {
 	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1186,35 +1164,21 @@ func (x *ResourceLimits) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ResourceLimits.ProtoReflect.Descriptor instead.
-func (*ResourceLimits) Descriptor() ([]byte, []int) {
+// Deprecated: Use RepositoryConfig.ProtoReflect.Descriptor instead.
+func (*RepositoryConfig) Descriptor() ([]byte, []int) {
 	return file_orchestrator_v1_orchestrator_proto_rawDescGZIP(), []int{15}
 }
 
-func (x *ResourceLimits) GetCpuRequest() string {
+func (x *RepositoryConfig) GetUrl() string {
 	if x != nil {
-		return x.CpuRequest
+		return x.Url
 	}
 	return ""
 }
 
-func (x *ResourceLimits) GetCpuLimit() string {
+func (x *RepositoryConfig) GetRef() string {
 	if x != nil {
-		return x.CpuLimit
-	}
-	return ""
-}
-
-func (x *ResourceLimits) GetMemoryRequest() string {
-	if x != nil {
-		return x.MemoryRequest
-	}
-	return ""
-}
-
-func (x *ResourceLimits) GetMemoryLimit() string {
-	if x != nil {
-		return x.MemoryLimit
+		return x.Ref
 	}
 	return ""
 }
@@ -1407,22 +1371,18 @@ const file_orchestrator_v1_orchestrator_proto_rawDesc = "" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\flastAccessed\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xbe\x02\n" +
-	"\rSessionConfig\x12F\n" +
-	"\tresources\x18\x01 \x01(\v2(.opencode.orchestrator.v1.ResourceLimitsR\tresources\x12!\n" +
-	"\fstorage_size\x18\x02 \x01(\tR\vstorageSize\x12\x10\n" +
-	"\x03ttl\x18\x03 \x01(\tR\x03ttl\x12Z\n" +
-	"\venvironment\x18\x04 \x03(\v28.opencode.orchestrator.v1.SessionConfig.EnvironmentEntryR\venvironment\x12\x14\n" +
-	"\x05image\x18\x05 \x01(\tR\x05image\x1a>\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xf7\x01\n" +
+	"\rSessionConfig\x12J\n" +
+	"\n" +
+	"repository\x18\x01 \x01(\v2*.opencode.orchestrator.v1.RepositoryConfigR\n" +
+	"repository\x12Z\n" +
+	"\venvironment\x18\x02 \x03(\v28.opencode.orchestrator.v1.SessionConfig.EnvironmentEntryR\venvironment\x1a>\n" +
 	"\x10EnvironmentEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x98\x01\n" +
-	"\x0eResourceLimits\x12\x1f\n" +
-	"\vcpu_request\x18\x01 \x01(\tR\n" +
-	"cpuRequest\x12\x1b\n" +
-	"\tcpu_limit\x18\x02 \x01(\tR\bcpuLimit\x12%\n" +
-	"\x0ememory_request\x18\x03 \x01(\tR\rmemoryRequest\x12!\n" +
-	"\fmemory_limit\x18\x04 \x01(\tR\vmemoryLimit\"\xfe\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"6\n" +
+	"\x10RepositoryConfig\x12\x10\n" +
+	"\x03url\x18\x01 \x01(\tR\x03url\x12\x10\n" +
+	"\x03ref\x18\x02 \x01(\tR\x03ref\"\xfe\x01\n" +
 	"\rSessionStatus\x12\x19\n" +
 	"\bpod_name\x18\x01 \x01(\tR\apodName\x12#\n" +
 	"\rpod_namespace\x18\x02 \x01(\tR\fpodNamespace\x12\x19\n" +
@@ -1480,7 +1440,7 @@ var file_orchestrator_v1_orchestrator_proto_goTypes = []any{
 	(*ProxyStreamResponse)(nil),   // 14: opencode.orchestrator.v1.ProxyStreamResponse
 	(*Session)(nil),               // 15: opencode.orchestrator.v1.Session
 	(*SessionConfig)(nil),         // 16: opencode.orchestrator.v1.SessionConfig
-	(*ResourceLimits)(nil),        // 17: opencode.orchestrator.v1.ResourceLimits
+	(*RepositoryConfig)(nil),      // 17: opencode.orchestrator.v1.RepositoryConfig
 	(*SessionStatus)(nil),         // 18: opencode.orchestrator.v1.SessionStatus
 	nil,                           // 19: opencode.orchestrator.v1.HealthResponse.DetailsEntry
 	nil,                           // 20: opencode.orchestrator.v1.CreateSessionRequest.LabelsEntry
@@ -1509,7 +1469,7 @@ var file_orchestrator_v1_orchestrator_proto_depIdxs = []int32{
 	25, // 14: opencode.orchestrator.v1.Session.created_at:type_name -> google.protobuf.Timestamp
 	25, // 15: opencode.orchestrator.v1.Session.updated_at:type_name -> google.protobuf.Timestamp
 	25, // 16: opencode.orchestrator.v1.Session.last_accessed:type_name -> google.protobuf.Timestamp
-	17, // 17: opencode.orchestrator.v1.SessionConfig.resources:type_name -> opencode.orchestrator.v1.ResourceLimits
+	17, // 17: opencode.orchestrator.v1.SessionConfig.repository:type_name -> opencode.orchestrator.v1.RepositoryConfig
 	24, // 18: opencode.orchestrator.v1.SessionConfig.environment:type_name -> opencode.orchestrator.v1.SessionConfig.EnvironmentEntry
 	25, // 19: opencode.orchestrator.v1.SessionStatus.ready_at:type_name -> google.protobuf.Timestamp
 	2,  // 20: opencode.orchestrator.v1.OrchestratorService.Health:input_type -> opencode.orchestrator.v1.HealthRequest
