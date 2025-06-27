@@ -572,14 +572,27 @@ func generateWrappedCommand(kind ShellKind, userCommand string, stdoutFile, stde
 			shellQuoteWindows(kind, cwdFile),
 		)
 	case Pwsh, WindowsPowerShell:
-		// PowerShell syntax - simplified to avoid hanging issues
-		// Use direct command execution with redirection
-		return fmt.Sprintf("try { %s *> %s } catch { Write-Error $_.Exception.Message *> %s }; $LASTEXITCODE | Out-File -FilePath %s -Encoding utf8; pwd | Out-File -FilePath %s -Encoding utf8\n",
+		// PowerShell command to execute the user's command, redirect streams, and capture exit code and CWD.
+		// 1. Execute the user command, redirecting stdout and stderr to their respective files.
+		// 2. Check the success status ($?). If true, exit code is 0.
+		// 3. If false, check $LASTEXITCODE for native executables. If it's non-zero, use it.
+		// 4. Otherwise, for failed cmdlets, default to exit code 1.
+		// 5. Write the determined exit code to the status file.
+		// 6. Write the current directory path to the CWD file.
+		psExitCodeLogic := fmt.Sprintf(
+			"if ($?) { '0' } else { if ($LASTEXITCODE -ne 0) { $LASTEXITCODE } else { '1' } } | Out-File -FilePath %s -Encoding utf8",
+			shellQuoteWindows(kind, statusFile),
+		)
+		psCwdLogic := fmt.Sprintf(
+			"(Get-Location).Path | Out-File -FilePath %s -Encoding utf8",
+			shellQuoteWindows(kind, cwdFile),
+		)
+		return fmt.Sprintf("%s 1>%s 2>%s; %s; %s\n",
 			userCommand,
 			shellQuoteWindows(kind, stdoutFile),
 			shellQuoteWindows(kind, stderrFile),
-			shellQuoteWindows(kind, statusFile),
-			shellQuoteWindows(kind, cwdFile),
+			psExitCodeLogic,
+			psCwdLogic,
 		)
 	default:
 		// Unix bash fallback
