@@ -15,8 +15,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/opencode-ai/opencode/pkg/runtime"
 	orchestratorpb "github.com/opencode-ai/opencode/internal/proto/orchestrator/v1"
+	"github.com/opencode-ai/opencode/pkg/runtime"
 )
 
 // KubernetesRuntime implements the Runtime interface for Kubernetes
