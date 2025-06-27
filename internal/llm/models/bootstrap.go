@@ -12,6 +12,7 @@ func init() {
 	maps.Copy(SupportedModels, XAIModels)
 	maps.Copy(SupportedModels, VertexAIGeminiModels)
 	maps.Copy(SupportedModels, VertexAIAnthropicModels)
+	maps.Copy(SupportedModels, CopilotModels)
 
 	initLocalModels()
 }
