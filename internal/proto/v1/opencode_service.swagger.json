@@ -31,7 +31,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/rpcStatus"
+              "$ref": "#/definitions/googlerpcStatus"
             }
           }
         },
@@ -64,7 +64,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/rpcStatus"
+              "$ref": "#/definitions/googlerpcStatus"
             }
           }
         },
@@ -97,7 +97,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/rpcStatus"
+              "$ref": "#/definitions/googlerpcStatus"
             }
           }
         },
@@ -120,7 +120,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/rpcStatus"
+              "$ref": "#/definitions/googlerpcStatus"
             }
           }
         },
@@ -180,7 +180,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/rpcStatus"
+              "$ref": "#/definitions/googlerpcStatus"
             }
           }
         },
@@ -212,7 +212,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/rpcStatus"
+              "$ref": "#/definitions/googlerpcStatus"
             }
           }
         },
@@ -243,7 +243,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/rpcStatus"
+              "$ref": "#/definitions/googlerpcStatus"
             }
           }
         },
@@ -273,7 +273,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/rpcStatus"
+              "$ref": "#/definitions/googlerpcStatus"
             }
           }
         },
@@ -307,13 +307,13 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1HealthResponse"
+              "$ref": "#/definitions/opencodev1HealthResponse"
             }
           },
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/rpcStatus"
+              "$ref": "#/definitions/googlerpcStatus"
             }
           }
         },
@@ -336,7 +336,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/rpcStatus"
+              "$ref": "#/definitions/googlerpcStatus"
             }
           }
         },
@@ -393,7 +393,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/rpcStatus"
+              "$ref": "#/definitions/googlerpcStatus"
             }
           }
         },
@@ -414,7 +414,7 @@
                   "$ref": "#/definitions/v1SendMessageResponse"
                 },
                 "error": {
-                  "$ref": "#/definitions/rpcStatus"
+                  "$ref": "#/definitions/googlerpcStatus"
                 }
               },
               "title": "Stream result of v1SendMessageResponse"
@@ -423,7 +423,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/rpcStatus"
+              "$ref": "#/definitions/googlerpcStatus"
             }
           }
         },
@@ -456,7 +456,7 @@
                   "$ref": "#/definitions/v1StreamMessagesResponse"
                 },
                 "error": {
-                  "$ref": "#/definitions/rpcStatus"
+                  "$ref": "#/definitions/googlerpcStatus"
                 }
               },
               "title": "Stream result of v1StreamMessagesResponse"
@@ -465,7 +465,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/rpcStatus"
+              "$ref": "#/definitions/googlerpcStatus"
             }
           }
         },
@@ -488,7 +488,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/rpcStatus"
+              "$ref": "#/definitions/googlerpcStatus"
             }
           }
         },
@@ -514,13 +514,13 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1GetSessionResponse"
+              "$ref": "#/definitions/opencodev1GetSessionResponse"
             }
           },
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/rpcStatus"
+              "$ref": "#/definitions/googlerpcStatus"
             }
           }
         },
@@ -543,7 +543,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/rpcStatus"
+              "$ref": "#/definitions/googlerpcStatus"
             }
           }
         },
@@ -576,7 +576,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/rpcStatus"
+              "$ref": "#/definitions/googlerpcStatus"
             }
           }
         },
@@ -599,16 +599,7 @@
         }
       }
     },
-    "protobufAny": {
-      "type": "object",
-      "properties": {
-        "@type": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": {}
-    },
-    "rpcStatus": {
+    "googlerpcStatus": {
       "type": "object",
       "properties": {
         "code": {
@@ -626,6 +617,84 @@
           }
         }
       }
+    },
+    "opencodev1GetSessionResponse": {
+      "type": "object",
+      "properties": {
+        "session": {
+          "$ref": "#/definitions/opencodev1Session"
+        }
+      }
+    },
+    "opencodev1HealthResponse": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/v1HealthStatus"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "title": "Health check response"
+    },
+    "opencodev1Session": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "parentSessionId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "messageCount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "promptTokens": {
+          "type": "string",
+          "format": "int64"
+        },
+        "completionTokens": {
+          "type": "string",
+          "format": "int64"
+        },
+        "summaryMessageId": {
+          "type": "string"
+        },
+        "cost": {
+          "type": "number",
+          "format": "double"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "title": "Session represents a conversation session"
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
     },
     "v1AgentStatus": {
       "type": "string",
@@ -838,14 +907,6 @@
         }
       }
     },
-    "v1GetSessionResponse": {
-      "type": "object",
-      "properties": {
-        "session": {
-          "$ref": "#/definitions/v1Session"
-        }
-      }
-    },
     "v1GetSessionStatsResponse": {
       "type": "object",
       "properties": {
@@ -891,25 +952,6 @@
           "type": "string"
         }
       }
-    },
-    "v1HealthResponse": {
-      "type": "object",
-      "properties": {
-        "status": {
-          "$ref": "#/definitions/v1HealthStatus"
-        },
-        "details": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "timestamp": {
-          "type": "string",
-          "format": "date-time"
-        }
-      },
-      "title": "Health check response"
     },
     "v1HealthStatus": {
       "type": "string",
@@ -1171,7 +1213,7 @@
       "type": "object",
       "properties": {
         "session": {
-          "$ref": "#/definitions/v1Session"
+          "$ref": "#/definitions/opencodev1Session"
         }
       }
     },
@@ -1221,48 +1263,6 @@
           "$ref": "#/definitions/v1ErrorResponse"
         }
       }
-    },
-    "v1Session": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "parentSessionId": {
-          "type": "string"
-        },
-        "title": {
-          "type": "string"
-        },
-        "messageCount": {
-          "type": "string",
-          "format": "int64"
-        },
-        "promptTokens": {
-          "type": "string",
-          "format": "int64"
-        },
-        "completionTokens": {
-          "type": "string",
-          "format": "int64"
-        },
-        "summaryMessageId": {
-          "type": "string"
-        },
-        "cost": {
-          "type": "number",
-          "format": "double"
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "format": "date-time"
-        }
-      },
-      "title": "Session represents a conversation session"
     },
     "v1SetModelRequest": {
       "type": "object",
