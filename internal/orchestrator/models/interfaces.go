@@ -42,16 +42,23 @@ type RuntimeConfig interface {
 	GetType() string
 }
 
+type ResourceList struct {
+	CPU    string `json:"cpu,omitempty"`    // CPU resources (e.g., "500m" for 0.5 CPU)
+	Memory string `json:"memory,omitempty"` // Memory resources (e.g., "512Mi" for 512 MiB)
+}
+
+type ResourceRequirements struct {
+	Requests ResourceList `json:"requests,omitempty"` // Resource requests
+	Limits   ResourceList `json:"limits,omitempty"`   // Resource limits
+}
+
 // KubernetesConfig holds Kubernetes-specific configuration
 type KubernetesConfig struct {
-	Namespace     string
-	Kubeconfig    string
-	Image         string
-	CPURequest    string
-	CPULimit      string
-	MemoryRequest string
-	MemoryLimit   string
-	StorageSize   string
+	Namespace   string
+	Kubeconfig  string
+	Image       string
+	Resources   ResourceRequirements
+	StorageSize string
 }
 
 // GetType returns the runtime type

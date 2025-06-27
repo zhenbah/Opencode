@@ -112,7 +112,7 @@ func (r *Runtime) DeleteSession(ctx context.Context, sessionID string) error {
 // WaitForSessionReady waits for a session to become ready
 func (r *Runtime) WaitForSessionReady(ctx context.Context, sessionID string) error {
 	podName := fmt.Sprintf("opencode-session-%s", sessionID[:8])
-	return wait.PollUntilContextTimeout(ctx, 2*time.Second, 5*time.Minute, true, func() (bool, error) {
+	return wait.PollUntilContextTimeout(ctx, 2*time.Second, 5*time.Minute, true, func(ctx context.Context) (bool, error) {
 		pod, err := r.client.CoreV1().Pods(r.config.Namespace).Get(ctx, podName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
@@ -196,7 +196,7 @@ func (r *Runtime) createPod(ctx context.Context, session *orchestratorpb.Session
 			Containers: []corev1.Container{
 				{
 					Name:  "opencode",
-					Image: session.Config.Image,
+					Image: r.config.Image,
 					Ports: []corev1.ContainerPort{
 						{
 							Name:          "grpc",
@@ -209,16 +209,7 @@ func (r *Runtime) createPod(ctx context.Context, session *orchestratorpb.Session
 							Protocol:      corev1.ProtocolTCP,
 						},
 					},
-					Resources: corev1.ResourceRequirements{
-						Requests: corev1.ResourceList{
-							corev1.ResourceCPU:    resource.MustParse(session.Config.Resources.CpuRequest),
-							corev1.ResourceMemory: resource.MustParse(session.Config.Resources.MemoryRequest),
-						},
-						Limits: corev1.ResourceList{
-							corev1.ResourceCPU:    resource.MustParse(session.Config.Resources.CpuLimit),
-							corev1.ResourceMemory: resource.MustParse(session.Config.Resources.MemoryLimit),
-						},
-					},
+					Resources: r.parseResources(),
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      "workspace",
@@ -285,6 +276,28 @@ func (r *Runtime) createPod(ctx context.Context, session *orchestratorpb.Session
 	return err
 }
 
+func (r *Runtime) parseResources() corev1.ResourceRequirements {
+	resReq := corev1.ResourceRequirements{
+		Requests: make(corev1.ResourceList),
+		Limits:   make(corev1.ResourceList),
+	}
+
+	// Helper function to add resources if they exist
+	addResource := func(target corev1.ResourceList, res models.ResourceList) {
+		if res.CPU != "" {
+			target[corev1.ResourceCPU] = resource.MustParse(res.CPU)
+		}
+		if res.Memory != "" {
+			target[corev1.ResourceMemory] = resource.MustParse(res.Memory)
+		}
+	}
+
+	addResource(resReq.Requests, r.config.Resources.Requests)
+	addResource(resReq.Limits, r.config.Resources.Limits)
+
+	return resReq
+}
+
 func (r *Runtime) deletePod(ctx context.Context, sessionID string) error {
 	podName := fmt.Sprintf("opencode-session-%s", sessionID[:8])
 	return r.client.CoreV1().Pods(r.config.Namespace).Delete(ctx, podName, metav1.DeleteOptions{})
@@ -312,7 +325,7 @@ func (r *Runtime) createPVC(ctx context.Context, session *orchestratorpb.Session
 			},
 			Resources: corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: resource.MustParse(session.Config.StorageSize),
+					corev1.ResourceStorage: resource.MustParse(r.config.StorageSize),
 				},
 			},
 		},
