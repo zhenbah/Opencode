@@ -91,7 +91,7 @@ func listLocalModels(modelsEndpoint string) []localModel {
 	if token != "" {
 		req, reqErr := http.NewRequest("GET", modelsEndpoint, nil)
 		if reqErr != nil {
-			logging.Warn("Failed to create local models request",
+			logging.Debug("Failed to create local models request",
 				"error", reqErr,
 				"endpoint", modelsEndpoint,
 			)
@@ -103,7 +103,7 @@ func listLocalModels(modelsEndpoint string) []localModel {
 		res, err = http.Get(modelsEndpoint)
 	}
 	if err != nil || res == nil {
-		logging.Warn("Failed to list local models",
+		logging.Debug("Failed to list local models",
 			"error", err,
 			"endpoint", modelsEndpoint,
 		)
@@ -112,7 +112,7 @@ func listLocalModels(modelsEndpoint string) []localModel {
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		logging.Warn("Failed to list local models",
+		logging.Debug("Failed to list local models",
 			"status", res.StatusCode,
 			"endpoint", modelsEndpoint,
 		)
@@ -121,7 +121,7 @@ func listLocalModels(modelsEndpoint string) []localModel {
 
 	var modelList localModelList
 	if err = json.NewDecoder(res.Body).Decode(&modelList); err != nil {
-		logging.Warn("Failed to list local models",
+		logging.Debug("Failed to list local models",
 			"error", err,
 			"endpoint", modelsEndpoint,
 		)
