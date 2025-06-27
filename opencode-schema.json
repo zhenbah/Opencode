@@ -68,7 +68,6 @@
             "azure.o3-mini",
             "azure.gpt-4.1-mini",
             "openrouter.gpt-4.1-mini",
-            "openrouter.o1-pro",
             "openrouter.claude-3.7-sonnet",
             "claude-3.5-sonnet",
             "gemini-2.5-flash",
@@ -79,7 +78,19 @@
             "claude-3.7-sonnet",
             "qwen-qwq",
             "openrouter.deepseek-r1-free",
-            "gemini-2.0-flash-lite"
+            "gemini-2.0-flash-lite",
+            "openrouter.o1-pro",
+            "copilot.gpt-4o",
+            "copilot.gpt-4o-mini",
+            "copilot.gpt-4.1",
+            "copilot.claude-3.5-sonnet",
+            "copilot.claude-3.7-sonnet",
+            "copilot.claude-sonnet-4",
+            "copilot.o1",
+            "copilot.o3-mini",
+            "copilot.o4-mini",
+            "copilot.gemini-2.0-flash",
+            "copilot.gemini-2.5-pro"
           ],
           "type": "string"
         },
@@ -169,7 +180,6 @@
               "azure.o3-mini",
               "azure.gpt-4.1-mini",
               "openrouter.gpt-4.1-mini",
-              "openrouter.o1-pro",
               "openrouter.claude-3.7-sonnet",
               "claude-3.5-sonnet",
               "gemini-2.5-flash",
@@ -180,7 +190,19 @@
               "claude-3.7-sonnet",
               "qwen-qwq",
               "openrouter.deepseek-r1-free",
-              "gemini-2.0-flash-lite"
+              "gemini-2.0-flash-lite",
+              "openrouter.o1-pro",
+              "copilot.gpt-4o",
+              "copilot.gpt-4o-mini",
+              "copilot.gpt-4.1",
+              "copilot.claude-3.5-sonnet",
+              "copilot.claude-3.7-sonnet",
+              "copilot.claude-sonnet-4",
+              "copilot.o1",
+              "copilot.o3-mini",
+              "copilot.o4-mini",
+              "copilot.gemini-2.0-flash",
+              "copilot.gemini-2.5-pro"
             ],
             "type": "string"
           },
@@ -375,7 +397,8 @@
               "openrouter",
               "bedrock",
               "azure",
-              "vertexai"
+              "vertexai",
+              "copilot"
             ],
             "type": "string"
           }

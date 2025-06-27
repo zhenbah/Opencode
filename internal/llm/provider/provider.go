@@ -71,6 +71,7 @@ type providerClientOptions struct {
 	openaiOptions    []OpenAIOption
 	geminiOptions    []GeminiOption
 	bedrockOptions   []BedrockOption
+	copilotOptions   []CopilotOption
 }
 
 func (opts *providerClientOptions) asHeader() *http.Header {
@@ -102,6 +103,11 @@ func NewProvider(providerName models.ModelProvider, opts ...ProviderClientOption
 		o(&clientOptions)
 	}
 	switch providerName {
+	case models.ProviderCopilot:
+		return &baseProvider[CopilotClient]{
+			options: clientOptions,
+			client:  newCopilotClient(clientOptions),
+		}, nil
 	case models.ProviderAnthropic:
 		return &baseProvider[AnthropicClient]{
 			options: clientOptions,
@@ -255,5 +261,11 @@ func WithGeminiOptions(geminiOptions ...GeminiOption) ProviderClientOption {
 func WithBedrockOptions(bedrockOptions ...BedrockOption) ProviderClientOption {
 	return func(options *providerClientOptions) {
 		options.bedrockOptions = bedrockOptions
+	}
+}
+
+func WithCopilotOptions(copilotOptions ...CopilotOption) ProviderClientOption {
+	return func(options *providerClientOptions) {
+		options.copilotOptions = copilotOptions
 	}
 }
