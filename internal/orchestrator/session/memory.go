@@ -40,7 +40,8 @@ func (s *InMemorySessionStore) CreateSession(ctx context.Context, sessionReq *or
 	}
 
 	session := &orchestratorpb.Session{
-		Id: id.String(),
+		Id:     id.String(),
+		Config: &orchestratorpb.SessionConfig{},
 	}
 	s.sessions[id.String()] = session
 	return session, nil
@@ -88,9 +89,14 @@ func (s *InMemorySessionStore) ListSessions(ctx context.Context, userID string, 
 		}
 	}
 
-	offsetInt, err := strconv.ParseInt(pageToken, 10, 32)
-	if err != nil {
-		return nil, "", fmt.Errorf("invalid page token: %v", err)
+	var offsetInt int64
+	var err error
+	if pageToken == "" {
+		offsetInt = 0
+	} else {
+		if offsetInt, err = strconv.ParseInt(pageToken, 10, 32); err != nil {
+			return nil, "", fmt.Errorf("invalid page token: %v", err)
+		}
 	}
 
 	// Apply pagination

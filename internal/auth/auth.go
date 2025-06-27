@@ -3,9 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
-	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -22,14 +20,14 @@ type User struct {
 	TenantID string   `json:"tenant_id"`
 }
 
-// AuthProvider defines the interface for authentication providers
-type AuthProvider interface {
+// Provider defines the interface for authentication providers
+type Provider interface {
 	// ValidateToken validates an authentication token and returns user info
 	ValidateToken(ctx context.Context, token string) (*User, error)
-	
+
 	// RefreshToken refreshes an authentication token
 	RefreshToken(ctx context.Context, refreshToken string) (string, error)
-	
+
 	// GetUserByID retrieves user information by ID
 	GetUserByID(ctx context.Context, userID string) (*User, error)
 }
@@ -45,25 +43,25 @@ type Permission struct {
 type AuthorizationProvider interface {
 	// CheckPermission checks if a user has permission for an action
 	CheckPermission(ctx context.Context, user *User, permission Permission) (bool, error)
-	
+
 	// GetUserPermissions returns all permissions for a user
 	GetUserPermissions(ctx context.Context, user *User) ([]Permission, error)
 }
 
-// AuthInterceptor provides gRPC authentication and authorization
-type AuthInterceptor struct {
-	authProvider   AuthProvider
-	authzProvider  AuthorizationProvider
-	publicMethods  map[string]bool
+// Interceptor provides gRPC authentication and authorization
+type Interceptor struct {
+	authProvider  Provider
+	authzProvider AuthorizationProvider
+	publicMethods map[string]bool
 }
 
 // NewAuthInterceptor creates a new authentication interceptor
-func NewAuthInterceptor(authProvider AuthProvider, authzProvider AuthorizationProvider) *AuthInterceptor {
+func NewAuthInterceptor(authProvider Provider, authzProvider AuthorizationProvider) *Interceptor {
 	publicMethods := map[string]bool{
 		"/opencode.orchestrator.v1.OrchestratorService/Health": true,
 	}
 
-	return &AuthInterceptor{
+	return &Interceptor{
 		authProvider:  authProvider,
 		authzProvider: authzProvider,
 		publicMethods: publicMethods,
@@ -71,7 +69,7 @@ func NewAuthInterceptor(authProvider AuthProvider, authzProvider AuthorizationPr
 }
 
 // UnaryInterceptor provides authentication for unary gRPC calls
-func (ai *AuthInterceptor) UnaryInterceptor(
+func (ai *Interceptor) UnaryInterceptor(
 	ctx context.Context,
 	req interface{},
 	info *grpc.UnaryServerInfo,
@@ -100,7 +98,7 @@ func (ai *AuthInterceptor) UnaryInterceptor(
 }
 
 // StreamInterceptor provides authentication for streaming gRPC calls
-func (ai *AuthInterceptor) StreamInterceptor(
+func (ai *Interceptor) StreamInterceptor(
 	srv interface{},
 	stream grpc.ServerStream,
 	info *grpc.StreamServerInfo,
@@ -132,7 +130,7 @@ func (ai *AuthInterceptor) StreamInterceptor(
 }
 
 // authenticateRequest extracts and validates authentication token
-func (ai *AuthInterceptor) authenticateRequest(ctx context.Context) (*User, error) {
+func (ai *Interceptor) authenticateRequest(ctx context.Context) (*User, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, status.Error(codes.Unauthenticated, "missing metadata")
@@ -164,7 +162,7 @@ func (ai *AuthInterceptor) authenticateRequest(ctx context.Context) (*User, erro
 }
 
 // authorizeRequest checks if user is authorized for the requested method
-func (ai *AuthInterceptor) authorizeRequest(ctx context.Context, user *User, method string) error {
+func (ai *Interceptor) authorizeRequest(ctx context.Context, user *User, method string) error {
 	// Map gRPC methods to permissions
 	permission := ai.methodToPermission(method)
 	if permission == nil {
@@ -189,7 +187,7 @@ func (ai *AuthInterceptor) authorizeRequest(ctx context.Context, user *User, met
 }
 
 // methodToPermission maps gRPC methods to permissions
-func (ai *AuthInterceptor) methodToPermission(method string) *Permission {
+func (ai *Interceptor) methodToPermission(method string) *Permission {
 	permissionMap := map[string]Permission{
 		"/opencode.orchestrator.v1.OrchestratorService/CreateSession": {
 			Resource: "session",

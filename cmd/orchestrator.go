@@ -91,16 +91,38 @@ func runOrchestrator(*cobra.Command, []string) error {
 		return fmt.Errorf("failed to listen on %s: %w", grpcAddr, err)
 	}
 
-	// Start HTTP gateway
+	// Start HTTP gateway with CORS support
 	gwMux := runtime.NewServeMux()
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	if err := orchestratorpb.RegisterOrchestratorServiceHandlerFromEndpoint(ctx, gwMux, grpcAddr, opts); err != nil {
 		return fmt.Errorf("failed to register gateway: %w", err)
 	}
 
+	// Create CORS-enabled handler
+	corsHandler := func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Set CORS headers to allow access from any origin
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-CSRF-Token, X-Requested-With")
+			w.Header().Set("Access-Control-Expose-Headers", "Link")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Max-Age", "300")
+
+			// Handle preflight OPTIONS request
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
+			// Continue with the actual request
+			h.ServeHTTP(w, r)
+		})
+	}
+
 	httpServer := &http.Server{
 		Addr:    fmt.Sprintf(":%d", httpPort),
-		Handler: gwMux,
+		Handler: corsHandler(gwMux),
 	}
 
 	// Handle graceful shutdown

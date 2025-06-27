@@ -71,7 +71,7 @@ func (r *Runtime) CreateSession(ctx context.Context, session *orchestratorpb.Ses
 // GetSessionStatus returns the current status of a session
 func (r *Runtime) GetSessionStatus(ctx context.Context, sessionID string) (*orchestratorpb.SessionStatus, error) {
 	podName := fmt.Sprintf("opencode-session-%s", sessionID[:8])
-	
+
 	pod, err := r.client.CoreV1().Pods(r.config.Namespace).Get(ctx, podName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pod: %w", err)
@@ -100,35 +100,28 @@ func (r *Runtime) GetSessionStatus(ctx context.Context, sessionID string) (*orch
 
 // DeleteSession removes a session from Kubernetes
 func (r *Runtime) DeleteSession(ctx context.Context, sessionID string) error {
-	// Delete pod
 	if err := r.deletePod(ctx, sessionID); err != nil {
 		return fmt.Errorf("failed to delete pod: %w", err)
 	}
-
-	// Delete PVC
 	if err := r.deletePVC(ctx, sessionID); err != nil {
 		return fmt.Errorf("failed to delete PVC: %w", err)
 	}
-
 	return nil
 }
 
 // WaitForSessionReady waits for a session to become ready
 func (r *Runtime) WaitForSessionReady(ctx context.Context, sessionID string) error {
 	podName := fmt.Sprintf("opencode-session-%s", sessionID[:8])
-
-	return wait.PollImmediate(2*time.Second, 5*time.Minute, func() (bool, error) {
+	return wait.PollUntilContextTimeout(ctx, 2*time.Second, 5*time.Minute, true, func() (bool, error) {
 		pod, err := r.client.CoreV1().Pods(r.config.Namespace).Get(ctx, podName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
-
 		for _, condition := range pod.Status.Conditions {
 			if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
 				return true, nil
 			}
 		}
-
 		return false, nil
 	})
 }
@@ -152,7 +145,7 @@ func (r *Runtime) ListSessions(ctx context.Context) ([]*orchestratorpb.Session, 
 	for _, pod := range pods.Items {
 		sessionID := pod.Labels["session-id"]
 		userID := pod.Labels["user-id"]
-		
+
 		if sessionID == "" || userID == "" {
 			continue
 		}
@@ -298,8 +291,11 @@ func (r *Runtime) deletePod(ctx context.Context, sessionID string) error {
 }
 
 func (r *Runtime) createPVC(ctx context.Context, session *orchestratorpb.Session) error {
+	sessionConfig := session.Config
+	if sessionConfig == nil {
+		return fmt.Errorf("session config is required for PVC creation")
+	}
 	pvcName := fmt.Sprintf("opencode-workspace-%s", session.Id[:8])
-
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pvcName,

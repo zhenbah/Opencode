@@ -84,20 +84,18 @@ func NewServiceWithComponents(config *models.Config, sessionManager models.Sessi
 // Health implements the health check
 func (s *Service) Health(ctx context.Context, req *orchestratorpb.HealthRequest) (*orchestratorpb.HealthResponse, error) {
 	count, _ := s.sessionManager.CountSessions(ctx, "")
-
-	// Check runtime health
 	runtimeHealthy := true
 	if err := s.runtime.HealthCheck(ctx); err != nil {
 		runtimeHealthy = false
 	}
 
-	status := orchestratorpb.HealthResponse_SERVING
+	healthStatus := orchestratorpb.HealthResponse_SERVING
 	if !runtimeHealthy {
-		status = orchestratorpb.HealthResponse_NOT_SERVING
+		healthStatus = orchestratorpb.HealthResponse_NOT_SERVING
 	}
 
 	return &orchestratorpb.HealthResponse{
-		Status:    status,
+		Status:    healthStatus,
 		Version:   "1.0.0",
 		Timestamp: timestamppb.Now(),
 		Details: map[string]string{
@@ -114,48 +112,48 @@ func (s *Service) CreateSession(ctx context.Context, req *orchestratorpb.CreateS
 		return nil, status.Error(codes.InvalidArgument, "user_id is required")
 	}
 
-	session, err := s.sessionManager.CreateSession(ctx, req)
+	sess, err := s.sessionManager.CreateSession(ctx, req)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create session: %v", err)
 	}
 
 	// Create session in runtime
-	if err := s.runtime.CreateSession(ctx, session); err != nil {
+	if err := s.runtime.CreateSession(ctx, sess); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create session in runtime: %v", err)
 	}
 
 	// Update session state
-	session.State = orchestratorpb.SessionState_SESSION_STATE_CREATING
-	session.UpdatedAt = timestamppb.Now()
-	_ = s.sessionManager.UpdateSession(ctx, session)
+	sess.State = orchestratorpb.SessionState_SESSION_STATE_CREATING
+	sess.UpdatedAt = timestamppb.Now()
+	_ = s.sessionManager.UpdateSession(ctx, sess)
 
 	// Wait for session to be ready (with timeout)
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
 
-		if err := s.runtime.WaitForSessionReady(ctx, session.Id); err != nil {
-			log.Printf("Session failed to become ready for session %s: %v", session.Id, err)
-			session.State = orchestratorpb.SessionState_SESSION_STATE_ERROR
-			if session.Status == nil {
-				session.Status = &orchestratorpb.SessionStatus{}
+		if err := s.runtime.WaitForSessionReady(ctx, sess.Id); err != nil {
+			log.Printf("Session failed to become ready for session %s: %v", sess.Id, err)
+			sess.State = orchestratorpb.SessionState_SESSION_STATE_ERROR
+			if sess.Status == nil {
+				sess.Status = &orchestratorpb.SessionStatus{}
 			}
-			session.Status.Message = fmt.Sprintf("Session failed to start: %v", err)
+			sess.Status.Message = fmt.Sprintf("Session failed to start: %v", err)
 		} else {
-			session.State = orchestratorpb.SessionState_SESSION_STATE_RUNNING
-			if session.Status == nil {
-				session.Status = &orchestratorpb.SessionStatus{}
+			sess.State = orchestratorpb.SessionState_SESSION_STATE_RUNNING
+			if sess.Status == nil {
+				sess.Status = &orchestratorpb.SessionStatus{}
 			}
-			session.Status.Ready = true
-			session.Status.ReadyAt = timestamppb.Now()
-			log.Printf("Session %s is ready", session.Id)
+			sess.Status.Ready = true
+			sess.Status.ReadyAt = timestamppb.Now()
+			log.Printf("Session %s is ready", sess.Id)
 		}
-		session.UpdatedAt = timestamppb.Now()
-		_ = s.sessionManager.UpdateSession(ctx, session)
+		sess.UpdatedAt = timestamppb.Now()
+		_ = s.sessionManager.UpdateSession(ctx, sess)
 	}()
 
 	return &orchestratorpb.CreateSessionResponse{
-		Session: session,
+		Session: sess,
 	}, nil
 }
 
@@ -164,23 +162,22 @@ func (s *Service) GetSession(ctx context.Context, req *orchestratorpb.GetSession
 	if req.SessionId == "" {
 		return nil, status.Error(codes.InvalidArgument, "session_id is required")
 	}
-
-	session, err := s.sessionManager.GetSession(ctx, req.SessionId, req.UserId)
+	sess, err := s.sessionManager.GetSession(ctx, req.SessionId, req.UserId)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "session not found: %v", err)
 	}
 
 	// Update session status from runtime
-	if sessionStatus, err := s.runtime.GetSessionStatus(ctx, session.Id); err == nil {
-		session.Status = sessionStatus
-		_ = s.sessionManager.UpdateSession(ctx, session)
+	if sessionStatus, err := s.runtime.GetSessionStatus(ctx, sess.Id); err == nil {
+		sess.Status = sessionStatus
+		_ = s.sessionManager.UpdateSession(ctx, sess)
 	}
 
 	// Update last accessed time
-	_ = s.sessionManager.UpdateLastAccessed(ctx, session.Id)
+	_ = s.sessionManager.UpdateLastAccessed(ctx, sess.Id)
 
 	return &orchestratorpb.GetSessionResponse{
-		Session: session,
+		Session: sess,
 	}, nil
 }
 
@@ -203,20 +200,19 @@ func (s *Service) DeleteSession(ctx context.Context, req *orchestratorpb.DeleteS
 	if req.SessionId == "" {
 		return nil, status.Error(codes.InvalidArgument, "session_id is required")
 	}
-
 	// Get session to verify ownership
-	session, err := s.sessionManager.GetSession(ctx, req.SessionId, req.UserId)
+	sess, err := s.sessionManager.GetSession(ctx, req.SessionId, req.UserId)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "session not found: %v", err)
 	}
 
 	// Update state to stopping
-	session.State = orchestratorpb.SessionState_SESSION_STATE_STOPPING
-	session.UpdatedAt = timestamppb.Now()
-	_ = s.sessionManager.UpdateSession(ctx, session)
+	sess.State = orchestratorpb.SessionState_SESSION_STATE_STOPPING
+	sess.UpdatedAt = timestamppb.Now()
+	_ = s.sessionManager.UpdateSession(ctx, sess)
 
 	// Delete session from runtime
-	if err := s.runtime.DeleteSession(ctx, session.Id); err != nil && !req.Force {
+	if err := s.runtime.DeleteSession(ctx, sess.Id); err != nil && !req.Force {
 		return nil, status.Errorf(codes.Internal, "failed to delete session from runtime: %v", err)
 	}
 
@@ -234,19 +230,18 @@ func (s *Service) ProxyHTTP(ctx context.Context, req *orchestratorpb.ProxyHTTPRe
 	if req.SessionId == "" {
 		return nil, status.Error(codes.InvalidArgument, "session_id is required")
 	}
-
 	// Verify session exists and is ready
-	session, err := s.sessionManager.GetSession(ctx, req.SessionId, req.UserId)
+	sess, err := s.sessionManager.GetSession(ctx, req.SessionId, req.UserId)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "session not found: %v", err)
 	}
 
-	if session.State != orchestratorpb.SessionState_SESSION_STATE_RUNNING {
+	if sess.State != orchestratorpb.SessionState_SESSION_STATE_RUNNING {
 		return nil, status.Errorf(codes.FailedPrecondition, "session is not ready")
 	}
 
 	// Update last accessed time
-	_ = s.sessionManager.UpdateLastAccessed(ctx, session.Id)
+	_ = s.sessionManager.UpdateLastAccessed(ctx, sess.Id)
 
 	// Proxy the request
 	return s.proxyManager.ProxyHTTP(ctx, req.SessionId, req.UserId, req)
@@ -276,10 +271,10 @@ func (s *Service) cleanupExpiredSessions(ctx context.Context) {
 			}
 
 			// Delete expired sessions
-			for _, session := range expiredSessions {
-				log.Printf("Cleaning up expired session: %s", session.Id)
+			for _, sess := range expiredSessions {
+				log.Printf("Cleaning up expired session: %s", sess.Id)
 				deleteReq := &orchestratorpb.DeleteSessionRequest{
-					SessionId: session.Id,
+					SessionId: sess.Id,
 					Force:     true,
 				}
 				_, _ = s.DeleteSession(ctx, deleteReq)

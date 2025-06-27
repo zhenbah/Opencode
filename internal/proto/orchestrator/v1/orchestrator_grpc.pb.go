@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             (unknown)
-// source: v1/orchestrator.proto
+// source: orchestrator/v1/orchestrator.proto
 
 package v1
 
@@ -359,5 +359,5 @@ var OrchestratorService_ServiceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
-	Metadata: "v1/orchestrator.proto",
+	Metadata: "orchestrator/v1/orchestrator.proto",
 }

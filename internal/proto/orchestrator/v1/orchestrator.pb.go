@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.6
 // 	protoc        (unknown)
-// source: v1/orchestrator.proto
+// source: orchestrator/v1/orchestrator.proto
 
 package v1
 
@@ -66,11 +66,11 @@ func (x SessionState) String() string {
 }
 
 func (SessionState) Descriptor() protoreflect.EnumDescriptor {
-	return file_v1_orchestrator_proto_enumTypes[0].Descriptor()
+	return file_orchestrator_v1_orchestrator_proto_enumTypes[0].Descriptor()
 }
 
 func (SessionState) Type() protoreflect.EnumType {
-	return &file_v1_orchestrator_proto_enumTypes[0]
+	return &file_orchestrator_v1_orchestrator_proto_enumTypes[0]
 }
 
 func (x SessionState) Number() protoreflect.EnumNumber {
@@ -79,7 +79,7 @@ func (x SessionState) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SessionState.Descriptor instead.
 func (SessionState) EnumDescriptor() ([]byte, []int) {
-	return file_v1_orchestrator_proto_rawDescGZIP(), []int{0}
+	return file_orchestrator_v1_orchestrator_proto_rawDescGZIP(), []int{0}
 }
 
 type HealthResponse_Status int32
@@ -115,11 +115,11 @@ func (x HealthResponse_Status) String() string {
 }
 
 func (HealthResponse_Status) Descriptor() protoreflect.EnumDescriptor {
-	return file_v1_orchestrator_proto_enumTypes[1].Descriptor()
+	return file_orchestrator_v1_orchestrator_proto_enumTypes[1].Descriptor()
 }
 
 func (HealthResponse_Status) Type() protoreflect.EnumType {
-	return &file_v1_orchestrator_proto_enumTypes[1]
+	return &file_orchestrator_v1_orchestrator_proto_enumTypes[1]
 }
 
 func (x HealthResponse_Status) Number() protoreflect.EnumNumber {
@@ -128,7 +128,7 @@ func (x HealthResponse_Status) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use HealthResponse_Status.Descriptor instead.
 func (HealthResponse_Status) EnumDescriptor() ([]byte, []int) {
-	return file_v1_orchestrator_proto_rawDescGZIP(), []int{1, 0}
+	return file_orchestrator_v1_orchestrator_proto_rawDescGZIP(), []int{1, 0}
 }
 
 // Health check messages
@@ -140,7 +140,7 @@ type HealthRequest struct {
 
 func (x *HealthRequest) Reset() {
 	*x = HealthRequest{}
-	mi := &file_v1_orchestrator_proto_msgTypes[0]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -152,7 +152,7 @@ func (x *HealthRequest) String() string {
 func (*HealthRequest) ProtoMessage() {}
 
 func (x *HealthRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_orchestrator_proto_msgTypes[0]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -165,7 +165,7 @@ func (x *HealthRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HealthRequest.ProtoReflect.Descriptor instead.
 func (*HealthRequest) Descriptor() ([]byte, []int) {
-	return file_v1_orchestrator_proto_rawDescGZIP(), []int{0}
+	return file_orchestrator_v1_orchestrator_proto_rawDescGZIP(), []int{0}
 }
 
 type HealthResponse struct {
@@ -180,7 +180,7 @@ type HealthResponse struct {
 
 func (x *HealthResponse) Reset() {
 	*x = HealthResponse{}
-	mi := &file_v1_orchestrator_proto_msgTypes[1]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -192,7 +192,7 @@ func (x *HealthResponse) String() string {
 func (*HealthResponse) ProtoMessage() {}
 
 func (x *HealthResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_orchestrator_proto_msgTypes[1]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -205,7 +205,7 @@ func (x *HealthResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HealthResponse.ProtoReflect.Descriptor instead.
 func (*HealthResponse) Descriptor() ([]byte, []int) {
-	return file_v1_orchestrator_proto_rawDescGZIP(), []int{1}
+	return file_orchestrator_v1_orchestrator_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *HealthResponse) GetStatus() HealthResponse_Status {
@@ -249,7 +249,7 @@ type CreateSessionRequest struct {
 
 func (x *CreateSessionRequest) Reset() {
 	*x = CreateSessionRequest{}
-	mi := &file_v1_orchestrator_proto_msgTypes[2]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -261,7 +261,7 @@ func (x *CreateSessionRequest) String() string {
 func (*CreateSessionRequest) ProtoMessage() {}
 
 func (x *CreateSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_orchestrator_proto_msgTypes[2]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -274,7 +274,7 @@ func (x *CreateSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSessionRequest.ProtoReflect.Descriptor instead.
 func (*CreateSessionRequest) Descriptor() ([]byte, []int) {
-	return file_v1_orchestrator_proto_rawDescGZIP(), []int{2}
+	return file_orchestrator_v1_orchestrator_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *CreateSessionRequest) GetUserId() string {
@@ -314,7 +314,7 @@ type CreateSessionResponse struct {
 
 func (x *CreateSessionResponse) Reset() {
 	*x = CreateSessionResponse{}
-	mi := &file_v1_orchestrator_proto_msgTypes[3]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -326,7 +326,7 @@ func (x *CreateSessionResponse) String() string {
 func (*CreateSessionResponse) ProtoMessage() {}
 
 func (x *CreateSessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_orchestrator_proto_msgTypes[3]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -339,7 +339,7 @@ func (x *CreateSessionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSessionResponse.ProtoReflect.Descriptor instead.
 func (*CreateSessionResponse) Descriptor() ([]byte, []int) {
-	return file_v1_orchestrator_proto_rawDescGZIP(), []int{3}
+	return file_orchestrator_v1_orchestrator_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *CreateSessionResponse) GetSession() *Session {
@@ -359,7 +359,7 @@ type GetSessionRequest struct {
 
 func (x *GetSessionRequest) Reset() {
 	*x = GetSessionRequest{}
-	mi := &file_v1_orchestrator_proto_msgTypes[4]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -371,7 +371,7 @@ func (x *GetSessionRequest) String() string {
 func (*GetSessionRequest) ProtoMessage() {}
 
 func (x *GetSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_orchestrator_proto_msgTypes[4]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -384,7 +384,7 @@ func (x *GetSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSessionRequest.ProtoReflect.Descriptor instead.
 func (*GetSessionRequest) Descriptor() ([]byte, []int) {
-	return file_v1_orchestrator_proto_rawDescGZIP(), []int{4}
+	return file_orchestrator_v1_orchestrator_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GetSessionRequest) GetSessionId() string {
@@ -410,7 +410,7 @@ type GetSessionResponse struct {
 
 func (x *GetSessionResponse) Reset() {
 	*x = GetSessionResponse{}
-	mi := &file_v1_orchestrator_proto_msgTypes[5]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -422,7 +422,7 @@ func (x *GetSessionResponse) String() string {
 func (*GetSessionResponse) ProtoMessage() {}
 
 func (x *GetSessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_orchestrator_proto_msgTypes[5]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -435,7 +435,7 @@ func (x *GetSessionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSessionResponse.ProtoReflect.Descriptor instead.
 func (*GetSessionResponse) Descriptor() ([]byte, []int) {
-	return file_v1_orchestrator_proto_rawDescGZIP(), []int{5}
+	return file_orchestrator_v1_orchestrator_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetSessionResponse) GetSession() *Session {
@@ -457,7 +457,7 @@ type ListSessionsRequest struct {
 
 func (x *ListSessionsRequest) Reset() {
 	*x = ListSessionsRequest{}
-	mi := &file_v1_orchestrator_proto_msgTypes[6]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -469,7 +469,7 @@ func (x *ListSessionsRequest) String() string {
 func (*ListSessionsRequest) ProtoMessage() {}
 
 func (x *ListSessionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_orchestrator_proto_msgTypes[6]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -482,7 +482,7 @@ func (x *ListSessionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSessionsRequest.ProtoReflect.Descriptor instead.
 func (*ListSessionsRequest) Descriptor() ([]byte, []int) {
-	return file_v1_orchestrator_proto_rawDescGZIP(), []int{6}
+	return file_orchestrator_v1_orchestrator_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ListSessionsRequest) GetUserId() string {
@@ -524,7 +524,7 @@ type ListSessionsResponse struct {
 
 func (x *ListSessionsResponse) Reset() {
 	*x = ListSessionsResponse{}
-	mi := &file_v1_orchestrator_proto_msgTypes[7]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -536,7 +536,7 @@ func (x *ListSessionsResponse) String() string {
 func (*ListSessionsResponse) ProtoMessage() {}
 
 func (x *ListSessionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_orchestrator_proto_msgTypes[7]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -549,7 +549,7 @@ func (x *ListSessionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSessionsResponse.ProtoReflect.Descriptor instead.
 func (*ListSessionsResponse) Descriptor() ([]byte, []int) {
-	return file_v1_orchestrator_proto_rawDescGZIP(), []int{7}
+	return file_orchestrator_v1_orchestrator_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ListSessionsResponse) GetSessions() []*Session {
@@ -584,7 +584,7 @@ type DeleteSessionRequest struct {
 
 func (x *DeleteSessionRequest) Reset() {
 	*x = DeleteSessionRequest{}
-	mi := &file_v1_orchestrator_proto_msgTypes[8]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -596,7 +596,7 @@ func (x *DeleteSessionRequest) String() string {
 func (*DeleteSessionRequest) ProtoMessage() {}
 
 func (x *DeleteSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_orchestrator_proto_msgTypes[8]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -609,7 +609,7 @@ func (x *DeleteSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSessionRequest.ProtoReflect.Descriptor instead.
 func (*DeleteSessionRequest) Descriptor() ([]byte, []int) {
-	return file_v1_orchestrator_proto_rawDescGZIP(), []int{8}
+	return file_orchestrator_v1_orchestrator_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *DeleteSessionRequest) GetSessionId() string {
@@ -648,7 +648,7 @@ type ProxyHTTPRequest struct {
 
 func (x *ProxyHTTPRequest) Reset() {
 	*x = ProxyHTTPRequest{}
-	mi := &file_v1_orchestrator_proto_msgTypes[9]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -660,7 +660,7 @@ func (x *ProxyHTTPRequest) String() string {
 func (*ProxyHTTPRequest) ProtoMessage() {}
 
 func (x *ProxyHTTPRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_orchestrator_proto_msgTypes[9]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -673,7 +673,7 @@ func (x *ProxyHTTPRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProxyHTTPRequest.ProtoReflect.Descriptor instead.
 func (*ProxyHTTPRequest) Descriptor() ([]byte, []int) {
-	return file_v1_orchestrator_proto_rawDescGZIP(), []int{9}
+	return file_orchestrator_v1_orchestrator_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ProxyHTTPRequest) GetSessionId() string {
@@ -729,7 +729,7 @@ type ProxyHTTPResponse struct {
 
 func (x *ProxyHTTPResponse) Reset() {
 	*x = ProxyHTTPResponse{}
-	mi := &file_v1_orchestrator_proto_msgTypes[10]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -741,7 +741,7 @@ func (x *ProxyHTTPResponse) String() string {
 func (*ProxyHTTPResponse) ProtoMessage() {}
 
 func (x *ProxyHTTPResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_orchestrator_proto_msgTypes[10]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -754,7 +754,7 @@ func (x *ProxyHTTPResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProxyHTTPResponse.ProtoReflect.Descriptor instead.
 func (*ProxyHTTPResponse) Descriptor() ([]byte, []int) {
-	return file_v1_orchestrator_proto_rawDescGZIP(), []int{10}
+	return file_orchestrator_v1_orchestrator_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ProxyHTTPResponse) GetStatusCode() int32 {
@@ -793,7 +793,7 @@ type ProxyStreamRequest struct {
 
 func (x *ProxyStreamRequest) Reset() {
 	*x = ProxyStreamRequest{}
-	mi := &file_v1_orchestrator_proto_msgTypes[11]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -805,7 +805,7 @@ func (x *ProxyStreamRequest) String() string {
 func (*ProxyStreamRequest) ProtoMessage() {}
 
 func (x *ProxyStreamRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_orchestrator_proto_msgTypes[11]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -818,7 +818,7 @@ func (x *ProxyStreamRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProxyStreamRequest.ProtoReflect.Descriptor instead.
 func (*ProxyStreamRequest) Descriptor() ([]byte, []int) {
-	return file_v1_orchestrator_proto_rawDescGZIP(), []int{11}
+	return file_orchestrator_v1_orchestrator_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ProxyStreamRequest) GetSessionId() string {
@@ -889,7 +889,7 @@ type ProxyStreamResponse struct {
 
 func (x *ProxyStreamResponse) Reset() {
 	*x = ProxyStreamResponse{}
-	mi := &file_v1_orchestrator_proto_msgTypes[12]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -901,7 +901,7 @@ func (x *ProxyStreamResponse) String() string {
 func (*ProxyStreamResponse) ProtoMessage() {}
 
 func (x *ProxyStreamResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_orchestrator_proto_msgTypes[12]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -914,7 +914,7 @@ func (x *ProxyStreamResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProxyStreamResponse.ProtoReflect.Descriptor instead.
 func (*ProxyStreamResponse) Descriptor() ([]byte, []int) {
-	return file_v1_orchestrator_proto_rawDescGZIP(), []int{12}
+	return file_orchestrator_v1_orchestrator_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ProxyStreamResponse) GetPayload() isProxyStreamResponse_Payload {
@@ -977,7 +977,7 @@ type Session struct {
 
 func (x *Session) Reset() {
 	*x = Session{}
-	mi := &file_v1_orchestrator_proto_msgTypes[13]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -989,7 +989,7 @@ func (x *Session) String() string {
 func (*Session) ProtoMessage() {}
 
 func (x *Session) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_orchestrator_proto_msgTypes[13]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1002,7 +1002,7 @@ func (x *Session) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Session.ProtoReflect.Descriptor instead.
 func (*Session) Descriptor() ([]byte, []int) {
-	return file_v1_orchestrator_proto_rawDescGZIP(), []int{13}
+	return file_orchestrator_v1_orchestrator_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *Session) GetId() string {
@@ -1088,7 +1088,7 @@ type SessionConfig struct {
 
 func (x *SessionConfig) Reset() {
 	*x = SessionConfig{}
-	mi := &file_v1_orchestrator_proto_msgTypes[14]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1100,7 +1100,7 @@ func (x *SessionConfig) String() string {
 func (*SessionConfig) ProtoMessage() {}
 
 func (x *SessionConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_orchestrator_proto_msgTypes[14]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1113,7 +1113,7 @@ func (x *SessionConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionConfig.ProtoReflect.Descriptor instead.
 func (*SessionConfig) Descriptor() ([]byte, []int) {
-	return file_v1_orchestrator_proto_rawDescGZIP(), []int{14}
+	return file_orchestrator_v1_orchestrator_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *SessionConfig) GetResources() *ResourceLimits {
@@ -1163,7 +1163,7 @@ type ResourceLimits struct {
 
 func (x *ResourceLimits) Reset() {
 	*x = ResourceLimits{}
-	mi := &file_v1_orchestrator_proto_msgTypes[15]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1175,7 +1175,7 @@ func (x *ResourceLimits) String() string {
 func (*ResourceLimits) ProtoMessage() {}
 
 func (x *ResourceLimits) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_orchestrator_proto_msgTypes[15]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1188,7 +1188,7 @@ func (x *ResourceLimits) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResourceLimits.ProtoReflect.Descriptor instead.
 func (*ResourceLimits) Descriptor() ([]byte, []int) {
-	return file_v1_orchestrator_proto_rawDescGZIP(), []int{15}
+	return file_orchestrator_v1_orchestrator_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ResourceLimits) GetCpuRequest() string {
@@ -1234,7 +1234,7 @@ type SessionStatus struct {
 
 func (x *SessionStatus) Reset() {
 	*x = SessionStatus{}
-	mi := &file_v1_orchestrator_proto_msgTypes[16]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1246,7 +1246,7 @@ func (x *SessionStatus) String() string {
 func (*SessionStatus) ProtoMessage() {}
 
 func (x *SessionStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_orchestrator_proto_msgTypes[16]
+	mi := &file_orchestrator_v1_orchestrator_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1259,7 +1259,7 @@ func (x *SessionStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionStatus.ProtoReflect.Descriptor instead.
 func (*SessionStatus) Descriptor() ([]byte, []int) {
-	return file_v1_orchestrator_proto_rawDescGZIP(), []int{16}
+	return file_orchestrator_v1_orchestrator_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *SessionStatus) GetPodName() string {
@@ -1311,11 +1311,11 @@ func (x *SessionStatus) GetReadyAt() *timestamppb.Timestamp {
 	return nil
 }
 
-var File_v1_orchestrator_proto protoreflect.FileDescriptor
+var File_orchestrator_v1_orchestrator_proto protoreflect.FileDescriptor
 
-const file_v1_orchestrator_proto_rawDesc = "" +
+const file_orchestrator_v1_orchestrator_proto_rawDesc = "" +
 	"\n" +
-	"\x15v1/orchestrator.proto\x12\x18opencode.orchestrator.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x0f\n" +
+	"\"orchestrator/v1/orchestrator.proto\x12\x18opencode.orchestrator.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x0f\n" +
 	"\rHealthRequest\"\xef\x02\n" +
 	"\x0eHealthResponse\x12G\n" +
 	"\x06status\x18\x01 \x01(\x0e2/.opencode.orchestrator.v1.HealthResponse.StatusR\x06status\x12\x18\n" +
@@ -1449,20 +1449,20 @@ const file_v1_orchestrator_proto_rawDesc = "" +
 	"\vProxyStream\x12,.opencode.orchestrator.v1.ProxyStreamRequest\x1a-.opencode.orchestrator.v1.ProxyStreamResponse(\x010\x01B@Z>github.com/opencode-ai/opencode/internal/proto/orchestrator/v1b\x06proto3"
 
 var (
-	file_v1_orchestrator_proto_rawDescOnce sync.Once
-	file_v1_orchestrator_proto_rawDescData []byte
+	file_orchestrator_v1_orchestrator_proto_rawDescOnce sync.Once
+	file_orchestrator_v1_orchestrator_proto_rawDescData []byte
 )
 
-func file_v1_orchestrator_proto_rawDescGZIP() []byte {
-	file_v1_orchestrator_proto_rawDescOnce.Do(func() {
-		file_v1_orchestrator_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_v1_orchestrator_proto_rawDesc), len(file_v1_orchestrator_proto_rawDesc)))
+func file_orchestrator_v1_orchestrator_proto_rawDescGZIP() []byte {
+	file_orchestrator_v1_orchestrator_proto_rawDescOnce.Do(func() {
+		file_orchestrator_v1_orchestrator_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_orchestrator_v1_orchestrator_proto_rawDesc), len(file_orchestrator_v1_orchestrator_proto_rawDesc)))
 	})
-	return file_v1_orchestrator_proto_rawDescData
+	return file_orchestrator_v1_orchestrator_proto_rawDescData
 }
 
-var file_v1_orchestrator_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_v1_orchestrator_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
-var file_v1_orchestrator_proto_goTypes = []any{
+var file_orchestrator_v1_orchestrator_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_orchestrator_v1_orchestrator_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_orchestrator_v1_orchestrator_proto_goTypes = []any{
 	(SessionState)(0),             // 0: opencode.orchestrator.v1.SessionState
 	(HealthResponse_Status)(0),    // 1: opencode.orchestrator.v1.HealthResponse.Status
 	(*HealthRequest)(nil),         // 2: opencode.orchestrator.v1.HealthRequest
@@ -1491,7 +1491,7 @@ var file_v1_orchestrator_proto_goTypes = []any{
 	(*timestamppb.Timestamp)(nil), // 25: google.protobuf.Timestamp
 	(*emptypb.Empty)(nil),         // 26: google.protobuf.Empty
 }
-var file_v1_orchestrator_proto_depIdxs = []int32{
+var file_orchestrator_v1_orchestrator_proto_depIdxs = []int32{
 	1,  // 0: opencode.orchestrator.v1.HealthResponse.status:type_name -> opencode.orchestrator.v1.HealthResponse.Status
 	19, // 1: opencode.orchestrator.v1.HealthResponse.details:type_name -> opencode.orchestrator.v1.HealthResponse.DetailsEntry
 	25, // 2: opencode.orchestrator.v1.HealthResponse.timestamp:type_name -> google.protobuf.Timestamp
@@ -1533,16 +1533,16 @@ var file_v1_orchestrator_proto_depIdxs = []int32{
 	0,  // [0:20] is the sub-list for field type_name
 }
 
-func init() { file_v1_orchestrator_proto_init() }
-func file_v1_orchestrator_proto_init() {
-	if File_v1_orchestrator_proto != nil {
+func init() { file_orchestrator_v1_orchestrator_proto_init() }
+func file_orchestrator_v1_orchestrator_proto_init() {
+	if File_orchestrator_v1_orchestrator_proto != nil {
 		return
 	}
-	file_v1_orchestrator_proto_msgTypes[11].OneofWrappers = []any{
+	file_orchestrator_v1_orchestrator_proto_msgTypes[11].OneofWrappers = []any{
 		(*ProxyStreamRequest_Data)(nil),
 		(*ProxyStreamRequest_Control)(nil),
 	}
-	file_v1_orchestrator_proto_msgTypes[12].OneofWrappers = []any{
+	file_orchestrator_v1_orchestrator_proto_msgTypes[12].OneofWrappers = []any{
 		(*ProxyStreamResponse_Data)(nil),
 		(*ProxyStreamResponse_Error)(nil),
 	}
@@ -1550,18 +1550,18 @@ func file_v1_orchestrator_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_v1_orchestrator_proto_rawDesc), len(file_v1_orchestrator_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orchestrator_v1_orchestrator_proto_rawDesc), len(file_orchestrator_v1_orchestrator_proto_rawDesc)),
 			NumEnums:      2,
 			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_v1_orchestrator_proto_goTypes,
-		DependencyIndexes: file_v1_orchestrator_proto_depIdxs,
-		EnumInfos:         file_v1_orchestrator_proto_enumTypes,
-		MessageInfos:      file_v1_orchestrator_proto_msgTypes,
+		GoTypes:           file_orchestrator_v1_orchestrator_proto_goTypes,
+		DependencyIndexes: file_orchestrator_v1_orchestrator_proto_depIdxs,
+		EnumInfos:         file_orchestrator_v1_orchestrator_proto_enumTypes,
+		MessageInfos:      file_orchestrator_v1_orchestrator_proto_msgTypes,
 	}.Build()
-	File_v1_orchestrator_proto = out.File
-	file_v1_orchestrator_proto_goTypes = nil
-	file_v1_orchestrator_proto_depIdxs = nil
+	File_orchestrator_v1_orchestrator_proto = out.File
+	file_orchestrator_v1_orchestrator_proto_goTypes = nil
+	file_orchestrator_v1_orchestrator_proto_depIdxs = nil
 }

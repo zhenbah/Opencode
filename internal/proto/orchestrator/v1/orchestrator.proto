@@ -178,11 +178,7 @@ enum SessionState {
 }
 
 message SessionConfig {
-  ResourceLimits resources = 1;
-  string storage_size = 2;
-  string ttl = 3;
-  map<string, string> environment = 4;
-  string image = 5;
+  
 }
 
 message ResourceLimits {
