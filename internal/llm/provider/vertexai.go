@@ -51,11 +51,6 @@ func newVertexAIClient(opts providerClientOptions) VertexAIClient {
 	if opts.baseURL != "" {
 		if opts.headers != nil {
 			header := opts.asHeader()
-			// HACK: assume litellm proxy, provide an excplicit way to define proxy-type
-			if h := header.Get("x-litellm-api-key"); h != "" {
-				// has to be empty to pass genai validation check with empty creds, auth handled by LiteLLM
-				genaiConfig.Credentials = &auth.Credentials{}
-			}
 			genaiConfig.HTTPOptions = genai.HTTPOptions{
 				BaseURL: opts.baseURL,
 				Headers: *header,
@@ -64,6 +59,12 @@ func newVertexAIClient(opts providerClientOptions) VertexAIClient {
 			genaiConfig.HTTPOptions = genai.HTTPOptions{
 				BaseURL: opts.baseURL,
 			}
+		}
+	}
+
+	if opts.apiKey != "" {
+		genaiConfig.Credentials = &auth.Credentials{
+			TokenProvider: &tokenProvider{value: opts.apiKey},
 		}
 	}
 

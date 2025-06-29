@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/auth"
 	"github.com/google/uuid"
 	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/opencode-ai/opencode/internal/llm/tools"
@@ -30,6 +31,14 @@ type geminiClient struct {
 }
 
 type GeminiClient ProviderClient
+
+type tokenProvider struct {
+	value string
+}
+
+func (p *tokenProvider) Token(context.Context) (*auth.Token, error) {
+	return &auth.Token{Value: p.value}, nil
+}
 
 func newGeminiClient(opts providerClientOptions) GeminiClient {
 	geminiOpts := geminiOptions{}
