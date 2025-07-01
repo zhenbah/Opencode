@@ -62,6 +62,9 @@ func runTool(ctx context.Context, c MCPClient, toolName string, input string) (t
 	toolRequest := mcp.CallToolRequest{}
 	toolRequest.Params.Name = toolName
 	var args map[string]any
+	if input == "" {
+		input = "{}"
+	}
 	if err = json.Unmarshal([]byte(input), &args); err != nil {
 		return tools.NewTextErrorResponse(fmt.Sprintf("error parsing parameters: %s", err)), nil
 	}
