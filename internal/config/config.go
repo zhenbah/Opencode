@@ -640,8 +640,6 @@ func Validate() error {
 		return fmt.Errorf("config not loaded")
 	}
 
-	logging.Debug("Starting configuration validation")
-
 	// Validate agent models
 	for name, agent := range cfg.Agents {
 		logging.Debug("Validating agent", "name", name, "model", agent.Model)
