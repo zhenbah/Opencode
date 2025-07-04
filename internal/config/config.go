@@ -496,6 +496,35 @@ func validateAgent(cfg *Config, name AgentName, agent Agent) error {
 	provider := model.Provider
 	providerCfg, providerExists := cfg.Providers[provider]
 
+	// Special handling for Copilot provider
+	if provider == models.ProviderCopilot {
+		logging.Debug("Validating Copilot provider", "exists", providerExists)
+		
+		// If provider doesn't exist in config, add it
+		if !providerExists {
+			cfg.Providers[provider] = Provider{
+				APIKey: "",  // We'll use device flow for authentication
+			}
+			logging.Info("Added Copilot provider to config")
+		} else if providerCfg.Disabled {
+			// Provider explicitly disabled
+			logging.Warn("Copilot provider is disabled but model requires it", 
+				"agent", name,
+				"model", agent.Model)
+			
+			// Set default model based on available providers
+			if setDefaultModelForAgent(name) {
+				logging.Info("set default model for agent", "agent", name, "model", cfg.Agents[name].Model)
+			} else {
+				return fmt.Errorf("no valid provider available for agent %s", name)
+			}
+		}
+		
+		// Continue with validation - Copilot provider is considered valid even without API key
+		return nil
+	}
+
+	// For all other providers
 	if !providerExists {
 		// Provider not configured, check if we have environment variables
 		apiKey := getProviderAPIKey(provider)
@@ -611,17 +640,34 @@ func Validate() error {
 		return fmt.Errorf("config not loaded")
 	}
 
+	logging.Debug("Starting configuration validation")
+	
+	// Special handling for Copilot provider - don't require API key
+	// Since we'll use device code flow
+	for provider, providerCfg := range cfg.Providers {
+		if provider == models.ProviderCopilot && !providerCfg.Disabled {
+			logging.Debug("Found Copilot provider in config", "disabled", providerCfg.Disabled)
+			// For Copilot, we'll allow empty API key and handle auth via device flow
+			if providerCfg.APIKey == "" {
+				logging.Info("Copilot provider has no API key, will use device flow authentication")
+			}
+		}
+	}
+
 	// Validate agent models
 	for name, agent := range cfg.Agents {
+		logging.Debug("Validating agent", "name", name, "model", agent.Model)
 		if err := validateAgent(cfg, name, agent); err != nil {
+			logging.Error("Agent validation failed", "name", name, "error", err)
 			return err
 		}
 	}
 
 	// Validate providers
 	for provider, providerCfg := range cfg.Providers {
-		if providerCfg.APIKey == "" && !providerCfg.Disabled {
-			fmt.Printf("provider has no API key, marking as disabled %s", provider)
+		// Special case for Copilot - we allow it to have no API key
+		if provider != models.ProviderCopilot && providerCfg.APIKey == "" && !providerCfg.Disabled {
+			fmt.Printf("provider has no API key, marking as disabled %s\n", provider)
 			logging.Warn("provider has no API key, marking as disabled", "provider", provider)
 			providerCfg.Disabled = true
 			cfg.Providers[provider] = providerCfg
@@ -637,6 +683,7 @@ func Validate() error {
 		}
 	}
 
+	logging.Debug("Configuration validation completed successfully")
 	return nil
 }
 
@@ -868,6 +915,13 @@ func Get() *Config {
 	return cfg
 }
 
+// SetNonInteractive sets the non-interactive flag in the global viper config
+// This helps components detect if they're running in non-interactive mode
+func SetNonInteractive(val bool) {
+	viper.Set("non_interactive", val)
+	logging.Debug("Set non_interactive mode", "value", val)
+}
+
 // WorkingDirectory returns the current working directory from the configuration.
 func WorkingDirectory() string {
 	if cfg == nil {
@@ -929,10 +983,40 @@ func UpdateTheme(themeName string) error {
 	})
 }
 
-// Tries to load Github token from all possible locations
+// LoadGitHubToken loads GitHub token from config files, environment variables, or other sources
+// Returns the token if found, or a special error "no_copilot_token" if no token is found
+// This follows the 4-step flow: 1. Check if Copilot is enabled, 2. Check for token in config folder
 func LoadGitHubToken() (string, error) {
-	// First check environment variable
+	logging.Debug("LoadGitHubToken: Attempting to load GitHub token")
+	
+	// First check environment variable (maintained for compatibility)
 	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+		prefixLen := 10
+		if len(token) < prefixLen {
+			prefixLen = len(token)
+		}
+		logging.Debug("LoadGitHubToken: Found token in GITHUB_TOKEN environment variable", "token_length", len(token), "token_prefix", token[:prefixLen])
+		return token, nil
+	}
+	
+	logging.Debug("LoadGitHubToken: No token found in GITHUB_TOKEN environment variable")
+
+	// Also check Copilot-specific environment variables
+	if token := os.Getenv("GITHUB_COPILOT_TOKEN"); token != "" {
+		prefixLen := 10
+		if len(token) < prefixLen {
+			prefixLen = len(token)
+		}
+		logging.Debug("LoadGitHubToken: Found token in GITHUB_COPILOT_TOKEN environment variable", "token_length", len(token), "token_prefix", token[:prefixLen])
+		return token, nil
+	}
+	
+	if token := os.Getenv("GH_COPILOT_TOKEN"); token != "" {
+		prefixLen := 10
+		if len(token) < prefixLen {
+			prefixLen = len(token)
+		}
+		logging.Debug("LoadGitHubToken: Found token in GH_COPILOT_TOKEN environment variable", "token_length", len(token), "token_prefix", token[:prefixLen])
 		return token, nil
 	}
 
@@ -940,41 +1024,79 @@ func LoadGitHubToken() (string, error) {
 	var configDir string
 	if xdgConfig := os.Getenv("XDG_CONFIG_HOME"); xdgConfig != "" {
 		configDir = xdgConfig
+		logging.Debug("LoadGitHubToken: Using XDG_CONFIG_HOME for config directory", "directory", xdgConfig)
 	} else if runtime.GOOS == "windows" {
 		if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
 			configDir = localAppData
+			logging.Debug("LoadGitHubToken: Using LOCALAPPDATA for config directory", "directory", localAppData)
 		} else {
 			configDir = filepath.Join(os.Getenv("HOME"), "AppData", "Local")
+			logging.Debug("LoadGitHubToken: Using HOME/AppData/Local for config directory", "directory", configDir)
 		}
 	} else {
 		configDir = filepath.Join(os.Getenv("HOME"), ".config")
+		logging.Debug("LoadGitHubToken: Using HOME/.config for config directory", "directory", configDir)
 	}
 
-	// Try both hosts.json and apps.json files
+	// Primary path: Check standard Copilot config files first (hosts.json and apps.json)
 	filePaths := []string{
 		filepath.Join(configDir, "github-copilot", "hosts.json"),
 		filepath.Join(configDir, "github-copilot", "apps.json"),
 	}
 
+	logging.Debug("LoadGitHubToken: Checking Copilot config files", "paths", filePaths)
+
 	for _, filePath := range filePaths {
+		logging.Debug("LoadGitHubToken: Attempting to read file", "path", filePath)
+		
 		data, err := os.ReadFile(filePath)
 		if err != nil {
+			logging.Debug("LoadGitHubToken: Failed to read file", "path", filePath, "error", err)
 			continue
 		}
+		
+		logging.Debug("LoadGitHubToken: Successfully read file", "path", filePath, "size_bytes", len(data))
 
 		var config map[string]map[string]interface{}
 		if err := json.Unmarshal(data, &config); err != nil {
+			logging.Debug("LoadGitHubToken: Failed to unmarshal JSON", "path", filePath, "error", err)
 			continue
 		}
+		
+		logging.Debug("LoadGitHubToken: Successfully unmarshalled JSON", "path", filePath, "keys_count", len(config))
 
+		// For hosts.json, we expect keys like "github.com"
+		// For apps.json, we expect keys like "github.com:Iv1.b507a08c87ecfe98"
 		for key, value := range config {
 			if strings.Contains(key, "github.com") {
-				if oauthToken, ok := value["oauth_token"].(string); ok {
+				logging.Debug("LoadGitHubToken: Found github.com entry", "key", key)
+				
+				if oauthToken, ok := value["oauth_token"].(string); ok && oauthToken != "" {
+					prefixLen := 10
+					if len(oauthToken) < prefixLen {
+						prefixLen = len(oauthToken)
+					}
+					logging.Debug("LoadGitHubToken: Found OAuth token in config file", "path", filePath, "key", key, "token_length", len(oauthToken), "token_prefix", oauthToken[:prefixLen])
 					return oauthToken, nil
+				} else {
+					logging.Debug("LoadGitHubToken: No oauth_token found in entry or empty token", "key", key, "available_keys", getMapKeys(value))
 				}
 			}
 		}
+		
+		logging.Debug("LoadGitHubToken: No GitHub token found in config file", "path", filePath)
 	}
 
-	return "", fmt.Errorf("GitHub token not found in standard locations")
+	// Return a special error that indicates we need to use device code flow
+	logging.Debug("LoadGitHubToken: No Copilot token found - use device code flow")
+	return "", fmt.Errorf("no_copilot_token")
+}
+
+// Helper function to get map keys as a string slice for debugging
+func getMapKeys(m map[string]interface{}) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }
