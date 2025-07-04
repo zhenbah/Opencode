@@ -273,8 +273,7 @@ func (c *copilotClient) performDeviceCodeFlow() (string, error) {
 	data.Set("client_id", copilotClientID)
 	data.Set("scope", "user:email read:user copilot")
 	
-	fmt.Printf("🔐 Using GitHub Copilot client ID: %s\n", copilotClientID)
-	fmt.Printf("🔐 Requesting device code for scopes: user:email read:user copilot\n")
+	fmt.Printf("Requesting GitHub authentication...\n")
 
 	// Using the exact URL and headers from VS Code Copilot extension
 	req, err := http.NewRequest("POST", "https://github.com/login/device/code", strings.NewReader(data.Encode()))
@@ -335,20 +334,19 @@ func (c *copilotClient) performDeviceCodeFlow() (string, error) {
 	ticker := time.NewTicker(time.Duration(interval) * time.Second)
 	defer ticker.Stop()
 
-	fmt.Printf("⏳ Waiting for you to authorize the device...\n")
+	fmt.Printf("Waiting for authorization...\n")
 	pollAttempts := 0
 	
 	for {
 		select {
 		case <-ticker.C:
 			pollAttempts++
-			fmt.Printf("🔄 Checking authorization status... (attempt %d)\n", pollAttempts)
 			
 			// Make a request to check if the user has authorized
 			tokenReq, err := http.NewRequest("POST", "https://github.com/login/oauth/access_token", 
 				strings.NewReader(tokenData.Encode()))
 			if err != nil {
-				fmt.Printf("❌ Error creating token request: %v\n", err)
+				logging.Error("Failed to create token request", "error", err)
 				return "", fmt.Errorf("failed to create token request: %w", err)
 			}
 
@@ -358,30 +356,29 @@ func (c *copilotClient) performDeviceCodeFlow() (string, error) {
 
 			tokenResp, err := c.httpClient.Do(tokenReq)
 			if err != nil {
-				fmt.Printf("❌ Error making token request: %v\n", err)
+				logging.Error("Failed to make token request", "error", err)
 				return "", fmt.Errorf("failed token request: %w", err)
 			}
 
-			fmt.Printf("📊 Token poll response status: %d\n", tokenResp.StatusCode)
+			logging.Debug("Token poll response status", "status", tokenResp.StatusCode)
 			
 			tokenRespBody, err := io.ReadAll(tokenResp.Body)
 			tokenResp.Body.Close()
 			if err != nil {
-				fmt.Printf("❌ Error reading token response: %v\n", err)
+				logging.Error("Failed to read token response", "error", err)
 				return "", fmt.Errorf("failed to read token response: %w", err)
 			}
 
 			if tokenResp.StatusCode == http.StatusOK {
-				fmt.Printf("✅ Received response from GitHub. Processing...\n")
-				fmt.Printf("📃 Raw response: %s\n", string(tokenRespBody))
+				logging.Debug("Received response from GitHub", "response", string(tokenRespBody))
 				
 				// Check if we're getting an error response even with 200 status
 				var errorCheck map[string]string
 				if json.Unmarshal(tokenRespBody, &errorCheck) == nil {
 					if errorVal, ok := errorCheck["error"]; ok {
-						fmt.Printf("⚠️ Received error with 200 status: %s\n", errorVal)
+						logging.Debug("Received error in response", "error", errorVal)
 						if errorVal == "authorization_pending" {
-							fmt.Printf("⏳ Still waiting for authorization in browser...\n")
+							logging.Debug("Still waiting for authorization in browser")
 							continue
 						}
 					}
@@ -389,16 +386,15 @@ func (c *copilotClient) performDeviceCodeFlow() (string, error) {
 				
 				var tokenData GitHubTokenResponse
 				if err := json.Unmarshal(tokenRespBody, &tokenData); err != nil {
-					fmt.Printf("❌ Error parsing token response: %v\n", err)
+					logging.Error("Failed to parse token response", "error", err)
 					return "", fmt.Errorf("failed to parse token response: %w", err)
 				}
 
-				fmt.Printf("✅ Token data: %+v\n", tokenData)
+				logging.Debug("Received token data", "scope", tokenData.Scope)
 				
 				if tokenData.AccessToken != "" {
-					fmt.Printf("✅ Successfully authenticated with GitHub!\n")
-					fmt.Printf("✅ Token received and stored for future use\n")
-					fmt.Printf("✅ Now exchanging for Copilot bearer token...\n")
+					fmt.Printf("Successfully authenticated with GitHub!\n")
+					fmt.Printf("Exchanging for Copilot bearer token...\n")
 					
 					// Save the token for future use
 					saveGitHubToken(tokenData.AccessToken)

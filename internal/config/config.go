@@ -975,116 +975,63 @@ func UpdateTheme(themeName string) error {
 // Returns the token if found, or a special error "no_copilot_token" if no token is found
 // This follows the 4-step flow: 1. Check if Copilot is enabled, 2. Check for token in config folder
 func LoadGitHubToken() (string, error) {
-	logging.Debug("LoadGitHubToken: Attempting to load GitHub token")
+	logging.Debug("Attempting to load GitHub token for Copilot")
 	
-	// First check environment variable (maintained for compatibility)
-	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
-		prefixLen := 10
-		if len(token) < prefixLen {
-			prefixLen = len(token)
+	// First check environment variables
+	for _, envName := range []string{"GITHUB_TOKEN", "GITHUB_COPILOT_TOKEN", "GH_COPILOT_TOKEN"} {
+		if token := os.Getenv(envName); token != "" {
+			logging.Debug("Found GitHub token in environment variable", "env_var", envName)
+			return token, nil
 		}
-		logging.Debug("LoadGitHubToken: Found token in GITHUB_TOKEN environment variable", "token_length", len(token), "token_prefix", token[:prefixLen])
-		return token, nil
-	}
-	
-	logging.Debug("LoadGitHubToken: No token found in GITHUB_TOKEN environment variable")
-
-	// Also check Copilot-specific environment variables
-	if token := os.Getenv("GITHUB_COPILOT_TOKEN"); token != "" {
-		prefixLen := 10
-		if len(token) < prefixLen {
-			prefixLen = len(token)
-		}
-		logging.Debug("LoadGitHubToken: Found token in GITHUB_COPILOT_TOKEN environment variable", "token_length", len(token), "token_prefix", token[:prefixLen])
-		return token, nil
-	}
-	
-	if token := os.Getenv("GH_COPILOT_TOKEN"); token != "" {
-		prefixLen := 10
-		if len(token) < prefixLen {
-			prefixLen = len(token)
-		}
-		logging.Debug("LoadGitHubToken: Found token in GH_COPILOT_TOKEN environment variable", "token_length", len(token), "token_prefix", token[:prefixLen])
-		return token, nil
 	}
 
 	// Get config directory
 	var configDir string
 	if xdgConfig := os.Getenv("XDG_CONFIG_HOME"); xdgConfig != "" {
 		configDir = xdgConfig
-		logging.Debug("LoadGitHubToken: Using XDG_CONFIG_HOME for config directory", "directory", xdgConfig)
 	} else if runtime.GOOS == "windows" {
 		if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
 			configDir = localAppData
-			logging.Debug("LoadGitHubToken: Using LOCALAPPDATA for config directory", "directory", localAppData)
 		} else {
 			configDir = filepath.Join(os.Getenv("HOME"), "AppData", "Local")
-			logging.Debug("LoadGitHubToken: Using HOME/AppData/Local for config directory", "directory", configDir)
 		}
 	} else {
 		configDir = filepath.Join(os.Getenv("HOME"), ".config")
-		logging.Debug("LoadGitHubToken: Using HOME/.config for config directory", "directory", configDir)
 	}
 
-	// Primary path: Check standard Copilot config files first (hosts.json and apps.json)
+	// Check standard Copilot config files
 	filePaths := []string{
 		filepath.Join(configDir, "github-copilot", "hosts.json"),
 		filepath.Join(configDir, "github-copilot", "apps.json"),
 	}
 
-	logging.Debug("LoadGitHubToken: Checking Copilot config files", "paths", filePaths)
+	logging.Debug("Checking Copilot config files")
 
 	for _, filePath := range filePaths {
-		logging.Debug("LoadGitHubToken: Attempting to read file", "path", filePath)
-		
 		data, err := os.ReadFile(filePath)
 		if err != nil {
-			logging.Debug("LoadGitHubToken: Failed to read file", "path", filePath, "error", err)
 			continue
 		}
-		
-		logging.Debug("LoadGitHubToken: Successfully read file", "path", filePath, "size_bytes", len(data))
 
 		var config map[string]map[string]interface{}
 		if err := json.Unmarshal(data, &config); err != nil {
-			logging.Debug("LoadGitHubToken: Failed to unmarshal JSON", "path", filePath, "error", err)
 			continue
 		}
-		
-		logging.Debug("LoadGitHubToken: Successfully unmarshalled JSON", "path", filePath, "keys_count", len(config))
 
 		// For hosts.json, we expect keys like "github.com"
 		// For apps.json, we expect keys like "github.com:Iv1.b507a08c87ecfe98"
 		for key, value := range config {
 			if strings.Contains(key, "github.com") {
-				logging.Debug("LoadGitHubToken: Found github.com entry", "key", key)
-				
 				if oauthToken, ok := value["oauth_token"].(string); ok && oauthToken != "" {
-					prefixLen := 10
-					if len(oauthToken) < prefixLen {
-						prefixLen = len(oauthToken)
-					}
-					logging.Debug("LoadGitHubToken: Found OAuth token in config file", "path", filePath, "key", key, "token_length", len(oauthToken), "token_prefix", oauthToken[:prefixLen])
+					logging.Debug("Found GitHub token in config file", "path", filePath)
 					return oauthToken, nil
-				} else {
-					logging.Debug("LoadGitHubToken: No oauth_token found in entry or empty token", "key", key, "available_keys", getMapKeys(value))
 				}
 			}
 		}
-		
-		logging.Debug("LoadGitHubToken: No GitHub token found in config file", "path", filePath)
 	}
 
 	// Return a special error that indicates we need to use device code flow
-	logging.Debug("LoadGitHubToken: No Copilot token found - use device code flow")
+	logging.Debug("No Copilot token found - will need to use device code flow")
 	return "", fmt.Errorf("no_copilot_token")
 }
 
-// Helper function to get map keys as a string slice for debugging
-func getMapKeys(m map[string]interface{}) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	return keys
-}
