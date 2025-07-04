@@ -224,37 +224,8 @@ func (c *copilotClient) performDeviceCodeFlow() (string, error) {
 				if finalToken != "" {
 					fmt.Printf("Successfully authenticated with GitHub!\n")
 					
-					// First set environment variables for immediate use
-					os.Setenv("GITHUB_TOKEN", finalToken)
-					os.Setenv("GITHUB_COPILOT_TOKEN", finalToken)
-					
-					// Save token directly to file
-					homeDir, err := os.UserHomeDir()
-					if err != nil {
-						homeDir = os.Getenv("HOME")
-					}
-					
-					// Set config directory
-					configDir := filepath.Join(homeDir, ".config")
-					
-					// Ensure directory exists
-					copilotDir := filepath.Join(configDir, "github-copilot")
-					if err := os.MkdirAll(copilotDir, 0755); err != nil {
-						logging.Error("Failed to create github-copilot directory", "error", err)
-					}
-					
-					// Create hosts.json file
-					hostsFile := filepath.Join(copilotDir, "hosts.json")
-					
-					// Create the JSON structure
-					jsonData := []byte(`{"github.com":{"oauth_token":"` + finalToken + `"}}`)
-					
-					// Write the file
-					if err := os.WriteFile(hostsFile, jsonData, 0600); err != nil {
-						logging.Error("Failed to write hosts.json", "error", err)
-					} else {
-						logging.Info("Saved GitHub token to hosts.json for future use")
-					}
+					// Save token to standard locations
+					saveGitHubToken(finalToken)
 					
 					return finalToken, nil
 				} else {
@@ -296,10 +267,9 @@ func saveGitHubToken(token string) {
 		return
 	}
 	
-	// Get the home directory directly first
+	// Get the home directory
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		logging.Error("Failed to get user home directory", "error", err)
 		homeDir = os.Getenv("HOME") // Fallback to HOME environment variable
 		if homeDir == "" {
 			logging.Error("Failed to determine home directory")
@@ -311,146 +281,42 @@ func saveGitHubToken(token string) {
 	var configDir string
 	if xdgConfig := os.Getenv("XDG_CONFIG_HOME"); xdgConfig != "" {
 		configDir = xdgConfig
-		logging.Debug("Using XDG_CONFIG_HOME for config directory", "path", configDir)
 	} else if runtime.GOOS == "windows" {
 		if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
 			configDir = localAppData
-			logging.Debug("Using LOCALAPPDATA for config directory", "path", configDir)
 		} else {
 			configDir = filepath.Join(homeDir, "AppData", "Local")
-			logging.Debug("Using default Windows AppData path", "path", configDir)
 		}
 	} else {
 		configDir = filepath.Join(homeDir, ".config")
-		logging.Debug("Using default .config directory", "path", configDir)
 	}
 
-	// First try saving to hosts.json (GitHub Copilot VS Code format)
-	hostsResult := saveToHostsFile(configDir, token)
-	
-	// Also try saving to apps.json (Neovim Copilot plugin format) as fallback
-	saveToAppsFile(configDir, token)
-	
-	// Set environment variables for immediate use (even if file saving failed)
-	os.Setenv("GITHUB_TOKEN", token)
-	os.Setenv("GITHUB_COPILOT_TOKEN", token)
-	
-	if !hostsResult {
-		logging.Warn("Failed to save token to hosts.json, but environment variables are set for this session")
-	}
-	
-	return
-}
-
-// saveToHostsFile saves token to hosts.json (VS Code format)
-func saveToHostsFile(configDir string, token string) bool {
 	// Create the directory if it doesn't exist
 	copilotDir := filepath.Join(configDir, "github-copilot")
-	logging.Debug("Using copilot config directory", "path", copilotDir)
-	
 	if err := os.MkdirAll(copilotDir, 0755); err != nil {
 		logging.Error("Failed to create github-copilot directory", "error", err)
-		return false
+		return
 	}
 	
-	// Create the hosts.json file
-	hostsFile := filepath.Join(copilotDir, "hosts.json")
-	logging.Debug("Will save hosts file to", "path", hostsFile)
+	// Save to both files for maximum compatibility
 	
-	// Create the JSON structure
+	// 1. Save to hosts.json (VS Code format)
+	hostsFile := filepath.Join(copilotDir, "hosts.json")
 	hostsData := map[string]map[string]interface{}{
 		"github.com": {
 			"oauth_token": token,
 		},
 	}
-	
-	// Marshal to JSON
-	jsonData, err := json.MarshalIndent(hostsData, "", "  ")
-	if err != nil {
-		logging.Error("Failed to marshal hosts.json", "error", err)
-		return false
-	}
-
-	// First ensure the directory exists
-	if _, err := os.Stat(copilotDir); os.IsNotExist(err) {
-		logging.Debug("Creating directory again to be sure", "path", copilotDir)
-		if err := os.MkdirAll(copilotDir, 0755); err != nil {
-			logging.Error("Failed to create directory during second attempt", "error", err)
-			return false
+	hostsJSON, err := json.Marshal(hostsData)
+	if err == nil {
+		if err := os.WriteFile(hostsFile, hostsJSON, 0600); err != nil {
+			logging.Error("Failed to write hosts.json", "error", err)
 		}
 	}
 	
-	// Write the file
-	if err := os.WriteFile(hostsFile, jsonData, 0600); err != nil {
-		logging.Error("Failed to write hosts.json", "error", err)
-		fmt.Printf("⚠️ Failed to save token to %s: %v\n", hostsFile, err)
-		return false
-	}
-	
-	logging.Info("Saved GitHub token to hosts.json for future use")
-	fmt.Printf("✅ Token saved to: %s\n", hostsFile)
-	
-	// Verify file exists and has content
-	if info, err := os.Stat(hostsFile); err == nil {
-		fmt.Printf("✅ Verified file exists, size: %d bytes\n", info.Size())
-		
-		// Double-check file contents
-		content, readErr := os.ReadFile(hostsFile)
-		if readErr != nil {
-			logging.Error("Failed to verify hosts.json contents", "error", readErr)
-			return false
-		}
-		
-		if len(content) == 0 {
-			logging.Error("hosts.json exists but is empty")
-			return false
-		}
-		
-		fmt.Printf("✅ Verified hosts.json has content\n")
-		return true
-	} else {
-		logging.Error("Failed to verify hosts.json exists after writing", "error", err)
-		fmt.Printf("⚠️ Could not verify file: %v\n", err)
-		return false
-	}
-}
-
-// saveToAppsFile saves token to apps.json (Neovim format)
-func saveToAppsFile(configDir string, token string) bool {
-	// Create the directory if it doesn't exist
-	copilotDir := filepath.Join(configDir, "github-copilot")
-	if err := os.MkdirAll(copilotDir, 0755); err != nil {
-		logging.Error("Failed to create github-copilot directory for apps.json", "error", err)
-		return false
-	}
-	
-	// Create the apps.json file (alternative format used by some tools)
-	appsFile := filepath.Join(copilotDir, "apps.json")
-	
-	// Create the JSON structure
-	appsData := map[string]interface{}{
-		"github-copilot/copilot.vim": map[string]interface{}{
-			"oauth_token": token,
-		},
-	}
-	
-	// Marshal to JSON
-	jsonData, err := json.MarshalIndent(appsData, "", "  ")
-	if err != nil {
-		logging.Error("Failed to marshal apps.json", "error", err)
-		return false
-	}
-	
-	// Write the file
-	if err := os.WriteFile(appsFile, jsonData, 0600); err != nil {
-		logging.Error("Failed to write apps.json", "error", err)
-		fmt.Printf("⚠️ Failed to save token to %s: %v\n", appsFile, err)
-		return false
-	}
-	
-	logging.Info("Also saved GitHub token to apps.json for future use")
-	fmt.Printf("✅ Token also saved to: %s\n", appsFile)
-	return true
+	// Set environment variables for immediate use
+	os.Setenv("GITHUB_TOKEN", token)
+	os.Setenv("GITHUB_COPILOT_TOKEN", token)
 }
 
 // exchangeGitHubToken exchanges a GitHub token for a Copilot bearer token
@@ -505,11 +371,16 @@ func newCopilotClient(opts providerClientOptions) CopilotClient {
 		// Try to get GitHub token from multiple sources
 		var githubToken string
 
-		// 1. Environment variable
-		githubToken = os.Getenv("GITHUB_TOKEN")
+		// 1. Check environment variables first (fastest)
+		for _, envVar := range []string{"GITHUB_TOKEN", "GITHUB_COPILOT_TOKEN", "GH_COPILOT_TOKEN"} {
+			if token := os.Getenv(envVar); token != "" {
+				githubToken = token
+				break
+			}
+		}
 
 		// 2. API key from options
-		if githubToken == "" {
+		if githubToken == "" && opts.apiKey != "" {
 			githubToken = opts.apiKey
 		}
 
@@ -545,11 +416,9 @@ func newCopilotClient(opts providerClientOptions) CopilotClient {
 					
 					// Double-check token after device flow
 					if githubToken != "" {
-						fmt.Printf("✅ Successfully obtained GitHub token (length: %d)\n", len(githubToken))
+						fmt.Printf("✅ Successfully obtained GitHub token\n")
 						// Set it directly in opts.apiKey
 						opts.apiKey = githubToken
-						// Also set environment variable
-						os.Setenv("GITHUB_TOKEN", githubToken)
 					}
 				} else {
 					logging.Debug("Failed to load GitHub token from standard locations", "error", err)
@@ -589,7 +458,7 @@ func newCopilotClient(opts providerClientOptions) CopilotClient {
 				httpClient:      httpClient,
 			}
 		} else if bearerToken != "" {
-			fmt.Printf("✅ Successfully obtained Copilot bearer token (length: %d)\n", len(bearerToken))
+			fmt.Printf("✅ Successfully obtained Copilot bearer token\n")
 		}
 	}
 
