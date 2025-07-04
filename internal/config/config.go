@@ -496,18 +496,18 @@ func validateAgent(cfg *Config, name AgentName, agent Agent) error {
 	provider := model.Provider
 	providerCfg, providerExists := cfg.Providers[provider]
 
-	// Special handling for Copilot provider
+	// Special handling for Copilot provider - allow empty API key and use device flow
 	if provider == models.ProviderCopilot {
 		logging.Debug("Validating Copilot provider", "exists", providerExists)
 		
-		// If provider doesn't exist in config, add it
+		// If provider doesn't exist in config, add it with empty API key
 		if !providerExists {
 			cfg.Providers[provider] = Provider{
 				APIKey: "",  // We'll use device flow for authentication
 			}
-			logging.Info("Added Copilot provider to config")
+			logging.Info("Added Copilot provider to config for device flow authentication")
 		} else if providerCfg.Disabled {
-			// Provider explicitly disabled
+			// Provider explicitly disabled - revert to default model
 			logging.Warn("Copilot provider is disabled but model requires it", 
 				"agent", name,
 				"model", agent.Model)
@@ -520,7 +520,7 @@ func validateAgent(cfg *Config, name AgentName, agent Agent) error {
 			}
 		}
 		
-		// Continue with validation - Copilot provider is considered valid even without API key
+		// Copilot provider is valid even without API key (will use device flow)
 		return nil
 	}
 
@@ -641,18 +641,6 @@ func Validate() error {
 	}
 
 	logging.Debug("Starting configuration validation")
-	
-	// Special handling for Copilot provider - don't require API key
-	// Since we'll use device code flow
-	for provider, providerCfg := range cfg.Providers {
-		if provider == models.ProviderCopilot && !providerCfg.Disabled {
-			logging.Debug("Found Copilot provider in config", "disabled", providerCfg.Disabled)
-			// For Copilot, we'll allow empty API key and handle auth via device flow
-			if providerCfg.APIKey == "" {
-				logging.Info("Copilot provider has no API key, will use device flow authentication")
-			}
-		}
-	}
 
 	// Validate agent models
 	for name, agent := range cfg.Agents {
