@@ -101,7 +101,7 @@ You can configure OpenCode using environment variables:
 | `ANTHROPIC_API_KEY`        | For Claude models                                                                |
 | `OPENAI_API_KEY`           | For OpenAI models                                                                |
 | `GEMINI_API_KEY`           | For Google Gemini models                                                         |
-| `GITHUB_TOKEN`             | For Github Copilot models (see [Using GitHub Copilot](#using-github-copilot))    |
+| `GITHUB_COPILOT_TOKEN`     | For Github Copilot models (see [Using GitHub Copilot](#using-github-copilot))    |
 | `VERTEXAI_PROJECT`         | For Google Cloud VertexAI (Gemini)                                               |
 | `VERTEXAI_LOCATION`        | For Google Cloud VertexAI (Gemini)                                               |
 | `GROQ_API_KEY`             | For Groq models                                                                  |
@@ -648,7 +648,7 @@ the tool with your github account. This should create a github token at one of t
 - ~/.config/github-copilot/[hosts,apps].json
 - $XDG_CONFIG_HOME/github-copilot/[hosts,apps].json
 
-If using an explicit github token, you may either set the $GITHUB_TOKEN environment variable or add it to the opencode.json config file at `providers.copilot.apiKey`.
+If using an explicit github token, you may either set the $GITHUB_COPILOT_TOKEN environment variable or add it to the opencode.json config file at `providers.copilot.apiKey`.
 
 ## Using a self-hosted model provider
 

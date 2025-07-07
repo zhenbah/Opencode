@@ -969,18 +969,24 @@ func UpdateTheme(themeName string) error {
 	})
 }
 
-// LoadGitHubToken loads GitHub token from config files, environment variables, or other sources
+// LoadGitHubToken loads GitHub Copilot token from config files, environment variables, or other sources
 // Returns the token if found, or a special error "no_copilot_token" if no token is found
-// This follows the 4-step flow: 1. Check if Copilot is enabled, 2. Check for token in config folder
+// This prioritizes GITHUB_COPILOT_TOKEN to avoid conflicts with standard GitHub CLI tools
 func LoadGitHubToken() (string, error) {
-	logging.Debug("Attempting to load GitHub token for Copilot")
+	logging.Debug("Attempting to load GitHub Copilot token")
 	
-	// First check environment variables
-	for _, envName := range []string{"GITHUB_TOKEN", "GITHUB_COPILOT_TOKEN", "GH_COPILOT_TOKEN"} {
-		if token := os.Getenv(envName); token != "" {
-			logging.Debug("Found GitHub token in environment variable", "env_var", envName)
-			return token, nil
-		}
+	// 1. Environment variable (prioritize Copilot-specific token)
+	var token string
+	if token = os.Getenv("GITHUB_COPILOT_TOKEN"); token != "" {
+		logging.Debug("Loaded GitHub Copilot API key from GITHUB_COPILOT_TOKEN environment variable")
+		return token, nil
+	}
+
+	// 2. API key from config options
+	cfg := Get()
+	if token = cfg.Providers[models.ProviderCopilot].APIKey; token != "" {
+		logging.Debug("Loaded GitHub Copilot API key from the '.opencode.json' configuration file")
+		return token, nil
 	}
 
 	// Get config directory
@@ -997,13 +1003,11 @@ func LoadGitHubToken() (string, error) {
 		configDir = filepath.Join(os.Getenv("HOME"), ".config")
 	}
 
-	// Check standard Copilot config files
+	// 3. Try both hosts.json and apps.json files
 	filePaths := []string{
 		filepath.Join(configDir, "github-copilot", "hosts.json"),
 		filepath.Join(configDir, "github-copilot", "apps.json"),
 	}
-
-	logging.Debug("Checking Copilot config files")
 
 	for _, filePath := range filePaths {
 		data, err := os.ReadFile(filePath)
@@ -1016,12 +1020,10 @@ func LoadGitHubToken() (string, error) {
 			continue
 		}
 
-		// For hosts.json, we expect keys like "github.com"
-		// For apps.json, we expect keys like "github.com:Iv1.b507a08c87ecfe98"
 		for key, value := range config {
 			if strings.Contains(key, "github.com") {
-				if oauthToken, ok := value["oauth_token"].(string); ok && oauthToken != "" {
-					logging.Debug("Found GitHub token in config file", "path", filePath)
+				if oauthToken, ok := value["oauth_token"].(string); ok {
+					logging.Debug("Loaded GitHub Copilot token from the standard user configuration file")
 					return oauthToken, nil
 				}
 			}
@@ -1029,7 +1031,7 @@ func LoadGitHubToken() (string, error) {
 	}
 
 	// Return a special error that indicates we need to use device code flow
-	logging.Debug("No Copilot token found - will need to use device code flow")
+	logging.Debug("No GitHub Copilot token found - will need to use device code flow")
 	return "", fmt.Errorf("no_copilot_token")
 }
 

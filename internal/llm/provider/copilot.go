@@ -314,8 +314,7 @@ func saveGitHubToken(token string) {
 		}
 	}
 	
-	// Set environment variables for immediate use
-	os.Setenv("GITHUB_TOKEN", token)
+	// Set environment variables for immediate use (only GITHUB_COPILOT_TOKEN)
 	os.Setenv("GITHUB_COPILOT_TOKEN", token)
 }
 
@@ -371,12 +370,9 @@ func newCopilotClient(opts providerClientOptions) CopilotClient {
 		// Try to get GitHub token from multiple sources
 		var githubToken string
 
-		// 1. Check environment variables first (fastest)
-		for _, envVar := range []string{"GITHUB_TOKEN", "GITHUB_COPILOT_TOKEN", "GH_COPILOT_TOKEN"} {
-			if token := os.Getenv(envVar); token != "" {
-				githubToken = token
-				break
-			}
+		// 1. Check GITHUB_COPILOT_TOKEN environment variable first
+		if token := os.Getenv("GITHUB_COPILOT_TOKEN"); token != "" {
+			githubToken = token
 		}
 
 		// 2. API key from options
@@ -430,7 +426,7 @@ func newCopilotClient(opts providerClientOptions) CopilotClient {
 		}
 
 		if githubToken == "" {
-			logging.Error("GitHub token is required for Copilot provider. Set GITHUB_TOKEN environment variable, configure it in opencode.json, or ensure GitHub CLI/Copilot is properly authenticated.")
+			logging.Error("GitHub Copilot token is required for Copilot provider. Set GITHUB_COPILOT_TOKEN environment variable, configure it in opencode.json, or ensure GitHub Copilot is properly authenticated.")
 			return &copilotClient{
 				providerOptions: opts,
 				options:         copilotOpts,
@@ -864,8 +860,8 @@ func (c *copilotClient) shouldRetry(attempts int, err error) (bool, int64, error
 		// Try to refresh the bearer token
 		var githubToken string
 
-		// 1. Environment variable
-		githubToken = os.Getenv("GITHUB_TOKEN")
+		// 1. Check GITHUB_COPILOT_TOKEN environment variable
+		githubToken = os.Getenv("GITHUB_COPILOT_TOKEN")
 
 		// 2. API key from options
 		if githubToken == "" {
