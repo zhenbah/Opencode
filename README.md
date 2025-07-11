@@ -306,13 +306,6 @@ opencode -d
 opencode -c /path/to/project
 ```
 
-## Documentation
-
-- [Image Recognition](docs/image-recognition.md) - Guide for using vision-enabled models with images
-- [Web Search](docs/web-search.md) - Using web search capabilities with supported models
-- [Custom Commands](docs/custom-commands.md) - Creating custom commands with named arguments
-- [Configuration](docs/configuration.md) - Detailed configuration options
-
 ## Non-interactive Prompt Mode
 
 You can run OpenCode in non-interactive mode by passing a prompt directly as a command-line argument. This is useful for scripting, automation, or when you want a quick answer without launching the full TUI.
