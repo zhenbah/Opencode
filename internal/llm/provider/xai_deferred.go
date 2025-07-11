@@ -497,7 +497,11 @@ func (x *xaiClient) convertMessagesToAPI(messages []message.Message) []map[strin
 func (x *xaiClient) convertToolsToAPI(tools []tools.BaseTool) []map[string]interface{} {
 	var apiTools []map[string]interface{}
 
-	for _, tool := range tools {
+	// Filter tools based on provider compatibility
+	providerName := string(x.providerOptions.model.Provider)
+	filteredTools := FilterToolsByProvider(tools, providerName)
+
+	for _, tool := range filteredTools {
 		info := tool.Info()
 
 		// Check if Parameters already contains the full schema (with "type" and "properties")

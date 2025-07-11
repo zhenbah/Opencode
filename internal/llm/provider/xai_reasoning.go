@@ -30,31 +30,57 @@ func NewReasoningHandler(client *xaiClient) *ReasoningHandler {
 	}
 }
 
-// ShouldUseReasoning determines if reasoning should be used for a request
+// ShouldUseReasoning determines if reasoning should be used for a request.
+// It checks if the model supports reasoning and handles special cases like Grok-4.
 func (r *ReasoningHandler) ShouldUseReasoning() bool {
-	canReason := r.client.providerOptions.model.CanReason
-	hasReasoningEffort := r.client.options.reasoningEffort != ""
-	shouldApply := r.client.shouldApplyReasoningEffort()
+	model := r.client.providerOptions.model
 
-	// Special case for Grok 4: it has automatic reasoning and should always use
-	// the reasoning handler when CanReason is true, regardless of reasoning_effort
-	isGrok4 := r.client.providerOptions.model.ID == models.XAIGrok4
+	// Early return if model doesn't support reasoning
+	if !model.CanReason {
+		return false
+	}
 
-	logging.Debug("Checking reasoning conditions",
-		"model", r.client.providerOptions.model.ID,
-		"can_reason", canReason,
-		"reasoning_effort", r.client.options.reasoningEffort,
-		"has_reasoning_effort", hasReasoningEffort,
-		"should_apply", shouldApply,
-		"is_grok4", isGrok4)
-
-	// Grok 4 uses reasoning handler whenever it can reason
-	if isGrok4 && canReason {
+	// Special case: Grok-4 always uses reasoning handler when it can reason
+	// even though it doesn't accept reasoning_effort parameter
+	if model.ID == models.XAIGrok4 {
 		return true
 	}
 
-	// Other models need reasoning effort to be set and applicable
-	return canReason && hasReasoningEffort && shouldApply
+	// For other models, check if reasoning effort is configured
+	reasoningEffort := r.client.options.reasoningEffort
+	if reasoningEffort == "" {
+		return false
+	}
+
+	// Check if reasoning should be applied based on client-specific logic
+	shouldApply := r.client.shouldApplyReasoningEffort()
+
+	logging.Debug("Reasoning conditions evaluated",
+		"model", model.ID,
+		"can_reason", model.CanReason,
+		"reasoning_effort", reasoningEffort,
+		"should_apply", shouldApply)
+
+	return shouldApply
+}
+
+// normalizeReasoningEffort adjusts reasoning effort values based on model capabilities.
+// xAI's thinking models (all except Grok-4) only support "low" or "high", not "medium".
+// Grok-4 has internal reasoning but doesn't accept the reasoning_effort parameter or expose reasoning content.
+func (r *ReasoningHandler) normalizeReasoningEffort(effort string) string {
+	model := r.client.providerOptions.model
+
+	// All xAI thinking models except Grok-4 only support "low" or "high"
+	// Grok-4 has internal reasoning but doesn't accept this parameter
+	if model.ID != models.XAIGrok4 && effort == "medium" {
+		logging.Debug("Normalizing reasoning effort for xAI thinking model",
+			"model", model.ID,
+			"original", effort,
+			"normalized", "high")
+		return "high"
+	}
+
+	return effort
 }
 
 // ProcessReasoningResponse handles reasoning content from API responses
@@ -96,16 +122,24 @@ func (r *ReasoningHandler) ProcessReasoningResponse(response *ProviderResponse) 
 
 // sanitizeReasoningContent removes control characters that could corrupt terminal display
 func (r *ReasoningHandler) sanitizeReasoningContent(content string) string {
-	// Remove ANSI escape sequences (ESC character)
-	content = strings.ReplaceAll(content, "\x1b", "")
-	// Remove carriage returns (which can cause display issues)
-	content = strings.ReplaceAll(content, "\r", "")
-	// Remove other control characters that might cause issues
-	content = strings.ReplaceAll(content, "\x00", "") // null
-	content = strings.ReplaceAll(content, "\x07", "") // bell
-	content = strings.ReplaceAll(content, "\x08", "") // backspace
-	// Replace form feed with newline to preserve structure
-	content = strings.ReplaceAll(content, "\x0c", "\n")
+	// Define control characters to remove
+	replacements := []struct {
+		old string
+		new string
+	}{
+		{"\x1b", ""},   // ANSI escape sequences (ESC character)
+		{"\r", ""},     // carriage returns (can cause display issues)
+		{"\x00", ""},   // null
+		{"\x07", ""},   // bell
+		{"\x08", ""},   // backspace
+		{"\x0c", "\n"}, // form feed - replace with newline to preserve structure
+	}
+
+	// Apply all replacements
+	for _, repl := range replacements {
+		content = strings.ReplaceAll(content, repl.old, repl.new)
+	}
+
 	return content
 }
 
@@ -123,20 +157,10 @@ func (r *ReasoningHandler) BuildReasoningRequest(ctx context.Context, messages [
 		reqBody["tools"] = r.client.convertToolsToAPI(tools)
 	}
 
-	// Apply reasoning effort only if the model supports it
-	// xAI grok models do not accept reasoning_effort parameter
+	// Apply reasoning effort parameter for models that support it
+	// Grok-4 has internal reasoning but doesn't accept this parameter
 	if r.client.options.reasoningEffort != "" && r.client.shouldApplyReasoningEffort() {
-		reasoningEffort := r.client.options.reasoningEffort
-		
-		// Grok-3-mini models only support "low" or "high", not "medium"
-		if (r.client.providerOptions.model.ID == models.XAIGrok3Mini || 
-		    r.client.providerOptions.model.ID == models.XAIGrok3MiniFast) && 
-		    reasoningEffort == "medium" {
-			// Convert medium to high for Grok-3-mini models
-			reasoningEffort = "high"
-			logging.Debug("Converting reasoning effort from medium to high for Grok-3-mini")
-		}
-		
+		reasoningEffort := r.normalizeReasoningEffort(r.client.options.reasoningEffort)
 		reqBody["reasoning_effort"] = reasoningEffort
 	}
 

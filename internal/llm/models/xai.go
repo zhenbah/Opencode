@@ -2,7 +2,7 @@ package models
 
 // xAI Model Capabilities (verified via API testing):
 // - Reasoning support:
-//   - grok-4-0709: Has reasoning (returns reasoning_content) but does NOT accept reasoning_effort parameter
+//   - grok-4-0709: Has internal reasoning capabilities but does NOT expose reasoning_content or accept reasoning_effort parameter
 //   - grok-3-mini, grok-3-mini-fast: Support reasoning_effort parameter ("low" or "high" only, NOT "medium")
 //   - grok-2 models, grok-3, grok-3-fast: No reasoning support
 // - Vision support: grok-2-vision-1212 and grok-4 support image understanding
@@ -136,9 +136,9 @@ var XAIModels = map[ModelID]Model{
 		CostPer1MOutCached:      0,
 		ContextWindow:           131_072,
 		DefaultMaxTokens:        20_000,
-		CanReason:               true,  // Automatic reasoning (no reasoning_effort parameter)
+		CanReason:               true, // Has reasoning capabilities but doesn't expose reasoning content
 		SupportsAttachments:     true,  // Grok 4 supports vision
 		SupportsImageGeneration: false, // Will be detected dynamically via API
-		// Capabilities: streaming, function calling, structured outputs, automatic reasoning, web search, vision
+		// Capabilities: streaming, function calling, structured outputs, web search, vision
 	},
 }

@@ -128,10 +128,13 @@ func (o *openaiClient) convertMessages(messages []message.Message) (openaiMessag
 	return
 }
 
-func (o *openaiClient) convertTools(tools []tools.BaseTool) []openai.ChatCompletionToolParam {
-	openaiTools := make([]openai.ChatCompletionToolParam, len(tools))
+func (o *openaiClient) convertTools(inputTools []tools.BaseTool) []openai.ChatCompletionToolParam {
+	// Filter tools based on provider compatibility
+	providerName := string(o.providerOptions.model.Provider)
+	filteredTools := FilterToolsByProvider(inputTools, providerName)
 
-	for i, tool := range tools {
+	openaiTools := make([]openai.ChatCompletionToolParam, len(filteredTools))
+	for i, tool := range filteredTools {
 		info := tool.Info()
 		openaiTools[i] = openai.ChatCompletionToolParam{
 			Function: openai.FunctionDefinitionParam{
@@ -221,9 +224,9 @@ func (o *openaiClient) preparedParams(messages []openai.ChatCompletionMessagePar
 
 // shouldApplyReasoningEffort determines if the reasoning_effort parameter should be applied
 // based on the model and provider. Some models support reasoning but do not accept
-// the reasoning_effort parameter (e.g., xAI's grok-4 has automatic reasoning).
+// the reasoning_effort parameter (e.g., xAI's grok-4 has internal reasoning but doesn't accept the parameter).
 func (o *openaiClient) shouldApplyReasoningEffort() bool {
-	// xAI grok-4 supports reasoning but does not accept reasoning_effort parameter
+	// xAI grok-4 has internal reasoning but does not accept reasoning_effort parameter
 	if o.providerOptions.model.Provider == models.ProviderXAI &&
 		o.providerOptions.model.ID == models.XAIGrok4 {
 		return false

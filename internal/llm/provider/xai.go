@@ -13,6 +13,16 @@ import (
 	"github.com/opencode-ai/opencode/internal/message"
 )
 
+const (
+	// defaultXAITimeout is the standard timeout for regular API requests
+	defaultXAITimeout = 30 * time.Second
+	// reasoningXAITimeout is an extended timeout for reasoning models
+	// which can take several minutes to process complex requests
+	reasoningXAITimeout = 5 * time.Minute
+	// defaultXAIBaseURL is the default base URL for xAI API
+	defaultXAIBaseURL = "https://api.x.ai/v1"
+)
+
 // FingerprintRecord tracks system fingerprint information for auditing and compliance purposes.
 // It helps monitor xAI system changes and optimize caching performance.
 type FingerprintRecord struct {
@@ -96,11 +106,15 @@ func WithLiveSearchOptions(opts LiveSearchOptions) XAIOption {
 func newXAIClient(opts providerClientOptions) XAIClient {
 	// Create base OpenAI client with xAI-specific settings
 	opts.openaiOptions = append(opts.openaiOptions,
-		WithOpenAIBaseURL("https://api.x.ai/v1"),
+		WithOpenAIBaseURL(defaultXAIBaseURL),
 	)
 
 	baseClient := newOpenAIClient(opts)
-	openaiClientImpl := baseClient.(*openaiClient)
+	openaiClientImpl, ok := baseClient.(*openaiClient)
+	if !ok {
+		// This is a programming error - xAI client extends openAI client
+		panic("internal error: xAI client requires openaiClient implementation")
+	}
 
 	xClient := &xaiClient{
 		openaiClient:       *openaiClientImpl,
@@ -109,11 +123,21 @@ func newXAIClient(opts providerClientOptions) XAIClient {
 
 	// Initialize new architectural components
 	xClient.reasoningHandler = NewReasoningHandler(xClient)
+
+	// Use the base URL from OpenAI client options if set, otherwise default to xAI API
+	baseURL := defaultXAIBaseURL
+	if openaiClientImpl.options.baseURL != "" {
+		baseURL = openaiClientImpl.options.baseURL
+	}
+
+	// Configure HTTP client with appropriate timeout based on model capabilities
+	timeout := selectTimeoutForModel(opts.model)
+
 	xClient.httpClient = NewXAIHTTPClient(HTTPClientConfig{
-		BaseURL:   "https://api.x.ai/v1",
+		BaseURL:   baseURL,
 		APIKey:    opts.apiKey,
 		UserAgent: "opencode/1.0",
-		Timeout:   30 * time.Second,
+		Timeout:   timeout,
 	})
 
 	// Apply xAI-specific options if any
@@ -124,9 +148,18 @@ func newXAIClient(opts providerClientOptions) XAIClient {
 	return xClient
 }
 
+// selectTimeoutForModel returns the appropriate timeout based on model capabilities
+func selectTimeoutForModel(model models.Model) time.Duration {
+	if model.CanReason {
+		return reasoningXAITimeout
+	}
+	return defaultXAITimeout
+}
+
 // shouldApplyReasoningEffort overrides the base implementation for xAI-specific logic
 func (x *xaiClient) shouldApplyReasoningEffort() bool {
-	// xAI grok-4 supports reasoning but does not accept reasoning_effort parameter
+	// Grok-4 has internal reasoning capabilities but doesn't accept the reasoning_effort parameter
+	// or expose its reasoning process. Other xAI thinking models accept reasoning_effort with values "low" or "high"
 	if x.providerOptions.model.ID == models.XAIGrok4 {
 		return false
 	}

@@ -51,99 +51,100 @@ func (t *WebSearchTool) Info() ToolInfo {
 					"type":        "string",
 					"description": "The search query to execute",
 				},
-				"mode": map[string]interface{}{
-					"type":        "string",
-					"description": "Search mode: 'auto' (default), 'on', or 'off'",
-					"enum":        []string{"auto", "on", "off"},
-				},
-				"max_search_results": map[string]interface{}{
-					"type":        "integer",
-					"description": "Maximum number of search results (1-20, default: 20)",
-					"minimum":     1,
-					"maximum":     20,
-				},
-				"from_date": map[string]interface{}{
-					"type":        "string",
-					"description": "Start date for search results in YYYY-MM-DD format",
-					"pattern":     "^\\d{4}-\\d{2}-\\d{2}$",
-				},
-				"to_date": map[string]interface{}{
-					"type":        "string",
-					"description": "End date for search results in YYYY-MM-DD format",
-					"pattern":     "^\\d{4}-\\d{2}-\\d{2}$",
-				},
-				"return_citations": map[string]interface{}{
-					"type":        "boolean",
-					"description": "Whether to return citations (default: true)",
-				},
-				"sources": map[string]interface{}{
-					"type":        "array",
-					"description": "List of data sources to search",
-					"items": map[string]interface{}{
-						"type": "object",
-						"properties": map[string]interface{}{
-							"type": map[string]interface{}{
-								"type":        "string",
-								"description": "Source type",
-								"enum":        []string{"web", "x", "news", "rss"},
-							},
-							"country": map[string]interface{}{
-								"type":        "string",
-								"description": "ISO alpha-2 country code (web, news)",
-								"pattern":     "^[A-Z]{2}$",
-							},
-							"excluded_websites": map[string]interface{}{
-								"type":        "array",
-								"description": "Websites to exclude (max 5, web/news)",
-								"items":       map[string]interface{}{"type": "string"},
-								"maxItems":    5,
-							},
-							"allowed_websites": map[string]interface{}{
-								"type":        "array",
-								"description": "Allowed websites only (max 5, web only)",
-								"items":       map[string]interface{}{"type": "string"},
-								"maxItems":    5,
-							},
-							"safe_search": map[string]interface{}{
-								"type":        "boolean",
-								"description": "Enable safe search (default: true, web/news)",
-							},
-							"included_x_handles": map[string]interface{}{
-								"type":        "array",
-								"description": "X handles to include (max 10, x only)",
-								"items":       map[string]interface{}{"type": "string"},
-								"maxItems":    10,
-							},
-							"excluded_x_handles": map[string]interface{}{
-								"type":        "array",
-								"description": "X handles to exclude (max 10, x only)",
-								"items":       map[string]interface{}{"type": "string"},
-								"maxItems":    10,
-							},
-							"post_favorite_count": map[string]interface{}{
-								"type":        "integer",
-								"description": "Minimum favorite count for X posts",
-								"minimum":     0,
-							},
-							"post_view_count": map[string]interface{}{
-								"type":        "integer",
-								"description": "Minimum view count for X posts",
-								"minimum":     0,
-							},
-							"links": map[string]interface{}{
-								"type":        "array",
-								"description": "RSS feed URLs (1 link max, rss only)",
-								"items":       map[string]interface{}{"type": "string", "format": "uri"},
-								"maxItems":    1,
-							},
+			"mode": map[string]interface{}{
+				"type":        "string",
+				"description": "Search mode: 'auto' (default), 'on', or 'off'",
+				"enum":        []string{"auto", "on", "off"},
+			},
+			"max_search_results": map[string]interface{}{
+				"type":        "integer",
+				"description": "Maximum number of search results (1-20, default: 20)",
+				"minimum":     1,
+				"maximum":     20,
+			},
+			"from_date": map[string]interface{}{
+				"type":        "string",
+				"description": "Start date for search results in YYYY-MM-DD format",
+				"pattern":     "^\\d{4}-\\d{2}-\\d{2}$",
+			},
+			"to_date": map[string]interface{}{
+				"type":        "string",
+				"description": "End date for search results in YYYY-MM-DD format",
+				"pattern":     "^\\d{4}-\\d{2}-\\d{2}$",
+			},
+			"return_citations": map[string]interface{}{
+				"type":        "boolean",
+				"description": "Whether to return citations (default: true)",
+			},
+			"sources": map[string]interface{}{
+				"type":        "array",
+				"description": "List of data sources to search",
+				"items": map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"type": map[string]interface{}{
+							"type":        "string",
+							"description": "Source type",
+							"enum":        []string{"web", "x", "news", "rss"},
 						},
-						"required": []string{"type"},
+						"country": map[string]interface{}{
+							"type":        "string",
+							"description": "ISO alpha-2 country code (web, news)",
+							"pattern":     "^[A-Z]{2}$",
+						},
+						"excluded_websites": map[string]interface{}{
+							"type":        "array",
+							"description": "Websites to exclude (max 5, web/news)",
+							"items":       map[string]interface{}{"type": "string"},
+							"maxItems":    5,
+						},
+						"allowed_websites": map[string]interface{}{
+							"type":        "array",
+							"description": "Allowed websites only (max 5, web only)",
+							"items":       map[string]interface{}{"type": "string"},
+							"maxItems":    5,
+						},
+						"safe_search": map[string]interface{}{
+							"type":        "boolean",
+							"description": "Enable safe search (default: true, web/news)",
+						},
+						"included_x_handles": map[string]interface{}{
+							"type":        "array",
+							"description": "X handles to include (max 10, x only)",
+							"items":       map[string]interface{}{"type": "string"},
+							"maxItems":    10,
+						},
+						"excluded_x_handles": map[string]interface{}{
+							"type":        "array",
+							"description": "X handles to exclude (max 10, x only)",
+							"items":       map[string]interface{}{"type": "string"},
+							"maxItems":    10,
+						},
+						"post_favorite_count": map[string]interface{}{
+							"type":        "integer",
+							"description": "Minimum favorite count for X posts",
+							"minimum":     0,
+						},
+						"post_view_count": map[string]interface{}{
+							"type":        "integer",
+							"description": "Minimum view count for X posts",
+							"minimum":     0,
+						},
+						"links": map[string]interface{}{
+							"type":        "array",
+							"description": "RSS feed URLs (1 link max, rss only)",
+							"items":       map[string]interface{}{"type": "string", "format": "uri"},
+							"maxItems":    1,
+						},
 					},
+					"required": []string{"type"},
 				},
 			},
-			"required": []string{"query"},
 		},
-		Required: []string{"query"},
+		"required": []string{"query"},
+	},
+		Required:  []string{"query"},
+		Providers: []string{"xai"}, // Web search is currently only supported by xAI models
 	}
 }
 

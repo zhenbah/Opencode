@@ -249,7 +249,7 @@ OpenCode supports a variety of AI models from different providers:
 
 ### xAI
 
-- Grok 4 (grok-4-0709) - Most capable, with reasoning_effort support
+- Grok 4 (grok-4-0709) - Most capable, with internal reasoning
 - Grok 3 (grok-3) - Advanced model (no reasoning support)
 - Grok 3 Fast (grok-3-fast) - Optimized for speed (no reasoning support)
 - Grok 3 Mini (grok-3-mini) - Smaller model with reasoning_effort support
@@ -261,7 +261,7 @@ OpenCode supports a variety of AI models from different providers:
 **Special Features:**
 - **Web Search**: All xAI models support live web search for current information
 - **Reasoning Support** (verified via API):
-  - Grok 4 (grok-4-0709): Has automatic reasoning (returns reasoning_content) but does NOT accept `reasoningEffort` parameter
+  - Grok 4 (grok-4-0709): Has internal reasoning capabilities but does NOT expose reasoning_content or accept reasoningEffort parameter
   - Grok 3 Mini models: Support `reasoningEffort` parameter (only "low" or "high", not "medium")
   - Grok 2 models, Grok 3/3-fast: No reasoning support
 - **Vision Support**: grok-2-vision-1212 supports image understanding

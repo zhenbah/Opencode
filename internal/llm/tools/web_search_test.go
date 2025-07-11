@@ -70,6 +70,11 @@ func TestWebSearchTool(t *testing.T) {
 		if len(info.Required) != 1 || info.Required[0] != "query" {
 			t.Errorf("Expected required fields to be ['query'], got %v", info.Required)
 		}
+
+		// Check provider restriction
+		if len(info.Providers) != 1 || info.Providers[0] != "xai" {
+			t.Errorf("Expected providers to be ['xai'], got %v", info.Providers)
+		}
 	})
 
 	t.Run("Run with valid query", func(t *testing.T) {

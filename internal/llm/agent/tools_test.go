@@ -76,6 +76,11 @@ func TestCoderAgentToolsIncludesWebSearch(t *testing.T) {
 			if len(info.Required) == 0 || info.Required[0] != "query" {
 				t.Error("Web search tool should require 'query' parameter")
 			}
+			
+			// Verify provider restrictions
+			if len(info.Providers) != 1 || info.Providers[0] != "xai" {
+				t.Errorf("Web search tool should be restricted to xai provider, got %v", info.Providers)
+			}
 		} else {
 			t.Error("Web search tool does not implement BaseTool interface correctly")
 		}
