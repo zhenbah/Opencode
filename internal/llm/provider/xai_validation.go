@@ -29,7 +29,7 @@ type XAIAPIKeyInfo struct {
 
 // ValidateAPIKey validates the xAI API key and returns detailed information about it
 func (x *xaiClient) ValidateAPIKey(ctx context.Context) (*XAIAPIKeyInfo, error) {
-	url := fmt.Sprintf("%s/v1/api-key", x.getBaseURL())
+	url := fmt.Sprintf("%s/api-key", x.getBaseURL())
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {

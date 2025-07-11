@@ -171,7 +171,7 @@ func TestXAIProvider_DeferredCompletionsMock(t *testing.T) {
 			count := atomic.AddInt32(&requestCount, 1)
 
 			switch r.URL.Path {
-			case "/v1/chat/completions":
+			case "/chat/completions":
 				// Initial deferred request
 				assert.Equal(t, "POST", r.Method)
 
@@ -187,7 +187,7 @@ func TestXAIProvider_DeferredCompletionsMock(t *testing.T) {
 					RequestID: requestID,
 				})
 
-			case "/v1/chat/deferred-completion/" + requestID:
+			case "/chat/deferred-completion/" + requestID:
 				// Polling request
 				assert.Equal(t, "GET", r.Method)
 
@@ -283,7 +283,7 @@ func TestXAIProvider_DeferredCompletionsMock(t *testing.T) {
 		// Create mock server that always returns 202
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.URL.Path {
-			case "/v1/chat/completions":
+			case "/chat/completions":
 				// Return request ID
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(DeferredCompletionResponse{

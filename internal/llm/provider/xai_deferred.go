@@ -201,13 +201,13 @@ func (x *xaiClient) sendDeferred(ctx context.Context, messages []message.Message
 	}
 
 	// Get base URL (default to xAI API if not set)
-	baseURL := "https://api.x.ai"
+	baseURL := "https://api.x.ai/v1"
 	if x.openaiClient.options.baseURL != "" {
 		baseURL = x.openaiClient.options.baseURL
 	}
 
 	// Create HTTP request
-	req, err := http.NewRequestWithContext(ctx, "POST", baseURL+"/v1/chat/completions", bytes.NewReader(jsonBody))
+	req, err := http.NewRequestWithContext(ctx, "POST", baseURL+"/chat/completions", bytes.NewReader(jsonBody))
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
@@ -253,12 +253,12 @@ func (x *xaiClient) sendDeferred(ctx context.Context, messages []message.Message
 // pollDeferredResult polls for the deferred completion result
 func (x *xaiClient) pollDeferredResult(ctx context.Context, requestID string, opts DeferredOptions) (*DeferredResult, error) {
 	// Get base URL (default to xAI API if not set)
-	baseURL := "https://api.x.ai"
+	baseURL := "https://api.x.ai/v1"
 	if x.openaiClient.options.baseURL != "" {
 		baseURL = x.openaiClient.options.baseURL
 	}
 
-	url := fmt.Sprintf("%s/v1/chat/deferred-completion/%s", baseURL, requestID)
+	url := fmt.Sprintf("%s/chat/deferred-completion/%s", baseURL, requestID)
 
 	// Create HTTP client
 	client := &http.Client{Timeout: 30 * time.Second}
@@ -499,7 +499,7 @@ func (x *xaiClient) convertToolsToAPI(tools []tools.BaseTool) []map[string]inter
 
 	for _, tool := range tools {
 		info := tool.Info()
-		
+
 		// Check if Parameters already contains the full schema (with "type" and "properties")
 		var parameters map[string]interface{}
 		params := info.Parameters
@@ -514,7 +514,7 @@ func (x *xaiClient) convertToolsToAPI(tools []tools.BaseTool) []map[string]inter
 				"required":   info.Required,
 			}
 		}
-		
+
 		apiTools = append(apiTools, map[string]interface{}{
 			"type": "function",
 			"function": map[string]interface{}{

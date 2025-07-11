@@ -36,13 +36,24 @@ func (r *ReasoningHandler) ShouldUseReasoning() bool {
 	hasReasoningEffort := r.client.options.reasoningEffort != ""
 	shouldApply := r.client.shouldApplyReasoningEffort()
 
+	// Special case for Grok 4: it has automatic reasoning and should always use
+	// the reasoning handler when CanReason is true, regardless of reasoning_effort
+	isGrok4 := r.client.providerOptions.model.ID == models.XAIGrok4
+
 	logging.Debug("Checking reasoning conditions",
 		"model", r.client.providerOptions.model.ID,
 		"can_reason", canReason,
 		"reasoning_effort", r.client.options.reasoningEffort,
 		"has_reasoning_effort", hasReasoningEffort,
-		"should_apply", shouldApply)
+		"should_apply", shouldApply,
+		"is_grok4", isGrok4)
 
+	// Grok 4 uses reasoning handler whenever it can reason
+	if isGrok4 && canReason {
+		return true
+	}
+
+	// Other models need reasoning effort to be set and applicable
 	return canReason && hasReasoningEffort && shouldApply
 }
 

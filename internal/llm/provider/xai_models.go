@@ -47,12 +47,12 @@ type XAIImageModelInfo struct {
 	Aliases                  []string `json:"aliases"`
 }
 
-// XAILanguageModelsResponse represents the response from /v1/language-models
+// XAILanguageModelsResponse represents the response from /language-models
 type XAILanguageModelsResponse struct {
 	Models []XAIModelInfo `json:"models"`
 }
 
-// XAIImageModelsResponse represents the response from /v1/image-generation-models
+// XAIImageModelsResponse represents the response from /image-generation-models
 type XAIImageModelsResponse struct {
 	Models []XAIImageModelInfo `json:"models"`
 }
@@ -87,7 +87,7 @@ func (x *xaiClient) DiscoverModelCapabilities(ctx context.Context, modelID strin
 
 // getLanguageModelCapabilities fetches capabilities from language models endpoint
 func (x *xaiClient) getLanguageModelCapabilities(ctx context.Context, modelID string) (*ModelCapabilities, error) {
-	url := fmt.Sprintf("%s/v1/language-models/%s", x.getBaseURL(), modelID)
+	url := fmt.Sprintf("%s/language-models/%s", x.getBaseURL(), modelID)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -156,7 +156,7 @@ func (x *xaiClient) getLanguageModelCapabilities(ctx context.Context, modelID st
 
 // getImageModelCapabilities fetches capabilities from image generation models endpoint
 func (x *xaiClient) getImageModelCapabilities(ctx context.Context, modelID string) (*ModelCapabilities, error) {
-	url := fmt.Sprintf("%s/v1/image-generation-models/%s", x.getBaseURL(), modelID)
+	url := fmt.Sprintf("%s/image-generation-models/%s", x.getBaseURL(), modelID)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -202,7 +202,7 @@ func (x *xaiClient) getImageModelCapabilities(ctx context.Context, modelID strin
 
 // getBasicModelCapabilities fetches basic model info as fallback
 func (x *xaiClient) getBasicModelCapabilities(ctx context.Context, modelID string) (*ModelCapabilities, error) {
-	url := fmt.Sprintf("%s/v1/models/%s", x.getBaseURL(), modelID)
+	url := fmt.Sprintf("%s/models/%s", x.getBaseURL(), modelID)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -235,7 +235,7 @@ func (x *xaiClient) getBaseURL() string {
 	if x.options.baseURL != "" {
 		return x.options.baseURL
 	}
-	return "https://api.x.ai"
+	return "https://api.x.ai/v1"
 }
 
 // ListAllModels fetches all available models from xAI API
@@ -244,7 +244,7 @@ func (x *xaiClient) ListAllModels(ctx context.Context) ([]XAIModelInfo, []XAIIma
 	var imageModels []XAIImageModelInfo
 
 	// Fetch language models
-	langURL := fmt.Sprintf("%s/v1/language-models", x.getBaseURL())
+	langURL := fmt.Sprintf("%s/language-models", x.getBaseURL())
 	langReq, err := http.NewRequestWithContext(ctx, "GET", langURL, nil)
 	if err != nil {
 		return nil, nil, err
@@ -267,7 +267,7 @@ func (x *xaiClient) ListAllModels(ctx context.Context) ([]XAIModelInfo, []XAIIma
 	}
 
 	// Fetch image generation models
-	imgURL := fmt.Sprintf("%s/v1/image-generation-models", x.getBaseURL())
+	imgURL := fmt.Sprintf("%s/image-generation-models", x.getBaseURL())
 	imgReq, err := http.NewRequestWithContext(ctx, "GET", imgURL, nil)
 	if err != nil {
 		return languageModels, nil, err
