@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
-	"github.com/opencode-ai/opencode/internal/llm/models"
 	"github.com/opencode-ai/opencode/internal/llm/tools"
 	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/message"
@@ -170,7 +170,7 @@ func (x *xaiClient) sendDeferred(ctx context.Context, messages []message.Message
 	}
 
 	// Apply reasoning effort if applicable
-	if x.shouldApplyReasoningEffort() && x.options.reasoningEffort != "" {
+	if x.shouldApplyReasoningEffort() {
 		reqBody.ReasoningEffort = x.options.reasoningEffort
 	}
 
@@ -377,11 +377,16 @@ func (x *xaiClient) convertDeferredResult(result *DeferredResult) *ProviderRespo
 	}
 	inputTokens = result.Usage.PromptTokens - cachedTokens
 
+	// Handle content and reasoning_content separately to maintain proper data structure
+	content := choice.Message.Content
+	reasoningContent := choice.Message.ReasoningContent
+
 	// Create response
 	resp := &ProviderResponse{
-		Content:      choice.Message.Content,
-		ToolCalls:    toolCalls,
-		FinishReason: finishReason,
+		Content:          content,
+		ReasoningContent: reasoningContent,
+		ToolCalls:        toolCalls,
+		FinishReason:     finishReason,
 		Usage: TokenUsage{
 			InputTokens:         inputTokens,
 			OutputTokens:        result.Usage.CompletionTokens,
@@ -404,84 +409,61 @@ func (x *xaiClient) convertDeferredResult(result *DeferredResult) *ProviderRespo
 func (x *xaiClient) convertMessagesToAPI(messages []message.Message) []map[string]interface{} {
 	var apiMessages []map[string]interface{}
 
-	// Add system message
+	// Add system message first
 	apiMessages = append(apiMessages, map[string]interface{}{
 		"role":    "system",
 		"content": x.providerOptions.systemMessage,
 	})
 
-	// Convert user messages
 	for _, msg := range messages {
+		apiMsg := map[string]interface{}{
+			"role": string(msg.Role),
+		}
+
+		// Convert content based on message type
 		switch msg.Role {
-		case message.User:
-			// Check if message has images
-			hasImages := len(msg.BinaryContent()) > 0 || len(msg.ImageURLContent()) > 0
+		case message.User, message.System:
+			// Handle potential multipart content
+			var content []map[string]interface{}
+			textParts := []string{}
 
-			if hasImages {
-				// Build content array for multimodal message
-				var content []map[string]interface{}
-
-				// Add text content if present
-				if msg.Content().String() != "" {
-					content = append(content, map[string]interface{}{
-						"type": "text",
-						"text": msg.Content().String(),
-					})
-				}
-
-				// Add binary images (base64 encoded)
-				for _, binaryContent := range msg.BinaryContent() {
+			for _, part := range msg.Parts {
+				switch p := part.(type) {
+				case message.TextContent:
+					textParts = append(textParts, p.Text)
+				case message.BinaryContent:
+					// xAI expects images in a specific format
 					content = append(content, map[string]interface{}{
 						"type": "image_url",
 						"image_url": map[string]interface{}{
-							"url":    binaryContent.String(models.ProviderOpenAI), // data:image/jpeg;base64,<base64>
-							"detail": "high",                                      // Default to high detail
+							"url": fmt.Sprintf("data:%s;base64,%s", p.MIMEType, p.Data),
 						},
 					})
 				}
+			}
 
-				// Add image URLs (web URLs)
-				for _, imageURLContent := range msg.ImageURLContent() {
-					detail := imageURLContent.Detail
-					if detail == "" {
-						detail = "auto"
-					}
-					content = append(content, map[string]interface{}{
-						"type": "image_url",
-						"image_url": map[string]interface{}{
-							"url":    imageURLContent.URL,
-							"detail": detail,
-						},
-					})
-				}
+			// If we have text parts, add them first
+			if len(textParts) > 0 {
+				content = append([]map[string]interface{}{{
+					"type": "text",
+					"text": strings.Join(textParts, "\n"),
+				}}, content...)
+			}
 
-				apiMsg := map[string]interface{}{
-					"role":    "user",
-					"content": content,
-				}
-				apiMessages = append(apiMessages, apiMsg)
+			if len(content) > 0 {
+				apiMsg["content"] = content
 			} else {
-				// Simple text message
-				apiMsg := map[string]interface{}{
-					"role":    "user",
-					"content": msg.Content().String(),
-				}
-				apiMessages = append(apiMessages, apiMsg)
-			}
-
-		case message.Assistant:
-			apiMsg := map[string]interface{}{
-				"role": "assistant",
-			}
-
-			if msg.Content().String() != "" {
 				apiMsg["content"] = msg.Content().String()
 			}
 
-			if len(msg.ToolCalls()) > 0 {
-				var toolCalls []map[string]interface{}
-				for _, tc := range msg.ToolCalls() {
-					toolCalls = append(toolCalls, map[string]interface{}{
+		case message.Assistant:
+			apiMsg["content"] = msg.Content().String()
+
+			// Add tool calls if present
+			if toolCalls := msg.ToolCalls(); len(toolCalls) > 0 {
+				var apiToolCalls []map[string]interface{}
+				for _, tc := range toolCalls {
+					apiToolCalls = append(apiToolCalls, map[string]interface{}{
 						"id":   tc.ID,
 						"type": "function",
 						"function": map[string]interface{}{
@@ -490,20 +472,22 @@ func (x *xaiClient) convertMessagesToAPI(messages []message.Message) []map[strin
 						},
 					})
 				}
-				apiMsg["tool_calls"] = toolCalls
+				apiMsg["tool_calls"] = apiToolCalls
 			}
 
-			apiMessages = append(apiMessages, apiMsg)
-
 		case message.Tool:
+			// Handle tool results
 			for _, result := range msg.ToolResults() {
 				apiMessages = append(apiMessages, map[string]interface{}{
 					"role":         "tool",
-					"content":      result.Content,
 					"tool_call_id": result.ToolCallID,
+					"content":      result.Content,
 				})
 			}
+			continue // Skip adding the message itself
 		}
+
+		apiMessages = append(apiMessages, apiMsg)
 	}
 
 	return apiMessages
@@ -515,19 +499,46 @@ func (x *xaiClient) convertToolsToAPI(tools []tools.BaseTool) []map[string]inter
 
 	for _, tool := range tools {
 		info := tool.Info()
+		
+		// Check if Parameters already contains the full schema (with "type" and "properties")
+		var parameters map[string]interface{}
+		params := info.Parameters
+		if _, hasType := params["type"]; hasType {
+			// Parameters already contains the full schema
+			parameters = params
+		} else {
+			// Parameters only contains properties, wrap them
+			parameters = map[string]interface{}{
+				"type":       "object",
+				"properties": info.Parameters,
+				"required":   info.Required,
+			}
+		}
+		
 		apiTools = append(apiTools, map[string]interface{}{
 			"type": "function",
 			"function": map[string]interface{}{
 				"name":        info.Name,
 				"description": info.Description,
-				"parameters": map[string]interface{}{
-					"type":       "object",
-					"properties": info.Parameters,
-					"required":   info.Required,
-				},
+				"parameters":  parameters,
 			},
 		})
 	}
 
 	return apiTools
+}
+
+// sanitizeContent removes control characters that could corrupt terminal display
+func sanitizeContent(content string) string {
+	// Remove ANSI escape sequences (ESC character)
+	content = strings.ReplaceAll(content, "\x1b", "")
+	// Remove carriage returns (which can cause display issues)
+	content = strings.ReplaceAll(content, "\r", "")
+	// Remove other control characters that might cause issues
+	content = strings.ReplaceAll(content, "\x00", "") // null
+	content = strings.ReplaceAll(content, "\x07", "") // bell
+	content = strings.ReplaceAll(content, "\x08", "") // backspace
+	// Replace form feed with newline to preserve structure
+	content = strings.ReplaceAll(content, "\x0c", "\n")
+	return content
 }

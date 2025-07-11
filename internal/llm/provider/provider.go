@@ -36,6 +36,7 @@ type TokenUsage struct {
 
 type ProviderResponse struct {
 	Content           string
+	ReasoningContent  string   // For xAI reasoning content (internal use)
 	ToolCalls         []message.ToolCall
 	Usage             TokenUsage
 	FinishReason      message.FinishReason

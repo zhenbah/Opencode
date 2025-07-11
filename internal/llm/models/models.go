@@ -43,9 +43,10 @@ var ProviderPopularity = map[ModelProvider]int{
 	ProviderGemini:     4,
 	ProviderGROQ:       5,
 	ProviderOpenRouter: 6,
-	ProviderBedrock:    7,
-	ProviderAzure:      8,
-	ProviderVertexAI:   9,
+	ProviderXAI:        7,
+	ProviderBedrock:    8,
+	ProviderAzure:      9,
+	ProviderVertexAI:   10,
 }
 
 var SupportedModels = map[ModelID]Model{

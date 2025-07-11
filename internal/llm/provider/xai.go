@@ -1,12 +1,8 @@
 package provider
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"sync"
 	"time"
 
@@ -39,6 +35,10 @@ type xaiClient struct {
 	deferredOptions    DeferredOptions     // Options for deferred completions
 	liveSearchEnabled  bool                // Enable Live Search
 	liveSearchOptions  LiveSearchOptions   // Options for Live Search
+	
+	// New architectural components
+	reasoningHandler *ReasoningHandler // Handles reasoning content processing
+	httpClient       *XAIHTTPClient    // Custom HTTP client for xAI API
 }
 
 type XAIClient ProviderClient
@@ -96,7 +96,7 @@ func WithLiveSearchOptions(opts LiveSearchOptions) XAIOption {
 func newXAIClient(opts providerClientOptions) XAIClient {
 	// Create base OpenAI client with xAI-specific settings
 	opts.openaiOptions = append(opts.openaiOptions,
-		WithOpenAIBaseURL("https://api.x.ai/v1"),
+		WithOpenAIBaseURL("https://api.x.ai"),
 	)
 
 	baseClient := newOpenAIClient(opts)
@@ -106,6 +106,15 @@ func newXAIClient(opts providerClientOptions) XAIClient {
 		openaiClient:       *openaiClientImpl,
 		fingerprintHistory: make([]FingerprintRecord, 0),
 	}
+
+	// Initialize new architectural components
+	xClient.reasoningHandler = NewReasoningHandler(xClient)
+	xClient.httpClient = NewXAIHTTPClient(HTTPClientConfig{
+		BaseURL:   "https://api.x.ai",
+		APIKey:    opts.apiKey,
+		UserAgent: "opencode/1.0",
+		Timeout:   30 * time.Second,
+	})
 
 	// Apply xAI-specific options if any
 	for _, opt := range opts.xaiOptions {
@@ -210,20 +219,32 @@ func (x *xaiClient) calculateCacheCostSavings(usage TokenUsage) float64 {
 func (x *xaiClient) send(ctx context.Context, messages []message.Message, tools []tools.BaseTool) (*ProviderResponse, error) {
 	// Use deferred completion if enabled
 	if x.deferredEnabled {
+		logging.Debug("Using deferred completion")
 		return x.SendDeferred(ctx, messages, tools, x.deferredOptions)
 	}
 
 	// Use custom HTTP client for Live Search in regular completions
 	if x.liveSearchEnabled {
+		logging.Debug("Using live search")
 		return x.sendWithLiveSearch(ctx, messages, tools)
+	}
+
+	// Use reasoning handler for models with reasoning capability
+	if x.reasoningHandler.ShouldUseReasoning() {
+		logging.Debug("Using reasoning handler for model", 
+			"model", x.providerOptions.model.ID,
+			"reasoning_effort", x.options.reasoningEffort)
+		return x.sendWithReasoningSupport(ctx, messages, tools)
 	}
 
 	// Use concurrent client if configured
 	if x.concurrent != nil {
+		logging.Debug("Using concurrent client")
 		return x.concurrent.send(ctx, messages, tools)
 	}
 
 	// Call the base OpenAI implementation
+	logging.Debug("Using base OpenAI implementation")
 	response, err := x.openaiClient.send(ctx, messages, tools)
 	if err != nil {
 		return nil, err
@@ -237,13 +258,41 @@ func (x *xaiClient) send(ctx context.Context, messages []message.Message, tools 
 	return response, nil
 }
 
+// sendWithReasoningSupport sends a request using the reasoning handler
+func (x *xaiClient) sendWithReasoningSupport(ctx context.Context, messages []message.Message, tools []tools.BaseTool) (*ProviderResponse, error) {
+	// Build request body using reasoning handler
+	reqBody := x.reasoningHandler.BuildReasoningRequest(ctx, messages, tools)
+	
+	// Log the request for debugging
+	logging.Debug("Sending reasoning request", 
+		"model", reqBody["model"],
+		"reasoning_effort", reqBody["reasoning_effort"],
+		"messages_count", len(messages))
+	
+	// Send the request using HTTP client
+	result, err := x.httpClient.SendCompletionRequest(ctx, reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("reasoning request failed: %w", err)
+	}
+	
+	// Convert result to ProviderResponse
+	response := x.convertDeferredResult(result)
+	
+	// Store reasoning content in the response for stream processing
+	if len(result.Choices) > 0 && result.Choices[0].Message.ReasoningContent != "" {
+		response.ReasoningContent = result.Choices[0].Message.ReasoningContent
+	}
+	
+	return response, nil
+}
+
 // sendWithLiveSearch sends a regular completion request with Live Search parameters
 func (x *xaiClient) sendWithLiveSearch(ctx context.Context, messages []message.Message, tools []tools.BaseTool) (*ProviderResponse, error) {
 	// Build request similar to deferred completions but without the deferred flag
 	reqBody := map[string]interface{}{
 		"model":      x.providerOptions.model.APIModel,
-		"messages":   x.convertMessagesToAPI(messages),
-		"max_tokens": &x.providerOptions.maxTokens,
+		"messages":   x.convertMessagesToAPI(messages), // Use the deferred method for proper conversion
+		"max_tokens": x.providerOptions.maxTokens, // Don't use pointer
 	}
 
 	// Add tools if provided
@@ -273,72 +322,36 @@ func (x *xaiClient) sendWithLiveSearch(ctx context.Context, messages []message.M
 		reqBody["parallel_tool_calls"] = x.options.parallelToolCalls
 	}
 
-	// Add Live Search parameters
-	reqBody["search_parameters"] = x.liveSearchOptions
+	// Add Live Search parameters only if enabled
+	if x.liveSearchEnabled {
+		reqBody["search_parameters"] = x.liveSearchOptions
+	}
 
-	// Send the request using custom HTTP client
-	return x.sendCustomHTTPRequest(ctx, reqBody)
-}
-
-// sendCustomHTTPRequest sends a custom HTTP request to the xAI API
-func (x *xaiClient) sendCustomHTTPRequest(ctx context.Context, reqBody map[string]interface{}) (*ProviderResponse, error) {
-	// Import required packages for this method
-	jsonBody, err := json.Marshal(reqBody)
+	// Log the request for debugging
+	logging.Debug("Sending custom HTTP request", 
+		"model", reqBody["model"],
+		"reasoning_effort", reqBody["reasoning_effort"],
+		"messages_count", len(x.convertMessagesToAPI(messages)))
+	
+	// Send the request using HTTP client
+	result, err := x.httpClient.SendCompletionRequest(ctx, reqBody)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request body: %w", err)
+		return nil, fmt.Errorf("live search request failed: %w", err)
 	}
-
-	// Get base URL (default to xAI API if not set)
-	baseURL := "https://api.x.ai"
-	if x.openaiClient.options.baseURL != "" {
-		baseURL = x.openaiClient.options.baseURL
-	}
-
-	// Create HTTP request
-	req, err := http.NewRequestWithContext(ctx, "POST", baseURL+"/v1/chat/completions", bytes.NewReader(jsonBody))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	// Set headers
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+x.providerOptions.apiKey)
-
-	// Send request
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Read response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	// Check status code
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("request failed with status %d: %s", resp.StatusCode, string(body))
-	}
-
-	// Parse response as OpenAI-style completion result (same format as deferred)
-	var result DeferredResult
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	logging.Debug("Live Search completion received", "citations", len(result.Citations))
-
-	// Convert result to ProviderResponse (reuse existing conversion logic)
-	return x.convertDeferredResult(&result), nil
+	
+	// Convert result to ProviderResponse
+	return x.convertDeferredResult(result), nil
 }
 
 func (x *xaiClient) stream(ctx context.Context, messages []message.Message, tools []tools.BaseTool) <-chan ProviderEvent {
 	// Use concurrent client if configured
 	if x.concurrent != nil {
 		return x.concurrent.stream(ctx, messages, tools)
+	}
+
+	// Use reasoning handler for models with reasoning capability
+	if x.reasoningHandler.ShouldUseReasoning() {
+		return x.streamWithReasoning(ctx, messages, tools)
 	}
 
 	// Get the base stream
@@ -361,6 +374,65 @@ func (x *xaiClient) stream(ctx context.Context, messages []message.Message, tool
 		}
 	}()
 
+	return eventChan
+}
+
+// streamWithReasoning handles streaming for reasoning models
+func (x *xaiClient) streamWithReasoning(ctx context.Context, messages []message.Message, tools []tools.BaseTool) <-chan ProviderEvent {
+	logging.Debug("Using reasoning handler for stream", 
+		"model", x.providerOptions.model.ID,
+		"reasoning_effort", x.options.reasoningEffort)
+	
+	// Create a channel to return events
+	eventChan := make(chan ProviderEvent)
+	
+	go func() {
+		defer close(eventChan)
+		
+		defer func() {
+			if r := recover(); r != nil {
+				logging.Error("Panic in reasoning stream", "panic", r)
+				eventChan <- ProviderEvent{
+					Type:  EventError,
+					Error: fmt.Errorf("panic in reasoning stream: %v", r),
+				}
+			}
+		}()
+		
+		// Check context first
+		select {
+		case <-ctx.Done():
+			logging.Debug("Context cancelled before reasoning request", "error", ctx.Err())
+			eventChan <- ProviderEvent{
+				Type:  EventError,
+				Error: ctx.Err(),
+			}
+			return
+		default:
+		}
+		
+		logging.Debug("Starting reasoning request")
+		
+		// Get response using reasoning support
+		response, err := x.sendWithReasoningSupport(ctx, messages, tools)
+		if err != nil {
+			logging.Error("Reasoning request failed", "error", err)
+			eventChan <- ProviderEvent{
+				Type:  EventError,
+				Error: err,
+			}
+			return
+		}
+		
+		// Process response using reasoning handler
+		events := x.reasoningHandler.ProcessReasoningResponse(response)
+		
+		// Send all events
+		for _, event := range events {
+			eventChan <- event
+		}
+	}()
+	
 	return eventChan
 }
 
@@ -414,6 +486,7 @@ func (x *xaiClient) StreamBatch(ctx context.Context, requests []BatchRequest) []
 	}
 	return channels
 }
+
 
 // convertMessages overrides the base implementation to support xAI-specific image handling
 func (x *xaiClient) convertMessages(messages []message.Message) (openaiMessages []openai.ChatCompletionMessageParamUnion) {

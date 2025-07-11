@@ -163,6 +163,15 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.attachments = append(m.attachments, msg.Attachment)
 	case tea.KeyMsg:
+		// Let specific global shortcuts pass through to higher level
+		globalKeys := []string{"ctrl+h", "ctrl+?", "cmd+?", "cmd+shift+/", "ctrl+shift+/", "ctrl+l", "ctrl+s", "ctrl+k", "ctrl+f", "ctrl+o", "ctrl+t"}
+		for _, globalKey := range globalKeys {
+			if msg.String() == globalKey {
+				// Don't consume global shortcuts, let them bubble up
+				return m, nil
+			}
+		}
+		
 		if key.Matches(msg, DeleteKeyMaps.AttachmentDeleteMode) {
 			m.deleteMode = true
 			return m, nil
