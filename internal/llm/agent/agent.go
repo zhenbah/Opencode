@@ -242,7 +242,7 @@ func (a *agent) processGeneration(ctx context.Context, sessionID, content string
 	}
 	if len(msgs) == 0 {
 		go func() {
-			defer logging.RecoverPanic("agent.generateTitle", func() {
+			defer logging.RecoverPanic("agent.Run", func() {
 				logging.ErrorPersist("panic while generating title")
 			})
 			titleErr := a.generateTitle(context.Background(), sessionID, content)
@@ -373,7 +373,7 @@ func (a *agent) streamAndHandleEvents(ctx context.Context, sessionID string, msg
 					tool = availableTool
 					break
 				}
-				// TODO: Handle Copilot Sonnet-4 tool name repetition if needed
+				// Monkey patch for Copilot Sonnet-4 tool repetition obfuscation
 				// if strings.HasPrefix(toolCall.Name, availableTool.Info().Name) &&
 				// 	strings.HasPrefix(toolCall.Name, availableTool.Info().Name+availableTool.Info().Name) {
 				// 	tool = availableTool
