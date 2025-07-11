@@ -256,13 +256,24 @@ func (m *editorCmp) attachmentsContent() string {
 		MarginLeft(1).
 		Background(t.TextMuted()).
 		Foreground(t.Text())
+
 	for i, attachment := range m.attachments {
+		// Choose appropriate icon based on MIME type
+		icon := styles.DocumentIcon
+		if strings.HasPrefix(attachment.MimeType, "image/") {
+			icon = "🖼️" // Image icon for images
+		}
+
+		// Format file size
+		sizeStr := formatFileSize(len(attachment.Content))
+
 		var filename string
 		if len(attachment.FileName) > 10 {
-			filename = fmt.Sprintf(" %s %s...", styles.DocumentIcon, attachment.FileName[0:7])
+			filename = fmt.Sprintf(" %s %s... (%s)", icon, attachment.FileName[0:7], sizeStr)
 		} else {
-			filename = fmt.Sprintf(" %s %s", styles.DocumentIcon, attachment.FileName)
+			filename = fmt.Sprintf(" %s %s (%s)", icon, attachment.FileName, sizeStr)
 		}
+
 		if m.deleteMode {
 			filename = fmt.Sprintf("%d%s", i, filename)
 		}
@@ -270,6 +281,23 @@ func (m *editorCmp) attachmentsContent() string {
 	}
 	content := lipgloss.JoinHorizontal(lipgloss.Left, styledAttachments...)
 	return content
+}
+
+// formatFileSize formats bytes into a human-readable string
+func formatFileSize(bytes int) string {
+	const (
+		KB = 1024
+		MB = KB * 1024
+	)
+
+	switch {
+	case bytes >= MB:
+		return fmt.Sprintf("%.1fMB", float64(bytes)/MB)
+	case bytes >= KB:
+		return fmt.Sprintf("%.1fKB", float64(bytes)/KB)
+	default:
+		return fmt.Sprintf("%dB", bytes)
+	}
 }
 
 func (m *editorCmp) BindingKeys() []key.Binding {

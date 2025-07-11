@@ -210,7 +210,10 @@ func (a *agent) Run(ctx context.Context, sessionID string, content string, attac
 	go func() {
 		logging.Debug("Request started", "sessionID", sessionID)
 		defer logging.RecoverPanic("agent.Run", func() {
-			events <- a.err(fmt.Errorf("panic while running the agent"))
+			events <- AgentEvent{
+				Type:  AgentEventTypeError,
+				Error: fmt.Errorf("panic while running the agent"),
+			}
 		})
 		var attachmentParts []message.ContentPart
 		for _, attachment := range attachments {
@@ -239,7 +242,7 @@ func (a *agent) processGeneration(ctx context.Context, sessionID, content string
 	}
 	if len(msgs) == 0 {
 		go func() {
-			defer logging.RecoverPanic("agent.Run", func() {
+			defer logging.RecoverPanic("agent.generateTitle", func() {
 				logging.ErrorPersist("panic while generating title")
 			})
 			titleErr := a.generateTitle(context.Background(), sessionID, content)
@@ -370,7 +373,7 @@ func (a *agent) streamAndHandleEvents(ctx context.Context, sessionID string, msg
 					tool = availableTool
 					break
 				}
-				// Monkey patch for Copilot Sonnet-4 tool repetition obfuscation
+				// TODO: Handle Copilot Sonnet-4 tool name repetition if needed
 				// if strings.HasPrefix(toolCall.Name, availableTool.Info().Name) &&
 				// 	strings.HasPrefix(toolCall.Name, availableTool.Info().Name+availableTool.Info().Name) {
 				// 	tool = availableTool
@@ -731,20 +734,51 @@ func createAgentProvider(agentName config.AgentName) (provider.Provider, error) 
 		provider.WithSystemMessage(prompt.GetAgentPrompt(agentName, model.Provider)),
 		provider.WithMaxTokens(maxTokens),
 	}
-	if model.Provider == models.ProviderOpenAI || model.Provider == models.ProviderLocal && model.CanReason {
-		opts = append(
-			opts,
-			provider.WithOpenAIOptions(
-				provider.WithReasoningEffort(agentConfig.ReasoningEffort),
-			),
-		)
-	} else if model.Provider == models.ProviderAnthropic && model.CanReason && agentName == config.AgentCoder {
-		opts = append(
-			opts,
-			provider.WithAnthropicOptions(
-				provider.WithAnthropicShouldThinkFn(provider.DefaultShouldThinkFn),
-			),
-		)
+	// Configure reasoning support based on provider
+	if model.CanReason {
+		switch model.Provider {
+		case models.ProviderOpenAI, models.ProviderLocal, models.ProviderXAI:
+			opts = append(opts,
+				provider.WithOpenAIOptions(
+					provider.WithReasoningEffort(agentConfig.ReasoningEffort),
+				),
+			)
+		case models.ProviderAnthropic:
+			if agentName == config.AgentCoder {
+				opts = append(opts,
+					provider.WithAnthropicOptions(
+						provider.WithAnthropicShouldThinkFn(provider.DefaultShouldThinkFn),
+					),
+				)
+			}
+		}
+	}
+
+	// Configure xAI-specific options
+	if model.Provider == models.ProviderXAI {
+		var xaiOpts []provider.XAIOption
+
+		// Configure concurrent requests if specified
+		if providerCfg.MaxConcurrentRequests > 0 {
+			xaiOpts = append(xaiOpts, provider.WithMaxConcurrentRequests(providerCfg.MaxConcurrentRequests))
+		}
+
+		// Configure deferred completions
+		if shouldEnableDeferred(model, agentConfig, providerCfg) {
+			xaiOpts = append(xaiOpts, provider.WithDeferredCompletion())
+
+			// Add custom timeout/interval if configured
+			if providerCfg.DeferredCompletion != nil {
+				timeout, interval := parseDeferredTimings(providerCfg.DeferredCompletion)
+				if timeout > 0 && interval > 0 {
+					xaiOpts = append(xaiOpts, provider.WithDeferredOptions(timeout, interval))
+				}
+			}
+		}
+
+		if len(xaiOpts) > 0 {
+			opts = append(opts, provider.WithXAIOptions(xaiOpts...))
+		}
 	}
 	agentProvider, err := provider.NewProvider(
 		model.Provider,
@@ -755,4 +789,60 @@ func createAgentProvider(agentName config.AgentName) (provider.Provider, error) 
 	}
 
 	return agentProvider, nil
+}
+
+// shouldEnableDeferred determines if deferred completions should be enabled
+func shouldEnableDeferred(model models.Model, agentConfig config.Agent, providerCfg config.Provider) bool {
+	// Check agent-level override first
+	if agentConfig.DeferredCompletion != nil {
+		return *agentConfig.DeferredCompletion
+	}
+
+	// Check provider-level configuration
+	if providerCfg.DeferredCompletion == nil {
+		return false
+	}
+
+	// If explicitly enabled/disabled
+	if providerCfg.DeferredCompletion.Enabled {
+		return true
+	}
+
+	// Check auto-enable rules
+	if providerCfg.DeferredCompletion.AutoEnable != nil {
+		autoEnable := providerCfg.DeferredCompletion.AutoEnable
+
+		// Check if model is in the auto-enable list
+		for _, modelID := range autoEnable.ForModels {
+			if string(model.ID) == modelID {
+				return true
+			}
+		}
+
+		// Check if max tokens exceed threshold
+		if autoEnable.WhenTokensExceed > 0 && agentConfig.MaxTokens > autoEnable.WhenTokensExceed {
+			return true
+		}
+	}
+
+	return false
+}
+
+// parseDeferredTimings parses timeout and poll interval from configuration
+func parseDeferredTimings(cfg *config.DeferredCompletionConfig) (time.Duration, time.Duration) {
+	var timeout, interval time.Duration
+
+	if cfg.Timeout != "" {
+		if t, err := time.ParseDuration(cfg.Timeout); err == nil {
+			timeout = t
+		}
+	}
+
+	if cfg.PollInterval != "" {
+		if i, err := time.ParseDuration(cfg.PollInterval); err == nil {
+			interval = i
+		}
+	}
+
+	return timeout, interval
 }

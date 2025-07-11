@@ -100,6 +100,10 @@
             "high"
           ],
           "type": "string"
+        },
+        "deferredCompletion": {
+          "description": "Override provider's deferred completion setting for this agent",
+          "type": "boolean"
         }
       },
       "required": [
@@ -210,6 +214,10 @@
               "high"
             ],
             "type": "string"
+          },
+          "deferredCompletion": {
+            "description": "Override provider's deferred completion setting for this agent",
+            "type": "boolean"
           }
         },
         "required": [
@@ -372,6 +380,49 @@
             "description": "Whether the provider is disabled",
             "type": "boolean"
           },
+          "maxConcurrentRequests": {
+            "description": "Maximum concurrent requests for providers that support it (e.g., xAI)",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "deferredCompletion": {
+            "description": "Deferred completion configuration for providers that support it (e.g., xAI)",
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "description": "Enable deferred completions",
+                "type": "boolean"
+              },
+              "timeout": {
+                "description": "Timeout duration (e.g., '10m', '30s')",
+                "type": "string",
+                "pattern": "^[0-9]+(ms|s|m|h)$"
+              },
+              "pollInterval": {
+                "description": "Poll interval duration (e.g., '10s', '500ms')",
+                "type": "string",
+                "pattern": "^[0-9]+(ms|s|m|h)$"
+              },
+              "autoEnable": {
+                "description": "Rules for automatically enabling deferred completions",
+                "type": "object",
+                "properties": {
+                  "forModels": {
+                    "description": "Enable for specific models",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "whenTokensExceed": {
+                    "description": "Enable when max tokens exceed this value",
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
+              }
+            }
+          },
           "provider": {
             "description": "Provider type",
             "enum": [
@@ -383,7 +434,8 @@
               "bedrock",
               "azure",
               "vertexai",
-              "copilot"
+              "copilot",
+              "xai"
             ],
             "type": "string"
           }
