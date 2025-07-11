@@ -225,10 +225,9 @@ func Load(workingDir string, debug bool) (*Config, error) {
 	}
 
 	// Override the max tokens for title agent to ensure concise titles
-	if titleAgent, exists := cfg.Agents[AgentTitle]; exists {
-		titleAgent.MaxTokens = 80
-		cfg.Agents[AgentTitle] = titleAgent
-	}
+	titleAgent := cfg.Agents[AgentTitle]
+	titleAgent.MaxTokens = 80
+	cfg.Agents[AgentTitle] = titleAgent
 	return cfg, nil
 }
 
@@ -368,10 +367,10 @@ func setProviderDefaults() {
 
 	// XAI configuration
 	if key := viper.GetString("providers.xai.apiKey"); strings.TrimSpace(key) != "" {
-		viper.SetDefault("agents.coder.model", models.XAIGrok2)
-		viper.SetDefault("agents.summarizer.model", models.XAIGrok2)
-		viper.SetDefault("agents.task.model", models.XAIGrok2)
-		viper.SetDefault("agents.title.model", models.XAIGrok3MiniFast)
+		viper.SetDefault("agents.coder.model", models.XAIGrok4)       // Most capable model with reasoning + vision
+		viper.SetDefault("agents.summarizer.model", models.XAIGrok3)  // Good balance for summarization
+		viper.SetDefault("agents.task.model", models.XAIGrok3Mini)    // Reasoning support for complex tasks
+		viper.SetDefault("agents.title.model", models.XAIGrok3MiniFast) // Fast + cheap for simple titles
 		return
 	}
 
