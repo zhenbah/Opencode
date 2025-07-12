@@ -69,8 +69,6 @@ var XAIModels = map[ModelID]Model{
 		CostPer1MOut:       15.0,
 		CostPer1MOutCached: 0.75,
 		ContextWindow:      256_000,
-		DefaultMaxTokens:   20_000,
-		CanReason:          true,
-		SupportsAttachments: true,
+		DefaultMaxTokens:   20_000
 	},
 }
