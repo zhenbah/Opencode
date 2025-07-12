@@ -157,6 +157,10 @@ This is useful if you want to use a different shell than your default system she
     "openrouter": {
       "apiKey": "your-api-key",
       "disabled": false
+    },
+    "xai": {
+      "apiKey": "your-api-key",
+      "disabled": false
     }
   },
   "agents": {
