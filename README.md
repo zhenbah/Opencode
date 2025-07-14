@@ -269,6 +269,8 @@ OpenCode supports a variety of AI models from different providers:
 
 - Gemini 2.5
 - Gemini 2.5 Flash
+- Claude Sonnet 4
+- Claude Opus 4
 
 ## Usage
 
