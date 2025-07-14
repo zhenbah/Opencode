@@ -3,12 +3,16 @@ package models
 const (
 	ProviderVertexAI ModelProvider = "vertexai"
 
-	// Models
+	// Gemini Models
 	VertexAIGemini25Flash ModelID = "vertexai.gemini-2.5-flash"
 	VertexAIGemini25      ModelID = "vertexai.gemini-2.5"
+
+	// Claude Models
+	VertexAIClaude4Sonnet ModelID = "vertexai.claude-sonnet-4"
+	VertexAIClaude4Opus   ModelID = "vertexai.claude-opus-4"
 )
 
-var VertexAIGeminiModels = map[ModelID]Model{
+var VertexAIModels = map[ModelID]Model{
 	VertexAIGemini25Flash: {
 		ID:                  VertexAIGemini25Flash,
 		Name:                "VertexAI: Gemini 2.5 Flash",
@@ -34,5 +38,33 @@ var VertexAIGeminiModels = map[ModelID]Model{
 		ContextWindow:       GeminiModels[Gemini25].ContextWindow,
 		DefaultMaxTokens:    GeminiModels[Gemini25].DefaultMaxTokens,
 		SupportsAttachments: true,
+	},
+	VertexAIClaude4Sonnet: {
+		ID:                  VertexAIClaude4Sonnet,
+		Name:                "VertexAI: Claude Sonnet 4",
+		Provider:            ProviderVertexAI,
+		APIModel:            "claude-sonnet-4",
+		CostPer1MIn:         AnthropicModels[Claude4Sonnet].CostPer1MIn,
+		CostPer1MInCached:   AnthropicModels[Claude4Sonnet].CostPer1MInCached,
+		CostPer1MOut:        AnthropicModels[Claude4Sonnet].CostPer1MOut,
+		CostPer1MOutCached:  AnthropicModels[Claude4Sonnet].CostPer1MOutCached,
+		ContextWindow:       AnthropicModels[Claude4Sonnet].ContextWindow,
+		DefaultMaxTokens:    AnthropicModels[Claude4Sonnet].DefaultMaxTokens,
+		CanReason:           AnthropicModels[Claude4Sonnet].CanReason,
+		SupportsAttachments: AnthropicModels[Claude4Sonnet].SupportsAttachments,
+	},
+	VertexAIClaude4Opus: {
+		ID:                  VertexAIClaude4Opus,
+		Name:                "VertexAI: Claude Opus 4",
+		Provider:            ProviderVertexAI,
+		APIModel:            "claude-opus-4",
+		CostPer1MIn:         AnthropicModels[Claude4Opus].CostPer1MIn,
+		CostPer1MInCached:   AnthropicModels[Claude4Opus].CostPer1MInCached,
+		CostPer1MOut:        AnthropicModels[Claude4Opus].CostPer1MOut,
+		CostPer1MOutCached:  AnthropicModels[Claude4Opus].CostPer1MOutCached,
+		ContextWindow:       AnthropicModels[Claude4Opus].ContextWindow,
+		DefaultMaxTokens:    AnthropicModels[Claude4Opus].DefaultMaxTokens,
+		CanReason:           AnthropicModels[Claude4Opus].CanReason,
+		SupportsAttachments: AnthropicModels[Claude4Opus].SupportsAttachments,
 	},
 }
