@@ -1,6 +1,7 @@
 package models
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -91,5 +92,71 @@ func TestVertexAIProviderPriority(t *testing.T) {
 	// VertexAI should have a reasonable priority (not 0)
 	if priority <= 0 {
 		t.Errorf("Expected positive priority for VertexAI provider, got %d", priority)
+	}
+}
+
+// Test model routing for all defined models
+func TestVertexAI_AllModelRouting(t *testing.T) {
+	claudeModels := []ModelID{
+		VertexAIClaude4Sonnet,
+		VertexAIClaude4Opus,
+	}
+
+	geminiModels := []ModelID{
+		VertexAIGemini25Flash,
+		VertexAIGemini25,
+	}
+
+	// Test Claude models route correctly
+	for _, modelID := range claudeModels {
+		t.Run(string(modelID), func(t *testing.T) {
+			model := SupportedModels[modelID]
+			if !strings.HasPrefix(model.APIModel, "claude-") {
+				t.Errorf("Claude model %s should have 'claude-' prefix, got %s", modelID, model.APIModel)
+			}
+		})
+	}
+
+	// Test Gemini models route correctly  
+	for _, modelID := range geminiModels {
+		t.Run(string(modelID), func(t *testing.T) {
+			model := SupportedModels[modelID]
+			if strings.HasPrefix(model.APIModel, "claude-") {
+				t.Errorf("Gemini model %s should not have 'claude-' prefix, got %s", modelID, model.APIModel)
+			}
+		})
+	}
+}
+
+// Test model definitions for required fields
+func TestVertexAI_ClaudeModelDefinitions(t *testing.T) {
+	claudeModels := []ModelID{
+		VertexAIClaude4Sonnet,
+		VertexAIClaude4Opus,
+	}
+
+	for _, modelID := range claudeModels {
+		t.Run(string(modelID), func(t *testing.T) {
+			model := SupportedModels[modelID]
+
+			// Verify required fields
+			if model.APIModel == "" {
+				t.Errorf("API model should not be empty")
+			}
+			if model.Name == "" {
+				t.Errorf("Display name should not be empty")
+			}
+			if model.ContextWindow <= 0 {
+				t.Errorf("Context window should be positive, got %d", model.ContextWindow)
+			}
+			if model.DefaultMaxTokens <= 0 {
+				t.Errorf("Max output tokens should be positive, got %d", model.DefaultMaxTokens)
+			}
+
+			// Verify Claude-specific requirements
+			if !model.SupportsAttachments {
+				t.Errorf("Claude models should support attachments")
+			}
+		})
 	}
 }
