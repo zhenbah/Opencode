@@ -278,9 +278,9 @@ func setProviderDefaults() {
 		viper.SetDefault("providers.azure.apiKey", os.Getenv("AZURE_OPENAI_API_KEY"))
 	}
 	if apiKey, err := LoadGitHubToken(); err == nil && apiKey != "" {
-		viper.SetDefault("providers.copilot.apiKey", apiKey)
-		if viper.GetString("providers.copilot.apiKey") == "" {
-			viper.Set("providers.copilot.apiKey", apiKey)
+		viper.SetDefault("providers.github-copilot.apiKey", apiKey)
+		if viper.GetString("providers.github-copilot.apiKey") == "" {
+			viper.Set("providers.github-copilot.apiKey", apiKey)
 		}
 	}
 
@@ -295,8 +295,8 @@ func setProviderDefaults() {
 	// 8. Azure
 	// 9. Google Cloud VertexAI
 
-	// copilot configuration
-	if key := viper.GetString("providers.copilot.apiKey"); strings.TrimSpace(key) != "" {
+	// github-copilot configuration
+	if key := viper.GetString("providers.github-copilot.apiKey"); strings.TrimSpace(key) != "" {
 		viper.SetDefault("agents.coder.model", models.CopilotGPT4o)
 		viper.SetDefault("agents.summarizer.model", models.CopilotGPT4o)
 		viper.SetDefault("agents.task.model", models.CopilotGPT4o)

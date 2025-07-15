@@ -1,23 +1,23 @@
 package models
 
 const (
-	ProviderCopilot ModelProvider = "copilot"
+	ProviderCopilot ModelProvider = "github-copilot"
 
 	// GitHub Copilot models
-	CopilotGTP35Turbo      ModelID = "copilot.gpt-3.5-turbo"
-	CopilotGPT4o           ModelID = "copilot.gpt-4o"
-	CopilotGPT4oMini       ModelID = "copilot.gpt-4o-mini"
-	CopilotGPT41           ModelID = "copilot.gpt-4.1"
-	CopilotClaude35        ModelID = "copilot.claude-3.5-sonnet"
-	CopilotClaude37        ModelID = "copilot.claude-3.7-sonnet"
-	CopilotClaude4         ModelID = "copilot.claude-sonnet-4"
-	CopilotO1              ModelID = "copilot.o1"
-	CopilotO3Mini          ModelID = "copilot.o3-mini"
-	CopilotO4Mini          ModelID = "copilot.o4-mini"
-	CopilotGemini20        ModelID = "copilot.gemini-2.0-flash"
-	CopilotGemini25        ModelID = "copilot.gemini-2.5-pro"
-	CopilotGPT4            ModelID = "copilot.gpt-4"
-	CopilotClaude37Thought ModelID = "copilot.claude-3.7-sonnet-thought"
+	CopilotGTP35Turbo      ModelID = "github-copilot/gpt-3.5-turbo"
+	CopilotGPT4o           ModelID = "github-copilot/gpt-4o"
+	CopilotGPT4oMini       ModelID = "github-copilot/gpt-4o-mini"
+	CopilotGPT41           ModelID = "github-copilot/gpt-4.1"
+	CopilotClaude35        ModelID = "github-copilot/claude-3.5-sonnet"
+	CopilotClaude37        ModelID = "github-copilot/claude-3.7-sonnet"
+	CopilotClaude4         ModelID = "github-copilot/claude-sonnet-4"
+	CopilotO1              ModelID = "github-copilot/o1"
+	CopilotO3Mini          ModelID = "github-copilot/o3-mini"
+	CopilotO4Mini          ModelID = "github-copilot/o4-mini"
+	CopilotGemini20        ModelID = "github-copilot/gemini-2.0-flash-001"
+	CopilotGemini25        ModelID = "github-copilot/gemini-2.5-pro"
+	CopilotGPT4            ModelID = "github-copilot/gpt-4"
+	CopilotClaude37Thought ModelID = "github-copilot/claude-3.7-sonnet-thought"
 )
 
 var CopilotAnthropicModels = []ModelID{
