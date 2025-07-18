@@ -76,6 +76,7 @@ func NewAgent(
 	messages message.Service,
 	agentTools []tools.BaseTool,
 ) (Service, error) {
+	logging.Info("Creating agent with args ", "agentName", agentName, "sessionService", sessions, "messageService", messages, "agentTools", agentTools)
 	agentProvider, err := createAgentProvider(agentName)
 	if err != nil {
 		return nil, err

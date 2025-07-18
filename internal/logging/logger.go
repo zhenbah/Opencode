@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+
 	// "path/filepath"
 	"encoding/json"
 	"runtime"
@@ -12,33 +13,92 @@ import (
 	"time"
 )
 
-func getCaller() string {
-	var caller string
-	if _, file, line, ok := runtime.Caller(2); ok {
-		// caller = fmt.Sprintf("%s:%d", filepath.Base(file), line)
-		caller = fmt.Sprintf("%s:%d", file, line)
-	} else {
-		caller = "unknown"
+// Global logging file writer
+var globalLogFile *os.File
+var globalLogMutex sync.Mutex
+
+// InitGlobalLogging initializes global logging to the specified file
+func InitGlobalLogging(logFilePath string) error {
+	globalLogMutex.Lock()
+	defer globalLogMutex.Unlock()
+
+	// Close existing log file if open
+	if globalLogFile != nil {
+		globalLogFile.Close()
 	}
-	return caller
+
+	// Create/open the log file (truncate if exists)
+	file, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open global log file: %w", err)
+	}
+
+	globalLogFile = file
+	return nil
+}
+
+// logToGlobalFile writes a log message to the global log file
+func logToGlobalFile(level, msg string, args ...any) {
+	if globalLogFile == nil {
+		return
+	}
+
+	globalLogMutex.Lock()
+	defer globalLogMutex.Unlock()
+
+	timestamp := time.Now().Format("2006-01-02 15:04:05")
+	logLine := fmt.Sprintf("[%s] %s: %s", timestamp, level, msg)
+
+	// Add args if present
+	if len(args) > 0 {
+		for i := 0; i < len(args); i += 2 {
+			if i+1 < len(args) {
+				logLine += fmt.Sprintf(" %v=%v", args[i], args[i+1])
+			} else {
+				logLine += fmt.Sprintf(" %v", args[i])
+			}
+		}
+	}
+
+	logLine += "\n"
+
+	globalLogFile.WriteString(logLine)
+	globalLogFile.Sync()
+}
+
+func getCaller() string {
+	if pc, file, line, ok := runtime.Caller(2); ok {
+		fn := runtime.FuncForPC(pc)
+		funcName := ""
+		if fn != nil {
+			funcName = fn.Name()
+		}
+		return fmt.Sprintf("%s:%d (%s)", file, line, funcName)
+	}
+	return "unknown"
 }
 func Info(msg string, args ...any) {
 	source := getCaller()
-	slog.Info(msg, append([]any{"source", source}, args...)...)
+	slog.Info(msg, append([]any{"source", source, "location", source}, args...)...)
+	msg_with_source := fmt.Sprintf("%s [source: %s]", msg, source)
+	logToGlobalFile("INFO", msg_with_source, args...)
 }
 
 func Debug(msg string, args ...any) {
 	// slog.Debug(msg, args...)
 	source := getCaller()
 	slog.Debug(msg, append([]any{"source", source}, args...)...)
+	logToGlobalFile("DEBUG", msg, args...)
 }
 
 func Warn(msg string, args ...any) {
 	slog.Warn(msg, args...)
+	logToGlobalFile("WARN", msg, args...)
 }
 
 func Error(msg string, args ...any) {
 	slog.Error(msg, args...)
+	logToGlobalFile("ERROR", msg, args...)
 }
 
 func InfoPersist(msg string, args ...any) {
@@ -122,7 +182,7 @@ func AppendToSessionLogFile(sessionId string, filename string, content string) s
 
 	filePath := fmt.Sprintf("%s/%s", sessionPath, filename)
 
-	f, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(filePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		Error("Failed to open session log file", "filepath", filePath, "error", err)
 		return ""

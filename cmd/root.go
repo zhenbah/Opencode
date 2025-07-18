@@ -87,6 +87,12 @@ to assist developers in writing, debugging, and understanding code directly from
 			return err
 		}
 
+		// Initialize global logging
+		err = logging.InitGlobalLogging("testing_opencode.log")
+		if err != nil {
+			logging.Error("Failed to initialize global logging", "error", err)
+		}
+
 		// Connect DB, this will also run migrations
 		conn, err := db.Connect()
 		if err != nil {

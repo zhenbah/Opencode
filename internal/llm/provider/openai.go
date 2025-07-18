@@ -67,6 +67,7 @@ func newOpenAIClient(opts providerClientOptions) OpenAIClient {
 
 func (o *openaiClient) convertMessages(messages []message.Message) (openaiMessages []openai.ChatCompletionMessageParamUnion) {
 	// Add system message first
+	// logging.Info("System message", "content", o.providerOptions.systemMessage)
 	openaiMessages = append(openaiMessages, openai.SystemMessage(o.providerOptions.systemMessage))
 
 	for _, msg := range messages {
@@ -190,15 +191,25 @@ func (o *openaiClient) send(ctx context.Context, messages []message.Message, too
 	cfg := config.Get()
 	if cfg.Debug {
 		jsonData, _ := json.Marshal(params)
-		logging.Debug("Prepared messages", "messages", string(jsonData))
+		logging.Info("Prepared messages", "messages", string(jsonData))
 	}
 	attempts := 0
 	for {
 		attempts++
+		logging.Info("Making OpenAI API call", "model", o.providerOptions.model.APIModel, "system_prompt", o.providerOptions.systemMessage[0:2000]+"....", "attempt", attempts, "system_prompt_length", len(o.providerOptions.systemMessage))
+		for _, msg := range messages {
+			logging.Info("Processing message", "role", msg.Role, "content_length", len(msg.Content().Text), "tool_calls_count", len(msg.ToolCalls()), "tool_results_count", len(msg.ToolResults()))
+		}
+
 		openaiResponse, err := o.client.Chat.Completions.New(
 			ctx,
 			params,
 		)
+		if err == nil && openaiResponse != nil && len(openaiResponse.Choices) > 0 {
+			logging.Info("OpenAI API call completed", "content_length", len(openaiResponse.Choices[0].Message.Content), "finish_reason", openaiResponse.Choices[0].FinishReason, "tool_calls_count", len(openaiResponse.Choices[0].Message.ToolCalls))
+		} else {
+			logging.Info("OpenAI API call failed", "error", err)
+		}
 		// If there is an error we are going to see if we can retry the call
 		if err != nil {
 			retry, after, retryErr := o.shouldRetry(attempts, err)
@@ -256,6 +267,10 @@ func (o *openaiClient) stream(ctx context.Context, messages []message.Message, t
 	go func() {
 		for {
 			attempts++
+			logging.Info("Making OpenAI streaming API call", "model", o.providerOptions.model.APIModel, "attempt", attempts, "system_prompt", o.providerOptions.systemMessage[0:2000]+"....", "system_prompt_length", len(o.providerOptions.systemMessage))
+			for _, msg := range messages {
+				logging.Info("Processing streaming message", "role", msg.Role, "content_length", len(msg.Content().Text), "tool_calls_count", len(msg.ToolCalls()), "tool_results_count", len(msg.ToolResults()))
+			}
 			openaiStream := o.client.Chat.Completions.NewStreaming(
 				ctx,
 				params,
@@ -279,6 +294,13 @@ func (o *openaiClient) stream(ctx context.Context, messages []message.Message, t
 					}
 				}
 			}
+			logging.Info("finished streaming , so here is the content full:", currentContent)
+			jsonData, err1 := json.Marshal(acc.ChatCompletion)
+			if err1 != nil {
+				logging.Error("Failed to marshal JSON", "error", err1)
+			} else {
+				logging.Info("JSON marshal of the ChatCompletion", "json", string(jsonData))
+			}
 
 			err := openaiStream.Err()
 			if err == nil || errors.Is(err, io.EOF) {
@@ -290,6 +312,8 @@ func (o *openaiClient) stream(ctx context.Context, messages []message.Message, t
 				if len(toolCalls) > 0 {
 					finishReason = message.FinishReasonToolUse
 				}
+
+				logging.Info("OpenAI streaming API call completed", "content_length", len(currentContent), "finish_reason", finishReason, "tool_calls_count", len(toolCalls))
 
 				eventChan <- ProviderEvent{
 					Type: EventComplete,

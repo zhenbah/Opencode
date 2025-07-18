@@ -1,5 +1,25 @@
 {
   "$schema": "./opencode-schema.json",
+  "agents": {
+    "coder": {
+      "model": "gpt-4o-mini",
+      "maxTokens": 4096
+    },
+    "task": {
+      "model": "gpt-4o-mini",
+      "maxTokens": 4096
+    },
+    "title": {
+      "model": "gpt-4o-mini",
+      "maxTokens": 80
+    }
+  },
+    "providers": {
+      "openai": {
+        "apiKey": "${OPENAI_API_KEY}",
+        "disabled": false
+      }
+    },
   "lsp": {
     "gopls": {
       "command": "gopls"
