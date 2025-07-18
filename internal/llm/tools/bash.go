@@ -56,7 +56,22 @@ var safeReadOnlyCommands = []string{
 
 func bashDescription() string {
 	bannedCommandsStr := strings.Join(bannedCommands, ", ")
-	return fmt.Sprintf(`Executes a given bash command in a persistent shell session with optional timeout, ensuring proper handling and security measures.
+
+	// Get attribution strings based on config
+	cfg := config.Get()
+	var commitAttribution, commitAttributionExample, prAttribution string
+
+	if cfg != nil && cfg.DisableAIAttribution {
+		commitAttribution = ""
+		commitAttributionExample = ""
+		prAttribution = ""
+	} else {
+		commitAttribution = "🤖 Generated with opencode\nCo-Authored-By: opencode <noreply@opencode.ai>"
+		commitAttributionExample = "\n 🤖 Generated with opencode\n Co-Authored-By: opencode <noreply@opencode.ai>"
+		prAttribution = "🤖 Generated with opencode"
+	}
+
+	description := fmt.Sprintf(`Executes a given bash command in a persistent shell session with optional timeout, ensuring proper handling and security measures.
 
 Before executing the command, please follow these steps:
 
@@ -122,16 +137,13 @@ When the user asks you to create a new git commit, follow these steps carefully:
 </commit_analysis>
 
 4. Create the commit with a message ending with:
-🤖 Generated with opencode
-Co-Authored-By: opencode <noreply@opencode.ai>
+{{COMMIT_ATTRIBUTION}}
 
 - In order to ensure good formatting, ALWAYS pass the commit message via a HEREDOC, a la this example:
 <example>
 git commit -m "$(cat <<'EOF'
  Commit message here.
-
- 🤖 Generated with opencode
- Co-Authored-By: opencode <noreply@opencode.ai>
+{{COMMIT_ATTRIBUTION_EXAMPLE}}
  EOF
  )"
 </example>
@@ -192,8 +204,7 @@ gh pr create --title "the pr title" --body "$(cat <<'EOF'
 
 ## Test plan
 [Checklist of TODOs for testing the pull request...]
-
-🤖 Generated with opencode
+{{PR_ATTRIBUTION}}
 EOF
 )"
 </example>
@@ -201,6 +212,13 @@ EOF
 Important:
 - Return an empty response - the user will see the gh output directly
 - Never update git config`, bannedCommandsStr, MaxOutputLength)
+
+	// Replace placeholders with actual attribution strings
+	description = strings.ReplaceAll(description, "{{COMMIT_ATTRIBUTION}}", commitAttribution)
+	description = strings.ReplaceAll(description, "{{COMMIT_ATTRIBUTION_EXAMPLE}}", commitAttributionExample)
+	description = strings.ReplaceAll(description, "{{PR_ATTRIBUTION}}", prAttribution)
+
+	return description
 }
 
 func NewBashTool(permission permission.Service) BaseTool {
