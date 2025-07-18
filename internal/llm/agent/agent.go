@@ -291,14 +291,12 @@ func (a *agent) processGeneration(ctx context.Context, sessionID, content string
 					return a.err(fmt.Errorf("failed to reload messages after compaction: %w", err))
 				}
 
-				// Apply the same summary filtering logic using the helper function
 				session, err := a.sessions.Get(ctx, sessionID)
 				if err != nil {
 					return a.err(fmt.Errorf("failed to get session after compaction: %w", err))
 				}
 				msgs = a.filterMessagesFromSummary(msgs, session.SummaryMessageID)
 
-				// Rebuild msgHistory from filtered messages, preserving the current user message
 				msgHistory = append(msgs, userMsg)
 				logging.Info("Context compacted, continuing with reduced history", "session_id", sessionID, "new_history_length", len(msgHistory), "attempt", compactionAttempts)
 

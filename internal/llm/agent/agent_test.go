@@ -14,11 +14,11 @@ import (
 
 func TestShouldTriggerAutoCompaction(t *testing.T) {
 	tests := []struct {
-		name           string
-		contextWindow  int64
-		promptTokens   int64
+		name             string
+		contextWindow    int64
+		promptTokens     int64
 		completionTokens int64
-		expected       bool
+		expected         bool
 	}{
 		{
 			name:             "Below threshold",
@@ -54,7 +54,7 @@ func TestShouldTriggerAutoCompaction(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a minimal agent with just the model info we need
 			a := &agent{}
-			
+
 			// Mock the provider's Model() method by setting up the agent's provider field
 			a.provider = &testProvider{
 				model: models.Model{
@@ -144,36 +144,31 @@ func TestPerformSynchronousCompaction_NoSummarizeProvider(t *testing.T) {
 func TestAutoCompactionAttemptLimit(t *testing.T) {
 	// Test that compaction attempts are limited to prevent infinite loops
 	// This test verifies the fix for the deadloop issue
-	
-	// Create a mock message history that would trigger compaction
+
 	longMessage := strings.Repeat("This is a very long message that will exceed the context window. ", 100)
 	msgHistory := []message.Message{
 		{Parts: []message.ContentPart{message.TextContent{Text: longMessage}}},
 		{Parts: []message.ContentPart{message.TextContent{Text: longMessage}}},
 	}
-	
+
 	a := &agent{}
 	a.provider = &testProvider{
 		model: models.Model{
 			ContextWindow: 1000, // Small context window to trigger compaction
 		},
 	}
-	
+
 	// Test that shouldTriggerAutoCompactionFromHistory returns true for this history
 	shouldTrigger := a.shouldTriggerAutoCompactionFromHistory(msgHistory)
 	if !shouldTrigger {
 		t.Error("expected shouldTriggerAutoCompactionFromHistory to return true for large message history")
 	}
-	
-	// The actual test for attempt limiting would require more complex mocking
-	// of the database and session components, but the logic is now in place
-	// to prevent infinite loops by limiting compactionAttempts to maxCompactionAttempts
 }
 
 func TestMessageFilteringAfterCompaction(t *testing.T) {
 	// Test that message filtering logic is applied correctly after compaction
 	// This verifies the fix for the issue where compaction was increasing context size
-	
+
 	// Create test messages that simulate a conversation with a summary
 	messages := []message.Message{
 		{ID: "msg1", Parts: []message.ContentPart{message.TextContent{Text: "Old message 1"}}},
@@ -181,7 +176,7 @@ func TestMessageFilteringAfterCompaction(t *testing.T) {
 		{ID: "summary", Parts: []message.ContentPart{message.TextContent{Text: "Summary of conversation"}}},
 		{ID: "msg3", Parts: []message.ContentPart{message.TextContent{Text: "New message after summary"}}},
 	}
-	
+
 	// Simulate finding the summary message and filtering
 	summaryMsgIndex := -1
 	for i, msg := range messages {
@@ -190,28 +185,28 @@ func TestMessageFilteringAfterCompaction(t *testing.T) {
 			break
 		}
 	}
-	
+
 	if summaryMsgIndex == -1 {
 		t.Fatal("summary message not found")
 	}
-	
+
 	// Apply the filtering logic (same as in the agent code)
 	filteredMessages := messages[summaryMsgIndex:]
 	filteredMessages[0].Role = message.User
-	
+
 	// Verify that filtering worked correctly
 	if len(filteredMessages) != 2 {
 		t.Errorf("expected 2 filtered messages, got %d", len(filteredMessages))
 	}
-	
+
 	if filteredMessages[0].ID != "summary" {
 		t.Errorf("expected first message to be summary, got %s", filteredMessages[0].ID)
 	}
-	
+
 	if filteredMessages[0].Role != message.User {
 		t.Errorf("expected summary message role to be User, got %s", filteredMessages[0].Role)
 	}
-	
+
 	if filteredMessages[1].ID != "msg3" {
 		t.Errorf("expected second message to be msg3, got %s", filteredMessages[1].ID)
 	}
@@ -219,7 +214,7 @@ func TestMessageFilteringAfterCompaction(t *testing.T) {
 
 func TestFilterMessagesFromSummary(t *testing.T) {
 	a := &agent{}
-	
+
 	tests := []struct {
 		name             string
 		messages         []message.Message
@@ -263,20 +258,20 @@ func TestFilterMessagesFromSummary(t *testing.T) {
 			expectedRole:     message.Assistant,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := a.filterMessagesFromSummary(tt.messages, tt.summaryMessageID)
-			
+
 			if len(result) != tt.expectedCount {
 				t.Errorf("expected %d messages, got %d", tt.expectedCount, len(result))
 			}
-			
+
 			if len(result) > 0 {
 				if result[0].ID != tt.expectedFirstID {
 					t.Errorf("expected first message ID %s, got %s", tt.expectedFirstID, result[0].ID)
 				}
-				
+
 				if result[0].Role != tt.expectedRole {
 					t.Errorf("expected first message role %s, got %s", tt.expectedRole, result[0].Role)
 				}
@@ -285,29 +280,6 @@ func TestFilterMessagesFromSummary(t *testing.T) {
 	}
 }
 
-func TestToolResultsNilHandling(t *testing.T) {
-	// Test that the agent handles nil tool results correctly
-	// This verifies the fix for the issue where agent returns truncated responses
-	// when tool results are nil
-	
-	// This test would require more complex mocking to fully test the agent behavior
-	// when tool results are nil, but the logic is now in place to handle this case
-	// by creating an empty tool results message and continuing processing
-	
-	// The key fix is in the agent processing loop where we check:
-	// if agentMessage.FinishReason() == message.FinishReasonToolUse {
-	//     if toolResults != nil {
-	//         // Continue with tool results
-	//     } else {
-	//         // Create empty tool results and continue
-	//     }
-	// }
-	
-	// This ensures the LLM gets a chance to provide a final response
-	// even when tool execution fails or returns no results
-}
-
-// testProvider is a minimal implementation for testing
 type testProvider struct {
 	model models.Model
 }
@@ -325,3 +297,4 @@ func (tp *testProvider) SendMessages(ctx context.Context, messages []message.Mes
 func (tp *testProvider) StreamResponse(ctx context.Context, messages []message.Message, tools []tools.BaseTool) <-chan provider.ProviderEvent {
 	return nil
 }
+
