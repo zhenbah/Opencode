@@ -198,7 +198,6 @@ func (s *ChatServer) sendError(conn *websocket.Conn, errorMsg string) {
 }
 
 func initializeApp(ctx context.Context) (*app.App, error) {
-
 	cwd, err := os.Getwd()
 	if err != nil {
 		logging.Error("Failed to get current working directory", "error", err)
@@ -213,7 +212,6 @@ func initializeApp(ctx context.Context) (*app.App, error) {
 		logging.Error("Failed to load configuration", "error", err, "cwd", cwd)
 		return nil, err
 	}
-
 	dbConn, err := db.Connect()
 	if err != nil {
 		logging.Error("Failed to connect to database", "error", err)
