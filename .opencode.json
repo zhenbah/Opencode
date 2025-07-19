@@ -3,11 +3,11 @@
   "agents": {
     "coder": {
       "model": "gpt-4o-mini",
-      "maxTokens": 4096
+      "maxTokens": 2048
     },
     "task": {
       "model": "gpt-4o-mini",
-      "maxTokens": 4096
+      "maxTokens": 2048
     },
     "title": {
       "model": "gpt-4o-mini",
