@@ -34,6 +34,12 @@ func InitGlobalLogging(logFilePath string) error {
 	}
 
 	globalLogFile = file
+
+	// Set slog to INFO level to suppress debug messages
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})))
+
 	return nil
 }
 
