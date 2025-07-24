@@ -24,6 +24,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"os/exec"
+
 	"github.com/opencode-ai/opencode/internal/tui/util"
 )
 
@@ -445,6 +447,16 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return a, nil
 
+	case tea.Msg:
+		switch msg {
+		case "setup-agent-os":
+			cmd := exec.Command("bash", "-c", "curl -fsSL https://raw.githubusercontent.com/buildermethods/agent-os/main/install | bash")
+			err := cmd.Run()
+			if err != nil {
+				return a, util.ReportError(fmt.Errorf("failed to install Agent OS: %w", err))
+			}
+			return a, util.ReportInfo("Agent OS installed successfully")
+		}
 	case tea.KeyMsg:
 		// If multi-arguments dialog is open, let it handle the key press first
 		if a.showMultiArgumentsDialog {
@@ -964,7 +976,7 @@ func New(app *app.App) tea.Model {
 			}
 			agentOsDir := filepath.Join(homeDir, "agent_os")
 			if _, err := os.Stat(agentOsDir); os.IsNotExist(err) {
-				return util.ReportWarn("Agent OS not found. Please install it by running `curl -fsSL https://raw.githubusercontent.com/buildermethods/agent-os/main/install | bash`")
+				return util.ReportWarn("Agent OS not found. Please run the 'Setup Agent OS' command from the command menu (ctrl+k).")
 			}
 
 			// Create project-specific agent_os directory
@@ -1010,6 +1022,15 @@ If there are Cursor rules (in .cursor/rules/ or .cursorrules) or Copilot rules (
 			return func() tea.Msg {
 				return startCompactSessionMsg{}
 			}
+		},
+	})
+
+	model.RegisterCommand(dialog.Command{
+		ID:          "setup-agent-os",
+		Title:       "Setup Agent OS",
+		Description: "Install Agent OS",
+		Handler: func(cmd dialog.Command) tea.Cmd {
+			return util.CmdHandler(tea.Msg("setup-agent-os"))
 		},
 	})
 	// Load custom commands
