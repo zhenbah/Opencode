@@ -277,6 +277,7 @@ func setProviderDefaults() {
 		// api-key may be empty when using Entra ID credentials – that's okay
 		viper.SetDefault("providers.azure.apiKey", os.Getenv("AZURE_OPENAI_API_KEY"))
 	}
+	viper.SetDefault("providers.local.endpoint", "http://localhost:11434")
 	if apiKey, err := LoadGitHubToken(); err == nil && apiKey != "" {
 		viper.SetDefault("providers.copilot.apiKey", apiKey)
 		if viper.GetString("providers.copilot.apiKey") == "" {

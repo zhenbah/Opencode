@@ -153,8 +153,15 @@ func NewProvider(providerName models.ModelProvider, opts ...ProviderClientOption
 			client:  newOpenAIClient(clientOptions),
 		}, nil
 	case models.ProviderLocal:
+		endpoint := os.Getenv("LOCAL_ENDPOINT")
+		if endpoint == "" {
+			endpoint = os.Getenv("OLLAMA_ENDPOINT")
+		}
+		if endpoint == "" {
+			endpoint = os.Getenv("LMSTUDIO_ENDPOINT")
+		}
 		clientOptions.openaiOptions = append(clientOptions.openaiOptions,
-			WithOpenAIBaseURL(os.Getenv("LOCAL_ENDPOINT")),
+			WithOpenAIBaseURL(endpoint),
 		)
 		return &baseProvider[OpenAIClient]{
 			options: clientOptions,

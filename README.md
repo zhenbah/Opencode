@@ -626,11 +626,16 @@ This is useful for developers who want to experiment with custom models.
 
 ### Configuring a self-hosted provider
 
-You can use a self-hosted model by setting the `LOCAL_ENDPOINT` environment variable.
+You can use a self-hosted model by setting one of the following environment variables:
+
+- `OLLAMA_ENDPOINT`: For Ollama models
+- `LMSTUDIO_ENDPOINT`: For LMStudio models
+- `LOCAL_ENDPOINT`: For other local models
+
 This will cause OpenCode to load and use the models from the specified endpoint.
 
 ```bash
-LOCAL_ENDPOINT=http://localhost:1235/v1
+OLLAMA_ENDPOINT=http://localhost:11434
 ```
 
 ### Configuring a self-hosted model
@@ -641,7 +646,7 @@ You can also configure a self-hosted model in the configuration file under the `
 {
   "agents": {
     "coder": {
-      "model": "local.granite-3.3-2b-instruct@q8_0",
+      "model": "local/Ollama/llama2",
       "reasoningEffort": "high"
     }
   }
