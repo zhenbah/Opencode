@@ -21,6 +21,9 @@ import (
 	"github.com/opencode-ai/opencode/internal/tui/layout"
 	"github.com/opencode-ai/opencode/internal/tui/page"
 	"github.com/opencode-ai/opencode/internal/tui/theme"
+	"os"
+	"path/filepath"
+
 	"github.com/opencode-ai/opencode/internal/tui/util"
 )
 
@@ -677,6 +680,34 @@ func (a *appModel) findCommand(id string) (dialog.Command, bool) {
 	return dialog.Command{}, false
 }
 
+func createAgentOsCommands() tea.Cmd {
+	return func() tea.Msg {
+		wd, err := os.Getwd()
+		if err != nil {
+			return util.InfoMsg{Type: util.InfoTypeError, Msg: fmt.Sprintf("failed to get working directory: %v", err)}
+		}
+
+		commandsDir := filepath.Join(wd, ".opencode", "commands")
+		if _, err := os.Stat(commandsDir); os.IsNotExist(err) {
+			if err := os.MkdirAll(commandsDir, 0755); err != nil {
+				return util.InfoMsg{Type: util.InfoTypeError, Msg: fmt.Sprintf("failed to create commands directory: %v", err)}
+			}
+		}
+
+		agentOsCommands := []string{"analyze_product", "create_spec", "execute_tasks", "plan_product"}
+		for _, cmd := range agentOsCommands {
+			cmdFile := filepath.Join(commandsDir, cmd+".md")
+			if _, err := os.Stat(cmdFile); os.IsNotExist(err) {
+				content := fmt.Sprintf("@~/agent_os/instructions/%s.md", cmd)
+				if err := os.WriteFile(cmdFile, []byte(content), 0644); err != nil {
+					return util.InfoMsg{Type: util.InfoTypeError, Msg: fmt.Sprintf("failed to create command file: %v", err)}
+				}
+			}
+		}
+		return util.InfoMsg{Type: util.InfoTypeInfo, Msg: "Agent OS project initialized successfully"}
+	}
+}
+
 func (a *appModel) moveToPage(pageID page.PageID) tea.Cmd {
 	if a.app.CoderAgent.IsBusy() {
 		// For now we don't move to any page if the agent is busy
@@ -926,6 +957,28 @@ func New(app *app.App) tea.Model {
 		Title:       "Initialize Project",
 		Description: "Create/Update the OpenCode.md memory file",
 		Handler: func(cmd dialog.Command) tea.Cmd {
+			// Check for global Agent OS installation
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				return util.ReportError(fmt.Errorf("failed to get home directory: %w", err))
+			}
+			agentOsDir := filepath.Join(homeDir, "agent_os")
+			if _, err := os.Stat(agentOsDir); os.IsNotExist(err) {
+				return util.ReportWarn("Agent OS not found. Please install it by running `curl -fsSL https://raw.githubusercontent.com/buildermethods/agent-os/main/install | bash`")
+			}
+
+			// Create project-specific agent_os directory
+			wd, err := os.Getwd()
+			if err != nil {
+				return util.ReportError(fmt.Errorf("failed to get working directory: %w", err))
+			}
+			projectAgentOsDir := filepath.Join(wd, "agent_os")
+			if _, err := os.Stat(projectAgentOsDir); os.IsNotExist(err) {
+				if err := os.MkdirAll(projectAgentOsDir, 0755); err != nil {
+					return util.ReportError(fmt.Errorf("failed to create agent_os directory: %w", err))
+				}
+			}
+
 			prompt := `Please analyze this codebase and create a OpenCode.md file containing:
 1. Build/lint/test commands - especially for running a single test
 2. Code style guidelines including imports, formatting, types, naming conventions, error handling, etc.
@@ -933,10 +986,18 @@ func New(app *app.App) tea.Model {
 The file you create will be given to agentic coding agents (such as yourself) that operate in this repository. Make it about 20 lines long.
 If there's already a opencode.md, improve it.
 If there are Cursor rules (in .cursor/rules/ or .cursorrules) or Copilot rules (in .github/copilot-instructions.md), make sure to include them.`
+
+			// Generate project planning documents
+			planningPrompt := "Plan out a new product based on the current project context, referencing the Agent OS instructions and standards."
+
 			return tea.Batch(
 				util.CmdHandler(chat.SendMsg{
 					Text: prompt,
 				}),
+				util.CmdHandler(chat.SendMsg{
+					Text: planningPrompt,
+				}),
+				createAgentOsCommands(),
 			)
 		},
 	})
