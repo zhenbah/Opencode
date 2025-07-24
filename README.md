@@ -524,6 +524,34 @@ OpenCode includes several built-in commands:
 
 OpenCode implements the Model Context Protocol (MCP) to extend its capabilities through external tools. MCP provides a standardized way for the AI assistant to interact with external services and tools.
 
+### Spec Driven Development
+
+OpenCode supports Spec Driven Development through the `spec-server`, an MCP server that guides the user through a three-phase workflow:
+
+1.  **Requirements:** Define user stories and acceptance criteria.
+2.  **Design:** Create a technical design document.
+3.  **Tasks:** Generate actionable implementation tasks.
+
+To use the `spec-server`, you first need to install it:
+
+```bash
+pip install spec-server
+```
+
+Then, you need to add it to your `.opencode.json` configuration file:
+
+```json
+{
+  "mcpServers": {
+    "spec-server": {
+      "command": "spec-server",
+      "args": ["stdio"],
+      "disabled": false
+    }
+  }
+}
+```
+
 ### MCP Features
 
 - **External Tool Integration**: Connect to external tools and services via a standardized protocol
