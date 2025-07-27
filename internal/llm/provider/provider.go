@@ -152,6 +152,11 @@ func NewProvider(providerName models.ModelProvider, opts ...ProviderClientOption
 			options: clientOptions,
 			client:  newOpenAIClient(clientOptions),
 		}, nil
+	case models.ProviderOllama:
+		return &baseProvider[OpenAIClient]{
+			options: clientOptions,
+			client:  newOllamaClient(clientOptions),
+		}, nil
 	case models.ProviderLocal:
 		endpoint := os.Getenv("LOCAL_ENDPOINT")
 		if endpoint == "" {
