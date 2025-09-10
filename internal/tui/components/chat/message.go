@@ -10,14 +10,14 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/diff"
-	"github.com/opencode-ai/opencode/internal/llm/agent"
-	"github.com/opencode-ai/opencode/internal/llm/models"
-	"github.com/opencode-ai/opencode/internal/llm/tools"
-	"github.com/opencode-ai/opencode/internal/message"
-	"github.com/opencode-ai/opencode/internal/tui/styles"
-	"github.com/opencode-ai/opencode/internal/tui/theme"
+	"github.com/zhenbah/cryoncode/internal/config"
+	"github.com/zhenbah/cryoncode/internal/diff"
+	"github.com/zhenbah/cryoncode/internal/llm/agent"
+	"github.com/zhenbah/cryoncode/internal/llm/models"
+	"github.com/zhenbah/cryoncode/internal/llm/tools"
+	"github.com/zhenbah/cryoncode/internal/message"
+	"github.com/zhenbah/cryoncode/internal/tui/styles"
+	"github.com/zhenbah/cryoncode/internal/tui/theme"
 )
 
 type uiMessageType int

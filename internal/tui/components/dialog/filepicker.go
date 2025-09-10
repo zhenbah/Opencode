@@ -14,14 +14,14 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/opencode-ai/opencode/internal/app"
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/logging"
-	"github.com/opencode-ai/opencode/internal/message"
-	"github.com/opencode-ai/opencode/internal/tui/image"
-	"github.com/opencode-ai/opencode/internal/tui/styles"
-	"github.com/opencode-ai/opencode/internal/tui/theme"
-	"github.com/opencode-ai/opencode/internal/tui/util"
+	"github.com/zhenbah/cryoncode/internal/app"
+	"github.com/zhenbah/cryoncode/internal/config"
+	"github.com/zhenbah/cryoncode/internal/logging"
+	"github.com/zhenbah/cryoncode/internal/message"
+	"github.com/zhenbah/cryoncode/internal/tui/image"
+	"github.com/zhenbah/cryoncode/internal/tui/styles"
+	"github.com/zhenbah/cryoncode/internal/tui/theme"
+	"github.com/zhenbah/cryoncode/internal/tui/util"
 )
 
 const (

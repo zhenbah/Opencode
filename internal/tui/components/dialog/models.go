@@ -8,12 +8,12 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/llm/models"
-	"github.com/opencode-ai/opencode/internal/tui/layout"
-	"github.com/opencode-ai/opencode/internal/tui/styles"
-	"github.com/opencode-ai/opencode/internal/tui/theme"
-	"github.com/opencode-ai/opencode/internal/tui/util"
+	"github.com/zhenbah/cryoncode/internal/config"
+	"github.com/zhenbah/cryoncode/internal/llm/models"
+	"github.com/zhenbah/cryoncode/internal/tui/layout"
+	"github.com/zhenbah/cryoncode/internal/tui/styles"
+	"github.com/zhenbah/cryoncode/internal/tui/theme"
+	"github.com/zhenbah/cryoncode/internal/tui/util"
 )
 
 const (

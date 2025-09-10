@@ -3,12 +3,12 @@ package agent
 import (
 	"context"
 
-	"github.com/opencode-ai/opencode/internal/history"
-	"github.com/opencode-ai/opencode/internal/llm/tools"
-	"github.com/opencode-ai/opencode/internal/lsp"
-	"github.com/opencode-ai/opencode/internal/message"
-	"github.com/opencode-ai/opencode/internal/permission"
-	"github.com/opencode-ai/opencode/internal/session"
+	"github.com/zhenbah/cryoncode/internal/history"
+	"github.com/zhenbah/cryoncode/internal/llm/tools"
+	"github.com/zhenbah/cryoncode/internal/lsp"
+	"github.com/zhenbah/cryoncode/internal/message"
+	"github.com/zhenbah/cryoncode/internal/permission"
+	"github.com/zhenbah/cryoncode/internal/session"
 )
 
 func CoderAgentTools(

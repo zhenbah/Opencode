@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/llm/models"
+	"github.com/zhenbah/cryoncode/internal/config"
+	"github.com/zhenbah/cryoncode/internal/llm/models"
 )
 
 // JSONSchemaType represents a JSON Schema type
@@ -38,8 +38,8 @@ func main() {
 func generateSchema() map[string]any {
 	schema := map[string]any{
 		"$schema":     "http://json-schema.org/draft-07/schema#",
-		"title":       "OpenCode Configuration",
-		"description": "Configuration schema for the OpenCode application",
+		"title":       "Cryoncode Configuration",
+		"description": "Configuration schema for the Cryoncode application",
 		"type":        "object",
 		"properties":  map[string]any{},
 	}
@@ -52,7 +52,7 @@ func generateSchema() map[string]any {
 			"directory": map[string]any{
 				"type":        "string",
 				"description": "Directory where application data is stored",
-				"default":     ".opencode",
+				"default":     ".cryoncode",
 			},
 		},
 		"required": []string{"directory"},
@@ -89,10 +89,10 @@ func generateSchema() map[string]any {
 			".cursor/rules/",
 			"CLAUDE.md",
 			"CLAUDE.local.md",
-			"opencode.md",
-			"opencode.local.md",
-			"OpenCode.md",
-			"OpenCode.local.md",
+			"cryoncode.md",
+			"cryoncode.local.md",
+			"Cryoncode.md",
+			"Cryoncode.local.md",
 			"OPENCODE.md",
 			"OPENCODE.local.md",
 		},
@@ -105,9 +105,9 @@ func generateSchema() map[string]any {
 			"theme": map[string]any{
 				"type":        "string",
 				"description": "TUI theme name",
-				"default":     "opencode",
+				"default":     "cryoncode",
 				"enum": []string{
-					"opencode",
+					"cryoncode",
 					"catppuccin",
 					"dracula",
 					"flexoki",

@@ -9,17 +9,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/db"
-	"github.com/opencode-ai/opencode/internal/format"
-	"github.com/opencode-ai/opencode/internal/history"
-	"github.com/opencode-ai/opencode/internal/llm/agent"
-	"github.com/opencode-ai/opencode/internal/logging"
-	"github.com/opencode-ai/opencode/internal/lsp"
-	"github.com/opencode-ai/opencode/internal/message"
-	"github.com/opencode-ai/opencode/internal/permission"
-	"github.com/opencode-ai/opencode/internal/session"
-	"github.com/opencode-ai/opencode/internal/tui/theme"
+	"github.com/zhenbah/cryoncode/internal/config"
+	"github.com/zhenbah/cryoncode/internal/db"
+	"github.com/zhenbah/cryoncode/internal/format"
+	"github.com/zhenbah/cryoncode/internal/history"
+	"github.com/zhenbah/cryoncode/internal/llm/agent"
+	"github.com/zhenbah/cryoncode/internal/logging"
+	"github.com/zhenbah/cryoncode/internal/lsp"
+	"github.com/zhenbah/cryoncode/internal/message"
+	"github.com/zhenbah/cryoncode/internal/permission"
+	"github.com/zhenbah/cryoncode/internal/session"
+	"github.com/zhenbah/cryoncode/internal/tui/theme"
 )
 
 type App struct {

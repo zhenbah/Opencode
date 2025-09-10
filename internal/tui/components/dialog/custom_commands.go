@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/tui/util"
+	"github.com/zhenbah/cryoncode/internal/config"
+	"github.com/zhenbah/cryoncode/internal/tui/util"
 )
 
 // Command prefix constants
@@ -30,7 +30,7 @@ func LoadCustomCommands() ([]Command, error) {
 
 	var commands []Command
 
-	// Load user commands from XDG_CONFIG_HOME/opencode/commands
+	// Load user commands from XDG_CONFIG_HOME/cryoncode/commands
 	xdgConfigHome := os.Getenv("XDG_CONFIG_HOME")
 	if xdgConfigHome == "" {
 		// Default to ~/.config if XDG_CONFIG_HOME is not set
@@ -41,7 +41,7 @@ func LoadCustomCommands() ([]Command, error) {
 	}
 
 	if xdgConfigHome != "" {
-		userCommandsDir := filepath.Join(xdgConfigHome, "opencode", "commands")
+		userCommandsDir := filepath.Join(xdgConfigHome, "cryoncode", "commands")
 		userCommands, err := loadCommandsFromDir(userCommandsDir, UserCommandPrefix)
 		if err != nil {
 			// Log error but continue - we'll still try to load other commands
@@ -51,10 +51,10 @@ func LoadCustomCommands() ([]Command, error) {
 		}
 	}
 
-	// Load commands from $HOME/.opencode/commands
+	// Load commands from $HOME/.cryoncode/commands
 	home, err := os.UserHomeDir()
 	if err == nil {
-		homeCommandsDir := filepath.Join(home, ".opencode", "commands")
+		homeCommandsDir := filepath.Join(home, ".cryoncode", "commands")
 		homeCommands, err := loadCommandsFromDir(homeCommandsDir, UserCommandPrefix)
 		if err != nil {
 			// Log error but continue - we'll still try to load other commands

@@ -108,7 +108,7 @@
       "type": "object"
     }
   },
-  "description": "Configuration schema for the OpenCode application",
+  "description": "Configuration schema for the Cryoncode application",
   "properties": {
     "agents": {
       "additionalProperties": {
@@ -238,10 +238,10 @@
         ".cursor/rules/",
         "CLAUDE.md",
         "CLAUDE.local.md",
-        "opencode.md",
-        "opencode.local.md",
-        "OpenCode.md",
-        "OpenCode.local.md",
+        "cryoncode.md",
+        "cryoncode.local.md",
+        "Cryoncode.md",
+        "Cryoncode.local.md",
         "OPENCODE.md",
         "OPENCODE.local.md"
       ],
@@ -255,7 +255,7 @@
       "description": "Storage configuration",
       "properties": {
         "directory": {
-          "default": ".opencode",
+          "default": ".cryoncode",
           "description": "Directory where application data is stored",
           "type": "string"
         }
@@ -397,10 +397,10 @@
       "description": "Terminal User Interface configuration",
       "properties": {
         "theme": {
-          "default": "opencode",
+          "default": "cryoncode",
           "description": "TUI theme name",
           "enum": [
-            "opencode",
+            "cryoncode",
             "catppuccin",
             "dracula",
             "flexoki",
@@ -420,6 +420,6 @@
       "type": "string"
     }
   },
-  "title": "OpenCode Configuration",
+  "title": "Cryoncode Configuration",
   "type": "object"
 }

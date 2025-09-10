@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/diff"
-	"github.com/opencode-ai/opencode/internal/history"
-	"github.com/opencode-ai/opencode/internal/logging"
-	"github.com/opencode-ai/opencode/internal/lsp"
-	"github.com/opencode-ai/opencode/internal/permission"
+	"github.com/zhenbah/cryoncode/internal/config"
+	"github.com/zhenbah/cryoncode/internal/diff"
+	"github.com/zhenbah/cryoncode/internal/history"
+	"github.com/zhenbah/cryoncode/internal/logging"
+	"github.com/zhenbah/cryoncode/internal/lsp"
+	"github.com/zhenbah/cryoncode/internal/permission"
 )
 
 type EditParams struct {

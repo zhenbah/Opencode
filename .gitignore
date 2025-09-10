@@ -41,7 +41,7 @@ Thumbs.db
 .env
 .env.local
 
-.opencode/
+.cryoncode/
 
-opencode
-opencode.md
+cryoncode
+cryoncode.md

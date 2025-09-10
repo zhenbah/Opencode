@@ -7,16 +7,16 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/llm/models"
-	"github.com/opencode-ai/opencode/internal/lsp"
-	"github.com/opencode-ai/opencode/internal/lsp/protocol"
-	"github.com/opencode-ai/opencode/internal/pubsub"
-	"github.com/opencode-ai/opencode/internal/session"
-	"github.com/opencode-ai/opencode/internal/tui/components/chat"
-	"github.com/opencode-ai/opencode/internal/tui/styles"
-	"github.com/opencode-ai/opencode/internal/tui/theme"
-	"github.com/opencode-ai/opencode/internal/tui/util"
+	"github.com/zhenbah/cryoncode/internal/config"
+	"github.com/zhenbah/cryoncode/internal/llm/models"
+	"github.com/zhenbah/cryoncode/internal/lsp"
+	"github.com/zhenbah/cryoncode/internal/lsp/protocol"
+	"github.com/zhenbah/cryoncode/internal/pubsub"
+	"github.com/zhenbah/cryoncode/internal/session"
+	"github.com/zhenbah/cryoncode/internal/tui/components/chat"
+	"github.com/zhenbah/cryoncode/internal/tui/styles"
+	"github.com/zhenbah/cryoncode/internal/tui/theme"
+	"github.com/zhenbah/cryoncode/internal/tui/util"
 )
 
 type StatusCmp interface {

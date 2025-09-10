@@ -11,7 +11,7 @@ Please follow [Crush][crush] for ongoing development.
 [crush]: https://github.com/charmbracelet/crush
 
 
-# ⌬ OpenCode
+# ⌬ Cryon code
 
 <p align="center"><img src="https://github.com/user-attachments/assets/9ae61ef6-70e5-4876-bc45-5bcb4e52c714" width="800"></p>
 
@@ -21,10 +21,10 @@ A powerful terminal-based AI assistant for developers, providing intelligent cod
 
 ## Overview
 
-OpenCode is a Go-based CLI application that brings AI assistance to your terminal. It provides a TUI (Terminal User Interface) for interacting with various AI models to help with coding tasks, debugging, and more.
+Cryon code is a Go-based CLI application that brings AI assistance to your terminal. It provides a TUI (Terminal User Interface) for interacting with various AI models to help with coding tasks, debugging, and more.
 
 <p>For a quick video overview, check out
-<a href="https://www.youtube.com/watch?v=P8luPmEa1QI"><img width="25" src="https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg"> OpenCode + Gemini 2.5 Pro: BYE Claude Code! I'm SWITCHING To the FASTEST AI Coder!</a></p>
+<a href="https://www.youtube.com/watch?v=P8luPmEa1QI"><img width="25" src="https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg"> Cryon code + Gemini 2.5 Pro: BYE Claude Code! I'm SWITCHING To the FASTEST AI Coder!</a></p>
 
 <a href="https://www.youtube.com/watch?v=P8luPmEa1QI"><img width="550" src="https://i3.ytimg.com/vi/P8luPmEa1QI/maxresdefault.jpg"></a><p>
 
@@ -47,45 +47,45 @@ OpenCode is a Go-based CLI application that brings AI assistance to your termina
 
 ```bash
 # Install the latest version
-curl -fsSL https://raw.githubusercontent.com/opencode-ai/opencode/refs/heads/main/install | bash
+curl -fsSL https://raw.githubusercontent.com/cryoncode-ai/cryoncode/refs/heads/main/install | bash
 
 # Install a specific version
-curl -fsSL https://raw.githubusercontent.com/opencode-ai/opencode/refs/heads/main/install | VERSION=0.1.0 bash
+curl -fsSL https://raw.githubusercontent.com/cryoncode-ai/cryoncode/refs/heads/main/install | VERSION=0.1.0 bash
 ```
 
 ### Using Homebrew (macOS and Linux)
 
 ```bash
-brew install opencode-ai/tap/opencode
+brew install cryoncode-ai/tap/cryoncode
 ```
 
 ### Using AUR (Arch Linux)
 
 ```bash
 # Using yay
-yay -S opencode-ai-bin
+yay -S cryoncode-ai-bin
 
 # Using paru
-paru -S opencode-ai-bin
+paru -S cryoncode-ai-bin
 ```
 
 ### Using Go
 
 ```bash
-go install github.com/opencode-ai/opencode@latest
+go install github.com/cryoncode-ai/cryoncode@latest
 ```
 
 ## Configuration
 
-OpenCode looks for configuration in the following locations:
+Cryon code looks for configuration in the following locations:
 
-- `$HOME/.opencode.json`
-- `$XDG_CONFIG_HOME/opencode/.opencode.json`
-- `./.opencode.json` (local directory)
+- `$HOME/.cryoncode.json`
+- `$XDG_CONFIG_HOME/cryoncode/.cryoncode.json`
+- `./.cryoncode.json` (local directory)
 
 ### Auto Compact Feature
 
-OpenCode includes an auto compact feature that automatically summarizes your conversation when it approaches the model's context window limit. When enabled (default setting), this feature:
+Cryon code includes an auto compact feature that automatically summarizes your conversation when it approaches the model's context window limit. When enabled (default setting), this feature:
 
 - Monitors token usage during your conversation
 - Automatically triggers summarization when usage reaches 95% of the model's context window
@@ -102,7 +102,7 @@ You can enable or disable this feature in your configuration file:
 
 ### Environment Variables
 
-You can configure OpenCode using environment variables:
+You can configure Cryon code using environment variables:
 
 | Environment Variable       | Purpose                                                                          |
 | -------------------------- | -------------------------------------------------------------------------------- |
@@ -124,7 +124,7 @@ You can configure OpenCode using environment variables:
 
 ### Shell Configuration
 
-OpenCode allows you to configure the shell used by the bash tool. By default, it uses the shell specified in the `SHELL` environment variable, or falls back to `/bin/bash` if not set.
+Cryon code allows you to configure the shell used by the bash tool. By default, it uses the shell specified in the `SHELL` environment variable, or falls back to `/bin/bash` if not set.
 
 You can override this in your configuration file:
 
@@ -144,7 +144,7 @@ This is useful if you want to use a different shell than your default system she
 ```json
 {
   "data": {
-    "directory": ".opencode"
+    "directory": ".cryoncode"
   },
   "providers": {
     "openai": {
@@ -207,7 +207,7 @@ This is useful if you want to use a different shell than your default system she
 
 ## Supported AI Models
 
-OpenCode supports a variety of AI models from different providers:
+Cryon code supports a variety of AI models from different providers:
 
 ### OpenAI
 
@@ -281,38 +281,38 @@ OpenCode supports a variety of AI models from different providers:
 ## Usage
 
 ```bash
-# Start OpenCode
-opencode
+# Start Cryon code
+cryoncode
 
 # Start with debug logging
-opencode -d
+cryoncode -d
 
 # Start with a specific working directory
-opencode -c /path/to/project
+cryoncode -c /path/to/project
 ```
 
 ## Non-interactive Prompt Mode
 
-You can run OpenCode in non-interactive mode by passing a prompt directly as a command-line argument. This is useful for scripting, automation, or when you want a quick answer without launching the full TUI.
+You can run Cryon code in non-interactive mode by passing a prompt directly as a command-line argument. This is useful for scripting, automation, or when you want a quick answer without launching the full TUI.
 
 ```bash
 # Run a single prompt and print the AI's response to the terminal
-opencode -p "Explain the use of context in Go"
+cryoncode -p "Explain the use of context in Go"
 
 # Get response in JSON format
-opencode -p "Explain the use of context in Go" -f json
+cryoncode -p "Explain the use of context in Go" -f json
 
 # Run without showing the spinner (useful for scripts)
-opencode -p "Explain the use of context in Go" -q
+cryoncode -p "Explain the use of context in Go" -q
 ```
 
-In this mode, OpenCode will process your prompt, print the result to standard output, and then exit. All permissions are auto-approved for the session.
+In this mode, Cryon code will process your prompt, print the result to standard output, and then exit. All permissions are auto-approved for the session.
 
-By default, a spinner animation is displayed while the model is processing your query. You can disable this spinner with the `-q` or `--quiet` flag, which is particularly useful when running OpenCode from scripts or automated workflows.
+By default, a spinner animation is displayed while the model is processing your query. You can disable this spinner with the `-q` or `--quiet` flag, which is particularly useful when running Cryon code from scripts or automated workflows.
 
 ### Output Formats
 
-OpenCode supports the following output formats in non-interactive mode:
+Cryon code supports the following output formats in non-interactive mode:
 
 | Format | Description                     |
 | ------ | ------------------------------- |
@@ -403,7 +403,7 @@ The output format is implemented as a strongly-typed `OutputFormat` in the codeb
 
 ## AI Assistant Tools
 
-OpenCode's AI assistant has access to various tools to help with coding tasks:
+Cryon code's AI assistant has access to various tools to help with coding tasks:
 
 ### File and Code Tools
 
@@ -429,7 +429,7 @@ OpenCode's AI assistant has access to various tools to help with coding tasks:
 
 ## Architecture
 
-OpenCode is built with a modular architecture:
+Cryon code is built with a modular architecture:
 
 - **cmd**: Command-line interface using Cobra
 - **internal/app**: Core application services
@@ -444,7 +444,7 @@ OpenCode is built with a modular architecture:
 
 ## Custom Commands
 
-OpenCode supports custom commands that can be created by users to quickly send predefined prompts to the AI assistant.
+Cryon code supports custom commands that can be created by users to quickly send predefined prompts to the AI assistant.
 
 ### Creating Custom Commands
 
@@ -453,26 +453,26 @@ Custom commands are predefined prompts stored as Markdown files in one of three 
 1. **User Commands** (prefixed with `user:`):
 
    ```
-   $XDG_CONFIG_HOME/opencode/commands/
+   $XDG_CONFIG_HOME/cryoncode/commands/
    ```
 
-   (typically `~/.config/opencode/commands/` on Linux/macOS)
+   (typically `~/.config/cryoncode/commands/` on Linux/macOS)
 
    or
 
    ```
-   $HOME/.opencode/commands/
+   $HOME/.cryoncode/commands/
    ```
 
 2. **Project Commands** (prefixed with `project:`):
 
    ```
-   <PROJECT DIR>/.opencode/commands/
+   <PROJECT DIR>/.cryoncode/commands/
    ```
 
 Each `.md` file in these directories becomes a custom command. The file name (without extension) becomes the command ID.
 
-For example, creating a file at `~/.config/opencode/commands/prime-context.md` with content:
+For example, creating a file at `~/.config/cryoncode/commands/prime-context.md` with content:
 
 ```markdown
 RUN git ls-files
@@ -483,7 +483,7 @@ This creates a command called `user:prime-context`.
 
 ### Command Arguments
 
-OpenCode supports named arguments in custom commands using placeholders in the format `$NAME` (where NAME consists of uppercase letters, numbers, and underscores, and must start with a letter).
+Cryon code supports named arguments in custom commands using placeholders in the format `$NAME` (where NAME consists of uppercase letters, numbers, and underscores, and must start with a letter).
 
 For example:
 
@@ -495,7 +495,7 @@ RUN git grep --author="$AUTHOR_NAME" -n .
 RUN grep -R "$SEARCH_PATTERN" $DIRECTORY
 ```
 
-When you run a command with arguments, OpenCode will prompt you to enter values for each unique placeholder. Named arguments provide several benefits:
+When you run a command with arguments, Cryon code will prompt you to enter values for each unique placeholder. Named arguments provide several benefits:
 
 - Clear identification of what each argument represents
 - Ability to use the same argument multiple times
@@ -506,7 +506,7 @@ When you run a command with arguments, OpenCode will prompt you to enter values 
 You can organize commands in subdirectories:
 
 ```
-~/.config/opencode/commands/git/commit.md
+~/.config/cryoncode/commands/git/commit.md
 ```
 
 This creates a command with ID `user:git:commit`.
@@ -521,16 +521,16 @@ The content of the command file will be sent as a message to the AI assistant.
 
 ### Built-in Commands
 
-OpenCode includes several built-in commands:
+Cryon code includes several built-in commands:
 
 | Command            | Description                                                                                         |
 | ------------------ | --------------------------------------------------------------------------------------------------- |
-| Initialize Project | Creates or updates the OpenCode.md memory file with project-specific information                    |
+| Initialize Project | Creates or updates the Cryon code.md memory file with project-specific information                    |
 | Compact Session    | Manually triggers the summarization of the current session, creating a new session with the summary |
 
 ## MCP (Model Context Protocol)
 
-OpenCode implements the Model Context Protocol (MCP) to extend its capabilities through external tools. MCP provides a standardized way for the AI assistant to interact with external services and tools.
+Cryon code implements the Model Context Protocol (MCP) to extend its capabilities through external tools. MCP provides a standardized way for the AI assistant to interact with external services and tools.
 
 ### MCP Features
 
@@ -571,7 +571,7 @@ Once configured, MCP tools are automatically available to the AI assistant along
 
 ## LSP (Language Server Protocol)
 
-OpenCode integrates with Language Server Protocol to provide code intelligence features across multiple programming languages.
+Cryon code integrates with Language Server Protocol to provide code intelligence features across multiple programming languages.
 
 ### LSP Features
 
@@ -625,17 +625,17 @@ the tool with your github account. This should create a github token at one of t
 - ~/.config/github-copilot/[hosts,apps].json
 - $XDG_CONFIG_HOME/github-copilot/[hosts,apps].json
 
-If using an explicit github token, you may either set the $GITHUB_TOKEN environment variable or add it to the opencode.json config file at `providers.copilot.apiKey`.
+If using an explicit github token, you may either set the $GITHUB_TOKEN environment variable or add it to the cryoncode.json config file at `providers.copilot.apiKey`.
 
 ## Using a self-hosted model provider
 
-OpenCode can also load and use models from a self-hosted (OpenAI-like) provider.
+Cryon code can also load and use models from a self-hosted (OpenAI-like) provider.
 This is useful for developers who want to experiment with custom models.
 
 ### Configuring a self-hosted provider
 
 You can use a self-hosted model by setting the `LOCAL_ENDPOINT` environment variable.
-This will cause OpenCode to load and use the models from the specified endpoint.
+This will cause Cryon code to load and use the models from the specified endpoint.
 
 ```bash
 LOCAL_ENDPOINT=http://localhost:1235/v1
@@ -666,19 +666,19 @@ You can also configure a self-hosted model in the configuration file under the `
 
 ```bash
 # Clone the repository
-git clone https://github.com/opencode-ai/opencode.git
-cd opencode
+git clone https://github.com/cryoncode-ai/cryoncode.git
+cd cryoncode
 
 # Build
-go build -o opencode
+go build -o cryoncode
 
 # Run
-./opencode
+./cryoncode
 ```
 
 ## Acknowledgments
 
-OpenCode gratefully acknowledges the contributions and support from these key individuals:
+Cryon code gratefully acknowledges the contributions and support from these key individuals:
 
 - [@isaacphi](https://github.com/isaacphi) - For the [mcp-language-server](https://github.com/isaacphi/mcp-language-server) project which provided the foundation for our LSP client implementation
 - [@adamdottv](https://github.com/adamdottv) - For the design direction and UI/UX architecture
@@ -687,7 +687,7 @@ Special thanks to the broader open source community whose tools and libraries ha
 
 ## License
 
-OpenCode is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+Cryon code is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ## Contributing
 
