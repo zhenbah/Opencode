@@ -12,7 +12,7 @@ builds:
       - amd64
       - arm64
     ldflags:
-      - -s -w -X github.com/cryoncode-ai/cryoncode/internal/version.Version={{.Version}}
+      - -s -w -X github.com/zhenbah/cryoncode/internal/version.Version={{.Version}}
     main: ./main.go
 
 archives:
@@ -34,14 +34,14 @@ checksum:
 snapshot:
   name_template: "0.0.0-{{ .Timestamp }}"
 aurs:
-  - name: cryoncode-ai
-    homepage: "https://github.com/cryoncode-ai/cryoncode"
+  - name: zhenbah
+    homepage: "https://github.com/zhenbah/cryoncode"
     description: "terminal based agent that can build anything"
     maintainers:
       - "kujtimiihoxha <kujtimii.h@gmail.com>"
     license: "MIT"
     private_key: "{{ .Env.AUR_KEY }}"
-    git_url: "ssh://aur@aur.archlinux.org/cryoncode-ai-bin.git"
+    git_url: "ssh://aur@aur.archlinux.org/zhenbah-bin.git"
     provides:
       - cryoncode
     conflicts:
@@ -50,7 +50,7 @@ aurs:
       install -Dm755 ./cryoncode "${pkgdir}/usr/bin/cryoncode"
 brews:
   - repository:
-      owner: cryoncode-ai
+      owner: zhenbah
       name: homebrew-tap
 nfpms:
   - maintainer: kujtimiihoxha
