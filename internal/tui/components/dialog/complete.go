@@ -1,10 +1,10 @@
 package dialog
 
 import (
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textarea"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/zhenbah/bubbles/key"
+	"github.com/zhenbah/bubbles/textarea"
+	tea "github.com/zhenbah/bubbletea"
+	"github.com/zhenbah/lipgloss"
 	"github.com/zhenbah/cryoncode/internal/logging"
 	utilComponents "github.com/zhenbah/cryoncode/internal/tui/components/util"
 	"github.com/zhenbah/cryoncode/internal/tui/layout"

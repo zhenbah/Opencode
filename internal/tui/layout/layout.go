@@ -3,8 +3,8 @@ package layout
 import (
 	"reflect"
 
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/zhenbah/bubbles/key"
+	tea "github.com/zhenbah/bubbletea"
 )
 
 type Focusable interface {

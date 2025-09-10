@@ -1,7 +1,7 @@
 package theme
 
 import (
-	"github.com/charmbracelet/lipgloss"
+	"github.com/zhenbah/lipgloss"
 )
 
 // TronTheme implements the Theme interface with Tron-inspired colors.

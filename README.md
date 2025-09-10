@@ -8,7 +8,7 @@ To reduce confusion and ensure the community follows the active project, this re
 
 Please follow [Crush][crush] for ongoing development.
 
-[crush]: https://github.com/charmbracelet/crush
+[crush]: https://github.com/zhenbah/crush
 
 
 # ⌬ Cryon code
@@ -30,7 +30,7 @@ Cryon code is a Go-based CLI application that brings AI assistance to your termi
 
 ## Features
 
-- **Interactive TUI**: Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) for a smooth terminal experience
+- **Interactive TUI**: Built with [Bubble Tea](https://github.com/zhenbah/bubbletea) for a smooth terminal experience
 - **Multiple AI Providers**: Support for OpenAI, Anthropic Claude, Google Gemini, AWS Bedrock, Groq, Azure OpenAI, and OpenRouter
 - **Session Management**: Save and manage multiple conversation sessions
 - **Tool Integration**: AI can execute commands, search files, and modify code

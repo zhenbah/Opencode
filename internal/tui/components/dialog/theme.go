@@ -1,9 +1,9 @@
 package dialog
 
 import (
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/zhenbah/bubbles/key"
+	tea "github.com/zhenbah/bubbletea"
+	"github.com/zhenbah/lipgloss"
 	"github.com/zhenbah/cryoncode/internal/tui/layout"
 	"github.com/zhenbah/cryoncode/internal/tui/styles"
 	"github.com/zhenbah/cryoncode/internal/tui/theme"

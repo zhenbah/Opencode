@@ -1,7 +1,7 @@
 package theme
 
 import (
-	"github.com/charmbracelet/lipgloss"
+	"github.com/zhenbah/lipgloss"
 )
 
 // DraculaTheme implements the Theme interface with Dracula colors.

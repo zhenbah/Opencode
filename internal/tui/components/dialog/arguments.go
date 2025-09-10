@@ -2,10 +2,10 @@ package dialog
 
 import (
 	"fmt"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/zhenbah/bubbles/key"
+	"github.com/zhenbah/bubbles/textinput"
+	tea "github.com/zhenbah/bubbletea"
+	"github.com/zhenbah/lipgloss"
 
 	"github.com/zhenbah/cryoncode/internal/tui/styles"
 	"github.com/zhenbah/cryoncode/internal/tui/theme"

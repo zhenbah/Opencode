@@ -1,7 +1,7 @@
 package styles
 
 import (
-	"github.com/charmbracelet/lipgloss"
+	"github.com/zhenbah/lipgloss"
 	"github.com/zhenbah/cryoncode/internal/tui/theme"
 )
 

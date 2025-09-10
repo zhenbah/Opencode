@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/zhenbah/bubbletea"
 	zone "github.com/lrstanley/bubblezone"
 	"github.com/zhenbah/cryoncode/internal/app"
 	"github.com/zhenbah/cryoncode/internal/config"

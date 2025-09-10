@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/x/ansi"
+	"github.com/zhenbah/lipgloss"
+	"github.com/zhenbah/x/ansi"
 	"github.com/zhenbah/cryoncode/internal/config"
 	"github.com/zhenbah/cryoncode/internal/message"
 	"github.com/zhenbah/cryoncode/internal/session"

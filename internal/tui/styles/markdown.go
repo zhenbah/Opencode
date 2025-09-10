@@ -1,9 +1,9 @@
 package styles
 
 import (
-	"github.com/charmbracelet/glamour"
-	"github.com/charmbracelet/glamour/ansi"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/zhenbah/glamour"
+	"github.com/zhenbah/glamour/ansi"
+	"github.com/zhenbah/lipgloss"
 	"github.com/zhenbah/cryoncode/internal/tui/theme"
 )
 

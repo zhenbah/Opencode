@@ -2,7 +2,7 @@ package theme
 
 import (
 	catppuccin "github.com/catppuccin/go"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/zhenbah/lipgloss"
 )
 
 // CatppuccinTheme implements the Theme interface with Catppuccin colors.
