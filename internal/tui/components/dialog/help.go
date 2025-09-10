@@ -3,9 +3,9 @@ package dialog
 import (
 	"strings"
 
-	"github.com/zhenbah/bubbles/key"
-	tea "github.com/zhenbah/bubbletea"
-	"github.com/zhenbah/lipgloss"
+	"github.com/charmbracelet/bubbles/key"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/zhenbah/cryoncode/internal/tui/styles"
 	"github.com/zhenbah/cryoncode/internal/tui/theme"
 )
@@ -134,7 +134,7 @@ func (h *helpCmp) render() string {
 		pairs = append(pairs, pair)
 	}
 
-	// https://github.com/zhenbah/lipgloss/issues/209
+	// https://github.com/charmbracelet/lipgloss/issues/209
 	if len(pairs) > 1 {
 		prefix := pairs[:len(pairs)-1]
 		lastPair := pairs[len(pairs)-1]

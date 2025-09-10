@@ -1,7 +1,7 @@
 package theme
 
 import (
-	"github.com/zhenbah/lipgloss"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // CryoncodeTheme implements the Theme interface with Cryoncode brand colors.

@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/zhenbah/lipgloss"
+	"github.com/charmbracelet/lipgloss"
 )
 
 var ansiEscape = regexp.MustCompile("\x1b\\[[0-9;]*m")

@@ -1,9 +1,9 @@
 package layout
 
 import (
-	"github.com/zhenbah/bubbles/key"
-	tea "github.com/zhenbah/bubbletea"
-	"github.com/zhenbah/lipgloss"
+	"github.com/charmbracelet/bubbles/key"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/zhenbah/cryoncode/internal/tui/theme"
 )
 

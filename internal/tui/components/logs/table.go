@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"slices"
 
-	"github.com/zhenbah/bubbles/key"
-	"github.com/zhenbah/bubbles/table"
-	tea "github.com/zhenbah/bubbletea"
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/table"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/zhenbah/cryoncode/internal/logging"
 	"github.com/zhenbah/cryoncode/internal/pubsub"
 	"github.com/zhenbah/cryoncode/internal/tui/layout"

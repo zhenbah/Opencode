@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/zhenbah/bubbles/spinner"
-	tea "github.com/zhenbah/bubbletea"
+	"github.com/charmbracelet/bubbles/spinner"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 // Spinner wraps the bubbles spinner for non-interactive mode

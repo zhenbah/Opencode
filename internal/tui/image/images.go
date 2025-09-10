@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/zhenbah/lipgloss"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/disintegration/imaging"
 	"github.com/lucasb-eyer/go-colorful"
 )

@@ -3,8 +3,8 @@ package layout
 import (
 	"strings"
 
-	"github.com/zhenbah/lipgloss"
-	chAnsi "github.com/zhenbah/x/ansi"
+	"github.com/charmbracelet/lipgloss"
+	chAnsi "github.com/charmbracelet/x/ansi"
 	"github.com/muesli/ansi"
 	"github.com/muesli/reflow/truncate"
 	"github.com/muesli/termenv"
@@ -14,7 +14,7 @@ import (
 )
 
 // Most of this code is borrowed from
-// https://github.com/zhenbah/lipgloss/pull/102
+// https://github.com/charmbracelet/lipgloss/pull/102
 // as well as the lipgloss library, with some modification for what I needed.
 
 // Split a string into lines, additionally returning the size of the widest

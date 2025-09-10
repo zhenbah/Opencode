@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	tea "github.com/zhenbah/bubbletea"
-	"github.com/zhenbah/lipgloss"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/zhenbah/cryoncode/internal/config"
 	"github.com/zhenbah/cryoncode/internal/diff"
 	"github.com/zhenbah/cryoncode/internal/history"

@@ -1,7 +1,7 @@
 package theme
 
 import (
-	"github.com/zhenbah/lipgloss"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // TokyoNightTheme implements the Theme interface with Tokyo Night colors.

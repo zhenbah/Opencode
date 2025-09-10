@@ -1,7 +1,7 @@
 package theme
 
 import (
-	"github.com/zhenbah/lipgloss"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // Flexoki color palette constants

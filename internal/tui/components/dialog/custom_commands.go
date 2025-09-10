@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	tea "github.com/zhenbah/bubbletea"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/zhenbah/cryoncode/internal/config"
 	"github.com/zhenbah/cryoncode/internal/tui/util"
 )

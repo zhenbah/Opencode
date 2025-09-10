@@ -3,7 +3,7 @@ package util
 import (
 	"time"
 
-	tea "github.com/zhenbah/bubbletea"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func CmdHandler(msg tea.Msg) tea.Cmd {

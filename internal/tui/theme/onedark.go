@@ -1,7 +1,7 @@
 package theme
 
 import (
-	"github.com/zhenbah/lipgloss"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // OneDarkTheme implements the Theme interface with Atom's One Dark colors.

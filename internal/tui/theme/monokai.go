@@ -1,7 +1,7 @@
 package theme
 
 import (
-	"github.com/zhenbah/lipgloss"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // MonokaiProTheme implements the Theme interface with Monokai Pro colors.

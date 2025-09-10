@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zhenbah/lipgloss"
-	"github.com/zhenbah/x/ansi"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/zhenbah/cryoncode/internal/config"
 	"github.com/zhenbah/cryoncode/internal/diff"
 	"github.com/zhenbah/cryoncode/internal/llm/agent"

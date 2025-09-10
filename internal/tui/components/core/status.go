@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	tea "github.com/zhenbah/bubbletea"
-	"github.com/zhenbah/lipgloss"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/zhenbah/cryoncode/internal/config"
 	"github.com/zhenbah/cryoncode/internal/llm/models"
 	"github.com/zhenbah/cryoncode/internal/lsp"
