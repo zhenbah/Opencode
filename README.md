@@ -72,8 +72,10 @@ paru -S zhenbah-bin
 ### Using Go
 
 ```bash
-go install github.com/zhenbah/cryoncode@latest
+go install github.com/zhenbah/cryoncode@main
 ```
+
+Note: Use `@main` instead of `@latest` as the latest tagged version has an incorrect module path in its go.mod file.
 
 ## Configuration
 
